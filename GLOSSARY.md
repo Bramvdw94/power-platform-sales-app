@@ -40,6 +40,22 @@ _Avoid_: Lost reason, bad timing
 A qualified deal with an expected value and close date, which moves through stages until it is won or lost.
 _Avoid_: Deal, sale, prospect
 
+**Stage**:
+Where an Opportunity stands: Qualification, Needs Analysis, Proposal, Negotiation (the open stages), then Closed Won or Closed Lost. An Opportunity may move forward, back or skip stages; a closed one can be reopened only by its Owner or their manager.
+_Avoid_: Status, phase, step
+
+**Probability**:
+How likely an Opportunity is to be won, as a percentage. Each Stage gives a default (Qualification 10, Needs Analysis 25, Proposal 50, Negotiation 75, Closed Won 100, Closed Lost 0) that the Owner may override.
+_Avoid_: Confidence, chance
+
+**Close**:
+Moving an Opportunity to Closed Won or Closed Lost, recording the close date and, when won, the actual value.
+_Avoid_: Finish, complete
+
+**Lost reason**:
+Why an Opportunity was closed as lost: Price, Chose a competitor, No budget, No decision, or Other.
+_Avoid_: Disqualify reason
+
 **Pipeline**:
 All open Opportunities, viewed by stage.
 _Avoid_: Funnel
