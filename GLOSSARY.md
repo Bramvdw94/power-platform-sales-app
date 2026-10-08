@@ -25,8 +25,16 @@ The step that turns a Lead into a real deal, producing an Opportunity linked to 
 _Avoid_: Convert, promote
 
 **Disqualify**:
-The step that closes a Lead with no deal, because it will not lead to a sale.
+The step that closes a Lead with no deal, because it will not lead to a sale. A disqualified Lead can be reopened; a qualified one cannot.
 _Avoid_: Reject, delete
+
+**Lead status**:
+Where a Lead stands: Not Contacted (nobody has reached out yet), Working (the Owner is in touch and judging fit, including Leads that are a good fit but not ready yet), Qualified, or Disqualified.
+_Avoid_: Lead stage, Nurturing, Converted
+
+**Disqualify reason**:
+Why a Lead was disqualified: No budget, No need, Can't reach them, Chose a competitor, Duplicate, or Other. "Not ready yet" is not a reason; such a Lead stays Working.
+_Avoid_: Lost reason, bad timing
 
 **Opportunity**:
 A qualified deal with an expected value and close date, which moves through stages until it is won or lost.
