@@ -37,7 +37,7 @@ Why a Lead was disqualified: No budget, No need, Can't reach them, Chose a compe
 _Avoid_: Lost reason, bad timing
 
 **Opportunity**:
-A qualified deal with an expected value and close date, which moves through stages until it is won or lost.
+A qualified deal with one Account, an expected value and a close date, which moves through stages until it is won or lost.
 _Avoid_: Deal, sale, prospect
 
 **Stage**:
