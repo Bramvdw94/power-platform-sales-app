@@ -4,9 +4,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 
 const ENABLED = import.meta.env.DEV || import.meta.env.VITE_PROTOTYPE === "1"
 
-export function useVariant(keys: string[]) {
+export function useVariant(keys: string[], fallback = keys[0]) {
   const param = new URLSearchParams(location.search).get("variant")
-  return param && keys.includes(param) ? param : keys[0]
+  return param && keys.includes(param) ? param : fallback
 }
 
 export function PrototypeSwitcher({ variants, current, onChange }: {

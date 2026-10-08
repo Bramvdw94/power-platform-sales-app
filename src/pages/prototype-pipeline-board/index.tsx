@@ -1,4 +1,4 @@
-// PROTOTYPE: pipeline board (issue #7). Three variants, switchable via ?variant=A|B|C
+// PROTOTYPE: pipeline board (issue #7). Variants switchable via ?variant=A..F
 // with the floating bar or the arrow keys. In-memory sample data; nothing is saved. Throwaway.
 import { useState } from "react"
 import { PrototypeSwitcher, useVariant } from "@/components/prototype-switcher"
@@ -7,15 +7,19 @@ import { FilterBar, StateReadout, useBoard } from "./shared"
 import * as A from "./variant-a"
 import * as B from "./variant-b"
 import * as C from "./variant-c"
+import * as Combo from "./variant-combos"
 
 const VARIANTS = [
   { key: "A", name: A.name },
   { key: "B", name: B.name },
   { key: "C", name: C.name },
+  { key: "D", name: Combo.nameD },
+  { key: "E", name: Combo.nameE },
+  { key: "F", name: Combo.nameF },
 ]
 
 export default function PipelineBoardPrototype() {
-  const [variant, setVariant] = useState(useVariant(VARIANTS.map((v) => v.key)))
+  const [variant, setVariant] = useState(useVariant(VARIANTS.map((v) => v.key), "D"))
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
   const { board, dialog } = useBoard()
   const list = applyFilters(board.all, filters)
@@ -33,6 +37,9 @@ export default function PipelineBoardPrototype() {
       {variant === "A" && <A.VariantA list={list} board={board} />}
       {variant === "B" && <B.VariantB list={list} board={board} />}
       {variant === "C" && <C.VariantC list={list} board={board} />}
+      {variant === "D" && <Combo.VariantD list={list} board={board} />}
+      {variant === "E" && <Combo.VariantE list={list} board={board} />}
+      {variant === "F" && <Combo.VariantF list={list} board={board} />}
       {dialog}
       <PrototypeSwitcher variants={VARIANTS} current={variant} onChange={setVariant} />
     </div>
