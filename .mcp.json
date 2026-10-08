@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "dataverse-orgd91f3edf": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@microsoft/dataverse@latest",
+        "mcp",
+        "https://orgd91f3edf.crm3.dynamics.com"
+      ],
+      "env": {
+        "DATAVERSE_OPERATION_CONTEXT": "app=dataverse-skills/1.13.0;skill=mcp-direct;agent=claude-code"
+      }
+    }
+  }
+}
