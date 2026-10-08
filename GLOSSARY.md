@@ -37,7 +37,7 @@ Why a Lead was disqualified: No budget, No need, Can't reach them, Chose a compe
 _Avoid_: Lost reason, bad timing
 
 **Opportunity**:
-A qualified deal with one Account, an expected value and a close date, which moves through stages until it is won or lost.
+A qualified deal with one Account, an Estimated value and an Expected close date, which moves through stages until it is won or lost.
 _Avoid_: Deal, sale, prospect
 
 **Stage**:
@@ -51,6 +51,26 @@ _Avoid_: Confidence, chance
 **Close**:
 Moving an Opportunity to Closed Won or Closed Lost, recording the close date and, when won, the actual value.
 _Avoid_: Finish, complete
+
+**Lead source**:
+Where a Lead came from: Website, Referral, Event, Cold outreach, Partner, or Other. It carries over to the Opportunity on Qualify.
+_Avoid_: Origin, channel, campaign
+
+**Estimated value**:
+What an open Opportunity is expected to be worth, in euros. It is replaced by the actual value when the Opportunity is Closed Won.
+_Avoid_: Amount, revenue, deal size
+
+**Expected close date**:
+When the Owner expects an open Opportunity to close. The close date records when it actually did.
+_Avoid_: Target date, due date
+
+**Next step**:
+A short note on an open Opportunity saying what happens next to move it forward.
+_Avoid_: Action, follow-up
+
+**Primary Contact**:
+The one Contact an Opportunity is worked through. Other people at the customer are found through the Account.
+_Avoid_: Decision maker, stakeholder
 
 **Lost reason**:
 Why an Opportunity was closed as lost: Price, Chose a competitor, No budget, No decision, or Other.
