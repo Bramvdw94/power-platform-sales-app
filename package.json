@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prototype:board": "vite --open /prototype/pipeline-board",
+    "prototype:board:build": "vite build --config vite.prototype.config.ts"
   },
   "dependencies": {
     "@microsoft/power-apps": "^1.2.5",
