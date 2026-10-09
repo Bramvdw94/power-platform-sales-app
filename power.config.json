@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "appId": null,
+  "appDisplayName": "Sales App",
+  "region": "prod",
+  "appType": "CodeApp",
+  "environmentId": "553590c6-6bcb-e2f3-bd06-7d21eb695ff6",
+  "description": "Sales app, an alternative to Dynamics 365 Sales",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:3000",
+  "logoPath": "Default",
+  "connectionReferences": {},
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "users": {
+          "entitySetName": "systemusers",
+          "logicalName": "systemuser",
+          "isHidden": false
+        },
+        "environment_39a902ba": {
+          "entitySetName": "Environment",
+          "logicalName": "environment_39a902ba",
+          "isHidden": false
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
+}
