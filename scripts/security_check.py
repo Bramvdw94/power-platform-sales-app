@@ -27,7 +27,6 @@ import json
 import os
 import sys
 import urllib.error
-import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -62,7 +61,8 @@ class Dataverse:
         if as_user:
             headers["MSCRMCallerID"] = as_user
         data = json.dumps(body).encode() if body is not None else None
-        req = urllib.request.Request(self.base + path, data=data, method=method, headers=headers)
+        # Python 3.14 refuses raw spaces in a URL; OData filters are full of them.
+        req = urllib.request.Request(self.base + path.replace(" ", "%20"), data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req) as resp:
                 raw = resp.read()
@@ -96,7 +96,7 @@ class Dataverse:
 
 
 def q(value):
-    return urllib.parse.quote(value.replace("'", "''"))
+    return value.replace("'", "''")
 
 
 def nav_property(dv, referencing, referenced, attribute):
@@ -121,8 +121,11 @@ class Report:
         print(f"  {'PASS' if ok else 'FAIL'}  {name}" + (f"  ({detail})" if detail else ""), flush=True)
 
     def expect_status(self, name, result, expected):
-        status, _, code, _ = result
-        self.check(name, status == expected, f"{status}" + (f" {code}" if code else ""))
+        status, err, code, _ = result
+        detail = f"{status}" + (f" {code}" if code else "")
+        if status != expected and isinstance(err, dict) and err.get("message"):
+            detail += f": {err['message'][:240]}"
+        self.check(name, status == expected, detail)
 
     @property
     def failed(self):
@@ -178,10 +181,11 @@ def run(dv, report, created):
     lead = track("vibe_leads", dv.create("vibe_leads", {
         "vibe_lastname": f"{TAG} Lead", "vibe_company": f"{TAG} Company", "vibe_name": f"{TAG} Lead",
     }, as_user=adele))
-    stage = dv.get("GlobalOptionSetDefinitions(Name='vibe_stage')")["Options"][0]["Value"]
+    stage = dv.get("GlobalOptionSetDefinitions(Name='vibe_stage')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    opportunity_account = nav_property(dv, "vibe_opportunity", "account", "vibe_accountid")
     opportunity = track("vibe_opportunities", dv.create("vibe_opportunities", {
         "vibe_name": f"{TAG} Opportunity",
-        "vibe_accountid@odata.bind": f"/accounts({account})",
+        f"{opportunity_account}@odata.bind": f"/accounts({account})",
         "vibe_stage": stage,
         "vibe_estimatedvalue": 1000,
         "vibe_expectedclosedate": "2026-12-31",

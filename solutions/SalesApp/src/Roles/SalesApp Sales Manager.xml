@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Role id="{468142e9-dac3-f111-b377-7c1e5253a39d}" name="SalesApp Sales Manager" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <IsCustomizable>1</IsCustomizable>
+  <IsAutoAssigned>0</IsAutoAssigned>
+  <RolePrivileges>
+    <RolePrivilege name="prvAssignAccount" level="Local" />
+    <RolePrivilege name="prvAssignContact" level="Local" />
+    <RolePrivilege name="prvAssignvibe_Lead" level="Local" />
+    <RolePrivilege name="prvAssignvibe_Opportunity" level="Local" />
+    <RolePrivilege name="prvCreateSharePointData" level="Global" />
+    <RolePrivilege name="prvReadSharePointData" level="Global" />
+    <RolePrivilege name="prvReadSharePointDocument" level="Global" />
+    <RolePrivilege name="prvWriteSharePointData" level="Global" />
+  </RolePrivileges>
+</Role>

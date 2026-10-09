@@ -36,3 +36,59 @@ Two things to know when editing a relationship with
 - **Sending the solution header on the update adds the activity tables to
   the solution as shells** (`rootcomponentbehavior` 2), along with the
   relationships themselves.
+
+## Security role (#25)
+
+Both roles are built by `scripts/setup_security_role.py` (dry run by default,
+`--apply` to change dev-salesapp). It sets each role to exactly the
+privileges it declares, gives the roles to the demo users and checks the
+Manager fields. `scripts/security_check.py` verifies the result; see
+`docs/security-check.md`.
+
+**SalesApp Salesperson** (root business unit; Megan, Adele, Alex, Diego):
+
+| Table | Read | Create | Write | Append | Append To | Assign | Delete |
+|---|---|---|---|---|---|---|---|
+| Lead, Opportunity, Account, Contact | Organization | User | User | User | Organization | User | none |
+| Note | Organization | User | User | User | none | User | none |
+| Activity (covers Task and Phone Call) | Organization | User | User | User | none | User | none |
+
+Extras beyond the spec, each proven by a failing call:
+
+| Privilege | Depth | Why |
+|---|---|---|
+| `prvReadAsyncOperation` | User | Creating a Note starts a System Job owned by the caller; without it the create fails with `0x80040299 … missing prvReadAsyncOperation`. |
+| `prvReadUser` | Organization | The code app reads the signed-in user, their direct reports and Owner names from `systemuser`; without it the app fails on load with `0x80040220 … missing prvReadUser` (seen as Diego, #27). |
+
+Dataverse also keeps `prvReadSharePointData`, `prvCreateSharePointData`,
+`prvWriteSharePointData` and `prvReadSharePointDocument` (Organization) on
+every role, even straight after a `ReplacePrivilegesRole` that leaves them
+out, so the script declares them instead of fighting them.
+
+**SalesApp Sales Manager** (fallback from #21; Megan only): Assign at
+Business Unit on Lead, Opportunity, Account and Contact.
+
+Outcomes:
+
+- **Reassign:** Manager hierarchy (depth 1) gives Megan Write on her
+  reports' records but **not Assign**: `0x80048306 … does not have
+  AssignAccess right(s)`. With the Sales Manager role she reassigns Adele's
+  Opportunity (its open Task moves along through Cascade Active) and Adele's
+  deactivated Lead. Assign at Business Unit looks wider than intended in a
+  one-business-unit environment, but an Owner change sent as a PATCH
+  (`ownerid@odata.bind`, the shape the app uses) also needs **Write** on the
+  record. Megan therefore still can't reassign Diego's Lead (`0x80048306 …
+  does not have WriteAccess`), so "Owner or Owner's manager" holds on the
+  server, not only in the app. (A bare `AssignRequest` was not tested; the app
+  doesn't use it.)
+- **Polymorphic writes:** all work through the Web API with the navigation
+  property read from metadata: Contact under an Account
+  (`parentcustomerid_account`), Note on a Lead (`objectid_vibe_lead`), Task
+  and Phone Call on an Opportunity
+  (`regardingobjectid_vibe_opportunity_task` / `_phonecall`), and Owner change
+  to a systemuser (`ownerid@odata.bind`). No custom API fallback (#12) needed.
+- **Open question for the spec:** a peer or an outsider *can* add a Note to
+  someone else's Lead (204). Append To at Organization on Lead, which the spec
+  asks for, is all a Note needs from the Lead, so story 97 ("add activities
+  only as Owner or manager") can only be enforced by the app as the role
+  stands. The two checks stay red until that is decided.

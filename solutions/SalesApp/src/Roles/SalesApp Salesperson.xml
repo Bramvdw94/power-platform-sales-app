@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Role id="{8a492620-dac3-f111-b377-7c1e5253a39d}" name="SalesApp Salesperson" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <IsCustomizable>1</IsCustomizable>
+  <IsAutoAssigned>0</IsAutoAssigned>
+  <RolePrivileges>
+    <RolePrivilege name="prvAppendAccount" level="Basic" />
+    <RolePrivilege name="prvAppendActivity" level="Basic" />
+    <RolePrivilege name="prvAppendContact" level="Basic" />
+    <RolePrivilege name="prvAppendNote" level="Basic" />
+    <RolePrivilege name="prvAppendToAccount" level="Global" />
+    <RolePrivilege name="prvAppendToContact" level="Global" />
+    <RolePrivilege name="prvAppendTovibe_Lead" level="Global" />
+    <RolePrivilege name="prvAppendTovibe_Opportunity" level="Global" />
+    <RolePrivilege name="prvAppendvibe_Lead" level="Basic" />
+    <RolePrivilege name="prvAppendvibe_Opportunity" level="Basic" />
+    <RolePrivilege name="prvAssignAccount" level="Basic" />
+    <RolePrivilege name="prvAssignActivity" level="Basic" />
+    <RolePrivilege name="prvAssignContact" level="Basic" />
+    <RolePrivilege name="prvAssignNote" level="Basic" />
+    <RolePrivilege name="prvAssignvibe_Lead" level="Basic" />
+    <RolePrivilege name="prvAssignvibe_Opportunity" level="Basic" />
+    <RolePrivilege name="prvCreateAccount" level="Basic" />
+    <RolePrivilege name="prvCreateActivity" level="Basic" />
+    <RolePrivilege name="prvCreateContact" level="Basic" />
+    <RolePrivilege name="prvCreateNote" level="Basic" />
+    <RolePrivilege name="prvCreateSharePointData" level="Global" />
+    <RolePrivilege name="prvCreatevibe_Lead" level="Basic" />
+    <RolePrivilege name="prvCreatevibe_Opportunity" level="Basic" />
+    <RolePrivilege name="prvReadAccount" level="Global" />
+    <RolePrivilege name="prvReadActivity" level="Global" />
+    <RolePrivilege name="prvReadAsyncOperation" level="Basic" />
+    <RolePrivilege name="prvReadContact" level="Global" />
+    <RolePrivilege name="prvReadNote" level="Global" />
+    <RolePrivilege name="prvReadSharePointData" level="Global" />
+    <RolePrivilege name="prvReadSharePointDocument" level="Global" />
+    <RolePrivilege name="prvReadUser" level="Global" />
+    <RolePrivilege name="prvReadvibe_Lead" level="Global" />
+    <RolePrivilege name="prvReadvibe_Opportunity" level="Global" />
+    <RolePrivilege name="prvWriteAccount" level="Basic" />
+    <RolePrivilege name="prvWriteActivity" level="Basic" />
+    <RolePrivilege name="prvWriteContact" level="Basic" />
+    <RolePrivilege name="prvWriteNote" level="Basic" />
+    <RolePrivilege name="prvWriteSharePointData" level="Global" />
+    <RolePrivilege name="prvWritevibe_Lead" level="Basic" />
+    <RolePrivilege name="prvWritevibe_Opportunity" level="Basic" />
+  </RolePrivileges>
+</Role>
