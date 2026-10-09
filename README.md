@@ -32,6 +32,32 @@ pac code init --environment <environmentId> --displayName "Sales App"
 npm run dev
 ```
 
+## Tests
+
+```bash
+npm test          # Vitest, once
+npm run test:watch
+npm run lint
+npm run build     # includes the typecheck
+```
+
+Run all three before opening a pull request.
+
+## Code layout
+
+- `src/sales/`: the sales rules, plain TypeScript with no React or Dataverse
+  imports (Lead status transitions, Stage defaults, Close and reopen, "can
+  edit", Pipeline totals, Qualify matching and carry-over).
+- `src/data/gateway.ts`: the `SalesGateway` interface, the one seam between
+  the app and its data. Pages and hooks get it through `useGateway()`.
+- `src/data/in-memory/`: the in-memory gateway with seed data (Megan Bowen
+  manages Adele Vance and Alex Wilber; Diego Siciliani is outside her team),
+  used by tests and local development.
+- `src/data/dataverse/`: the Dataverse gateway, the only code allowed to import
+  the generated Dataverse services (ESLint enforces this).
+
+UI tests render with `renderWithGateway()` from `src/test/render.tsx`.
+
 ## Deploy
 
 ```bash
