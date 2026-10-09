@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityRelationships xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <EntityRelationship Name="business_unit_vibe_lead" />
+  <EntityRelationship Name="business_unit_vibe_opportunity" />
+  <EntityRelationship Name="contact_customer_accounts" />
+  <EntityRelationship Name="lk_vibe_lead_createdby" />
+  <EntityRelationship Name="lk_vibe_lead_modifiedby" />
+  <EntityRelationship Name="lk_vibe_opportunity_createdby" />
+  <EntityRelationship Name="lk_vibe_opportunity_modifiedby" />
+  <EntityRelationship Name="owner_vibe_lead" />
+  <EntityRelationship Name="owner_vibe_opportunity" />
+  <EntityRelationship Name="team_vibe_lead" />
+  <EntityRelationship Name="team_vibe_opportunity" />
+  <EntityRelationship Name="TransactionCurrency_vibe_Opportunity" />
+  <EntityRelationship Name="user_vibe_lead" />
+  <EntityRelationship Name="user_vibe_opportunity" />
+  <EntityRelationship Name="vibe_account_vibe_opportunity_accountid" />
+  <EntityRelationship Name="vibe_contact_vibe_opportunity_primarycontactid" />
+  <EntityRelationship Name="vibe_lead_ActivityPointers" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_Appointments" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_chats" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_Emails" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_Faxes" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_Letters" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_PhoneCalls" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_RecurringAppointmentMasters" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_SocialActivities" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_Tasks" unmodified="1" />
+  <EntityRelationship Name="vibe_lead_vibe_opportunity_originatingleadid" />
+  <EntityRelationship Name="vibe_opportunity_ActivityPointers" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_Appointments" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_chats" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_Emails" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_Faxes" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_Letters" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_PhoneCalls" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_RecurringAppointmentMasters" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_SocialActivities" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_Tasks" unmodified="1" />
+  <EntityRelationship Name="vibe_systemuser_vibe_lead_disqualifiedby" />
+  <EntityRelationship Name="vibe_systemuser_vibe_opportunity_closedby" />
+</EntityRelationships>

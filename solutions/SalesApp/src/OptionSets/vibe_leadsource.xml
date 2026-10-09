@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="vibe_leadsource" localizedName="Lead source" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Lead source" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="841200000" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Website" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200001" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Referral" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200002" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Event" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200003" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Cold outreach" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200004" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Partner" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200005" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Other" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="vibe_stage" localizedName="Stage" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Stage" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="841200000" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Qualification" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200001" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Needs Analysis" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200002" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Proposal" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200003" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Negotiation" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200004" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Closed Won" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200005" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Closed Lost" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>
