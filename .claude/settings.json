@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pac)", "Bash(pac *)",
+      "Bash(pa)", "Bash(pa *)",
+      "Bash(git)", "Bash(git *)",
+      "Bash(gh)", "Bash(gh *)",
+      "Bash(az)", "Bash(az *)"
+    ],
+    "ask": ["Bash(git push --force*)", "Bash(git push -f*)"]
+  }
+}
