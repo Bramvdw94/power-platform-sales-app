@@ -14,6 +14,9 @@ import {
   type LeadListQuery,
   type LeadUpdate,
   type ListQuery,
+  type OpportunityDetails,
+  type OpportunityListQuery,
+  type OpportunityUpdate,
   type Page,
   type SalesGateway,
   type SearchResults,
@@ -24,8 +27,13 @@ import {
   LEAD_STATUSES,
   LOST_REASONS,
   STAGES,
+  OPEN_STAGES,
+  SalesRuleError,
+  STAGE_DEFAULT_PROBABILITY,
   accountErrors,
   canEdit,
+  changeStage,
+  closeOpportunity,
   contactErrors,
   disqualifyErrors,
   fullName,
@@ -33,10 +41,15 @@ import {
   leadErrors,
   leadStatusAfter,
   manualLeadAction,
-  SalesRuleError,
+  isOpportunityReadOnly,
+  opportunityErrors,
+  reopenOpportunity,
   teamMemberIds,
+  toDateOnly,
   type Account,
   type AccountInput,
+  type CloseChange,
+  type CloseInput,
   type Contact,
   type ContactInput,
   type FieldErrors,
@@ -45,12 +58,15 @@ import {
   type LeadAction,
   type LeadInput,
   type ListView,
+  type OpenStage,
   type Opportunity,
+  type OpportunityInput,
   type User,
 } from "@/sales"
 import {
   CONTACT_ACCOUNT_NAVIGATION,
   LEAD_DISQUALIFIED_BY_NAVIGATION,
+  OPPORTUNITY_NAVIGATION,
   type AccountRow,
   type ContactRow,
   type LeadRow,
@@ -110,6 +126,13 @@ function toChoice<T extends string>(options: readonly T[], value: T): number {
 const DEACTIVATED = { statecode: 1, statuscode: 2 }
 const ACTIVATED = { statecode: 0, statuscode: 1 }
 
+/** A choice column's write: blank or unknown clears it, undefined leaves it alone. */
+function choiceColumn<T extends string>(options: readonly T[], value: T | "" | null | undefined): number | null | undefined {
+  if (value === undefined) return undefined
+  const index = value === null ? -1 : options.indexOf(value as T)
+  return index < 0 ? null : CHOICE_BASE + index
+}
+
 /** The display name of a lookup, from the formatted value Dataverse returns with it. */
 export function lookupName(row: Record<string, unknown>, lookup: string): string | undefined {
   const name =
@@ -140,6 +163,16 @@ function fields(values: Record<string, string | number | boolean | null | undefi
 
 function invalid(message: string, fieldErrors: FieldErrors): void {
   if (Object.keys(fieldErrors).length > 0) throw new GatewayError("invalid", message, fieldErrors)
+}
+
+/** Runs a sales rule, turning its refusal into a GatewayError like the in-memory gateway does. */
+function rule<T>(apply: () => T): T {
+  try {
+    return apply()
+  } catch (error) {
+    if (error instanceof SalesRuleError) throw new GatewayError("invalid", error.message, error.fieldErrors)
+    throw error
+  }
 }
 
 /**
@@ -217,6 +250,7 @@ export function toOpportunity(row: OpportunityRow): Opportunity {
     lostReason: fromChoice(LOST_REASONS, row.vibe_lostreason),
     lostComment: optional(row.vibe_lostcomment),
     closedById: optional(row._vibe_closedby_value),
+    closedByName: lookupName(row, "vibe_closedby"),
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
@@ -280,6 +314,17 @@ const CONTACT_SORT: Partial<Record<keyof Contact, string>> = {
   email: "emailaddress1",
   phone: "telephone1",
   mobile: "mobilephone",
+  ownerName: "_ownerid_value",
+  createdOn: "createdon",
+}
+
+const OPPORTUNITY_SORT: Partial<Record<keyof Opportunity, string>> = {
+  name: "vibe_name",
+  accountName: "_vibe_accountid_value",
+  stage: "vibe_stage",
+  probability: "vibe_probability",
+  estimatedValue: "vibe_estimatedvalue",
+  expectedCloseDate: "vibe_expectedclosedate",
   ownerName: "_ownerid_value",
   createdOn: "createdon",
 }
@@ -367,19 +412,32 @@ export class DataverseSalesGateway implements SalesGateway {
     return { items: page.rows.map(toLead), totalCount: page.totalCount }
   }
 
-  /** Leads and Accounts and Contacts for now; Opportunities (#30) join in their ticket. */
+  /** Leads, Opportunities, Accounts and Contacts by name (and email for Leads and Contacts). */
   async search(searchText: string): Promise<SearchResults> {
     if (!searchText.trim()) return { leads: [], opportunities: [], accounts: [], contacts: [] }
     const query = { view: "all" as const, search: searchText, pageSize: SEARCH_LIMIT }
-    const [leads, accounts, contacts] = await Promise.all([
+    const [leads, opportunities, accounts, contacts] = await Promise.all([
       this.listLeads(query),
+      this.listOpportunities(query),
       this.listAccounts(query),
       this.listContacts(query),
     ])
-    return { leads: leads.items, opportunities: [], accounts: accounts.items, contacts: contacts.items }
+    return { leads: leads.items, opportunities: opportunities.items, accounts: accounts.items, contacts: contacts.items }
   }
 
-  listOpportunities = notYet("listOpportunities", "#30")
+
+  /** Closed Opportunities are deactivated but still listed: the Stage filter picks them. */
+  async listOpportunities(query: OpportunityListQuery): Promise<Page<Opportunity>> {
+    const parts: string[] = []
+    if (query.stage === "open") parts.push(`(${OPEN_STAGES.map((s) => `vibe_stage eq ${toChoice(STAGES, s)}`).join(" or ")})`)
+    else if (query.stage) parts.push(`vibe_stage eq ${toChoice(STAGES, query.stage)}`)
+    if (query.search?.trim()) parts.push(`contains(vibe_name,${text(query.search.trim())})`)
+    const filter = await this.listFilter(query.view, parts.join(" and ") || undefined, { activeOnly: false })
+    const orderBy = this.orderBy(query, OPPORTUNITY_SORT, "vibe_expectedclosedate", "vibe_opportunityid")
+    const page = await this.page("opportunities", this.client.opportunities, filter, orderBy, query)
+    return { items: page.rows.map(toOpportunity), totalCount: page.totalCount }
+  }
+
   getHome = notYet("getHome", "#33")
   getPipeline = notYet("getPipeline", "#32")
 
@@ -429,7 +487,24 @@ export class DataverseSalesGateway implements SalesGateway {
       canEdit: await this.mayEdit(row._ownerid_value),
     }
   }
-  getOpportunity = notYet("getOpportunity", "#30")
+
+  async getOpportunity(id: Id): Promise<OpportunityDetails> {
+    const row = await this.call(() => this.client.opportunities.get(guid(id)))
+    const opportunity = toOpportunity(row)
+    const [account, contact, lead, canEdit] = await Promise.all([
+      this.call(() => this.client.accounts.get(opportunity.accountId)),
+      opportunity.primaryContactId ? this.call(() => this.client.contacts.get(opportunity.primaryContactId!)) : undefined,
+      opportunity.originatingLeadId ? this.call(() => this.client.leads.get(opportunity.originatingLeadId!)) : undefined,
+      this.mayEdit(row._ownerid_value),
+    ])
+    return {
+      opportunity,
+      account: toAccount(account),
+      primaryContact: contact && toContact(contact),
+      originatingLead: lead && toLead(lead),
+      canEdit,
+    }
+  }
 
   // ---- Accounts and Contacts ------------------------------------------------
   // New records are owned by the caller: Dataverse sets the Owner to whoever creates them.
@@ -542,11 +617,61 @@ export class DataverseSalesGateway implements SalesGateway {
 
   // ---- Opportunities --------------------------------------------------------
 
-  createOpportunity = notYet("createOpportunity", "#30")
-  updateOpportunity = notYet("updateOpportunity", "#30")
-  changeStage = notYet("changeStage", "#30")
-  closeOpportunity = notYet("closeOpportunity", "#30")
-  reopenOpportunity = notYet("reopenOpportunity", "#30")
+
+  async createOpportunity(input: OpportunityInput): Promise<Opportunity> {
+    invalid("The Opportunity cannot be saved.", opportunityErrors(input))
+    const created = await this.call(() =>
+      this.client.opportunities.create(
+        fields({
+          ...opportunityFields(input),
+          vibe_stage: toChoice(STAGES, input.stage),
+          vibe_probability: input.probability ?? STAGE_DEFAULT_PROBABILITY[input.stage],
+        }),
+      ),
+    )
+    return this.readOpportunity(created.vibe_opportunityid)
+  }
+
+  async updateOpportunity(id: Id, update: OpportunityUpdate): Promise<Opportunity> {
+    const current = toOpportunity(await this.call(() => this.client.opportunities.get(guid(id))))
+    if (isOpportunityReadOnly(current)) throw new GatewayError("invalid", "A closed Opportunity is read-only.")
+    const next = { ...current, ...Object.fromEntries(Object.entries(update).filter(([, v]) => v !== undefined)) }
+    invalid("The Opportunity cannot be saved.", opportunityErrors({ ...next, stage: current.stage } as OpportunityInput))
+    await this.call(() => this.client.opportunities.update(guid(id), fields(opportunityFields(update))))
+    return this.readOpportunity(id)
+  }
+
+  async changeStage(id: Id, stage: OpenStage): Promise<Opportunity> {
+    const current = toOpportunity(await this.call(() => this.client.opportunities.get(guid(id))))
+    const change = rule(() => changeStage(current, stage))
+    await this.call(() =>
+      this.client.opportunities.update(guid(id), {
+        vibe_stage: toChoice(STAGES, change.stage),
+        vibe_probability: change.probability,
+      }),
+    )
+    return this.readOpportunity(id)
+  }
+
+  /** Closing records who closed it and deactivates the record, as server-side backing for read-only. */
+  async closeOpportunity(id: Id, input: CloseInput): Promise<Opportunity> {
+    const current = toOpportunity(await this.call(() => this.client.opportunities.get(guid(id))))
+    const { user } = await this.getCurrentUser()
+    const change = rule(() => closeOpportunity(current, input, { today: toDateOnly(new Date()), userId: user.id }))
+    await this.call(() => this.client.opportunities.update(guid(id), { ...closeFields(change), ...DEACTIVATED }))
+    return this.readOpportunity(id)
+  }
+
+  async reopenOpportunity(id: Id, stage: OpenStage): Promise<Opportunity> {
+    const current = toOpportunity(await this.call(() => this.client.opportunities.get(guid(id))))
+    const change = rule(() => reopenOpportunity(current, stage))
+    await this.call(() => this.client.opportunities.update(guid(id), { ...closeFields(change), ...ACTIVATED }))
+    return this.readOpportunity(id)
+  }
+
+  private async readOpportunity(id: Id): Promise<Opportunity> {
+    return toOpportunity(await this.call(() => this.client.opportunities.get(guid(id))))
+  }
 
   // ---- Ownership and activities ---------------------------------------------
 
@@ -699,5 +824,38 @@ function contactFields(input: Partial<ContactInput>) {
       : accountId === null
         ? { [CONTACT_ACCOUNT_NAVIGATION]: null }
         : {}),
+  }
+}
+
+/** A lookup's write: bind to a record, null to clear, or left out. */
+function bind(navigation: string, set: string, id: Id | null | undefined): Record<string, string | null> {
+  if (id === undefined) return {}
+  return id === null ? { [navigation]: null } : { [`${navigation}@odata.bind`]: `/${set}(${guid(id)})` }
+}
+
+function opportunityFields(input: OpportunityUpdate) {
+  return {
+    vibe_name: column(input.name),
+    vibe_probability: input.probability,
+    vibe_estimatedvalue: input.estimatedValue,
+    vibe_expectedclosedate: column(input.expectedCloseDate),
+    vibe_nextstep: column(input.nextStep),
+    vibe_description: column(input.description),
+    vibe_leadsource: choiceColumn(LEAD_SOURCES, input.leadSource),
+    ...bind(OPPORTUNITY_NAVIGATION.account, "accounts", column(input.accountId)),
+    ...bind(OPPORTUNITY_NAVIGATION.primaryContact, "contacts", column(input.primaryContactId)),
+  }
+}
+
+/** What Close and reopen write: undefined values in the change are cleared. */
+function closeFields(change: CloseChange): Fields {
+  return {
+    vibe_stage: toChoice(STAGES, change.stage),
+    vibe_probability: change.probability,
+    vibe_actualvalue: change.actualValue ?? null,
+    vibe_closedate: change.closeDate ?? null,
+    vibe_lostreason: choiceColumn(LOST_REASONS, change.lostReason) ?? null,
+    vibe_lostcomment: change.lostComment ?? null,
+    ...bind(OPPORTUNITY_NAVIGATION.closedBy, "systemusers", change.closedById ?? null),
   }
 }

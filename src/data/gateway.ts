@@ -18,6 +18,7 @@ import type {
   Id,
   Lead,
   LeadInput,
+  LeadSource,
   ListView,
   Note,
   OpenStage,
@@ -52,7 +53,8 @@ export type ListQuery<TRecord> = {
 }
 
 export type LeadListQuery = ListQuery<Lead> & { status?: Lead["status"] }
-export type OpportunityListQuery = ListQuery<Opportunity> & { stage?: Stage }
+/** "open": any open Stage. */
+export type OpportunityListQuery = ListQuery<Opportunity> & { stage?: Stage | "open" }
 
 export type Page<T> = { items: T[]; totalCount: number }
 
@@ -102,7 +104,8 @@ export type HomeData = {
 }
 
 export type LeadUpdate = Partial<LeadInput>
-export type OpportunityUpdate = Partial<Omit<OpportunityInput, "stage">>
+/** Blank strings clear a field; so does a blank Lead source. */
+export type OpportunityUpdate = Partial<Omit<OpportunityInput, "stage" | "leadSource">> & { leadSource?: LeadSource | "" }
 export type AccountUpdate = Partial<AccountInput>
 export type ContactUpdate = Partial<ContactInput>
 

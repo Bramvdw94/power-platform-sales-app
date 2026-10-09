@@ -8,7 +8,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 export type AccountRow = Omit<Account, "ownerName">
 export type ContactRow = Omit<Contact, "ownerName" | "accountName">
 export type LeadRow = Omit<Lead, "ownerName">
-export type OpportunityRow = Omit<Opportunity, "ownerName" | "accountName" | "primaryContactName">
+export type OpportunityRow = Omit<Opportunity, "ownerName" | "accountName" | "primaryContactName" | "closedByName">
 export type ActivityRow = DistributiveOmit<Activity, "ownerName" | "regardingName">
 
 export type InMemoryData = {

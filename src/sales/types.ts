@@ -108,6 +108,8 @@ export type Opportunity = Owned & {
   lostReason?: LostReason
   lostComment?: string
   closedById?: Id
+  /** Display name of who closed it, as Dataverse returns it in formatted values. */
+  closedByName?: string
 }
 
 type ActivityBase = {

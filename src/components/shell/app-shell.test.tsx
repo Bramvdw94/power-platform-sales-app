@@ -85,7 +85,7 @@ describe("app shell on a desktop", () => {
   it.each([
     ["/pipeline", "Pipeline"],
     ["/leads/lead-sanne", "Sanne Bakker"],
-    ["/opportunities/opp-tailwind-workplace", "Opportunity"],
+    ["/opportunities/opp-tailwind-workplace", "Tailwind Traders - Managed workplace"],
     ["/accounts/acc-tailwind", "Tailwind Traders"],
     ["/contacts/con-lotte", "Lotte de Groot"],
   ])("has a page at %s", async (path, heading) => {
