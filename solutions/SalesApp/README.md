@@ -49,7 +49,8 @@ Manager fields. `scripts/security_check.py` verifies the result; see
 
 | Table | Read | Create | Write | Append | Append To | Assign | Delete |
 |---|---|---|---|---|---|---|---|
-| Lead, Opportunity, Account, Contact | Organization | User | User | User | Organization | User | none |
+| Lead, Opportunity | Organization | User | User | User | User | User | none |
+| Account, Contact | Organization | User | User | User | Organization | User | none |
 | Note | Organization | User | User | User | none | User | none |
 | Activity (covers Task and Phone Call) | Organization | User | User | User | none | User | none |
 
@@ -87,8 +88,11 @@ Outcomes:
   and Phone Call on an Opportunity
   (`regardingobjectid_vibe_opportunity_task` / `_phonecall`), and Owner change
   to a systemuser (`ownerid@odata.bind`). No custom API fallback (#12) needed.
-- **Open question for the spec:** a peer or an outsider *can* add a Note to
-  someone else's Lead (204). Append To at Organization on Lead, which the spec
-  asks for, is all a Note needs from the Lead, so story 97 ("add activities
-  only as Owner or manager") can only be enforced by the app as the role
-  stands. The two checks stay red until that is decided.
+- **Story 97 is enforced in Dataverse** (Bram's choice, 2026-10-09). The spec
+  first asked for Append To at Organization on all four sales tables, but on
+  Lead and Opportunity that let any salesperson add a Note, Task or Phone Call
+  to anyone's record (204). Append To there is now **User**: only the Owner,
+  and through hierarchy the Owner's manager, can add activities (peer and
+  outsider get `0x80048306`, Megan gets 204). Account and Contact keep
+  Organization, so anyone can still put their Opportunity or Contact on an
+  Account someone else owns (story 33; checked as Alex and Diego).

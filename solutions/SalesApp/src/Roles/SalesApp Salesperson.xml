@@ -9,8 +9,8 @@
     <RolePrivilege name="prvAppendNote" level="Basic" />
     <RolePrivilege name="prvAppendToAccount" level="Global" />
     <RolePrivilege name="prvAppendToContact" level="Global" />
-    <RolePrivilege name="prvAppendTovibe_Lead" level="Global" />
-    <RolePrivilege name="prvAppendTovibe_Opportunity" level="Global" />
+    <RolePrivilege name="prvAppendTovibe_Lead" level="Basic" />
+    <RolePrivilege name="prvAppendTovibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvAppendvibe_Lead" level="Basic" />
     <RolePrivilege name="prvAppendvibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvAssignAccount" level="Basic" />

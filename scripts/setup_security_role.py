@@ -32,10 +32,16 @@ BASIC, LOCAL, GLOBAL = "Basic", "Local", "Global"
 # The spec (#23): everyone reads everything; the Owner (and through hierarchy
 # the Owner's manager) changes and reassigns; nobody deletes.
 SALES_TABLES = ["vibe_Lead", "vibe_Opportunity", "Account", "Contact"]
+# Append To decides who may attach something to a record. On Account and
+# Contact it is Organization, so anyone can link their Opportunity or Contact
+# to an Account someone else owns (story 33). On Lead and Opportunity it is
+# User: only the Owner, and through hierarchy the Owner's manager, can add a
+# Note, Task or Phone Call (story 97, enforced in Dataverse by Bram's choice).
+APPEND_TO = {"vibe_Lead": BASIC, "vibe_Opportunity": BASIC, "Account": GLOBAL, "Contact": GLOBAL}
 SPEC = {}
 for t in SALES_TABLES:
     SPEC.update({
-        f"prvRead{t}": GLOBAL, f"prvAppendTo{t}": GLOBAL,
+        f"prvRead{t}": GLOBAL, f"prvAppendTo{t}": APPEND_TO[t],
         f"prvCreate{t}": BASIC, f"prvWrite{t}": BASIC,
         f"prvAppend{t}": BASIC, f"prvAssign{t}": BASIC,
     })
