@@ -84,8 +84,8 @@ commit all three. `pa app find-dataverse-api --search <text>` finds an API's
 exact name.
 
 Then wire it into `src/data/dataverse/generated-client.ts`. Tables so far:
-`systemuser`, `account`, `contact` and `vibe_opportunity` (registered as
-`opportunities`), plus the `WhoAmI` function.
+`systemuser`, `account`, `contact`, `vibe_lead` (registered as `leads`) and
+`vibe_opportunity` (registered as `opportunities`), plus the `WhoAmI` function.
 
 The generated models list no bind key for polymorphic lookups such as a
 Contact's company (`parentcustomerid`). The SDK sends the body to the Web API

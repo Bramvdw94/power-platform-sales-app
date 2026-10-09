@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { GatewayError } from "@/data/gateway"
-import type { AccountRow, ContactRow, DataverseClient, Fields, ListOptions, OpportunityRow, SystemUserRow, TableClient } from "./client"
+import type { AccountRow, ContactRow, DataverseClient, Fields, LeadRow, ListOptions, OpportunityRow, SystemUserRow, TableClient } from "./client"
 import { DataverseSalesGateway, NotAvailableYetError } from "./dataverse-gateway"
 
 const MEGAN = "aaaaaaaa-0000-0000-0000-000000000001"
@@ -90,11 +90,42 @@ const opportunityRows: OpportunityRow[] = [
   },
 ]
 
+const SANNE = "ffffffff-0000-0000-0000-000000000001"
+const JORIS = "ffffffff-0000-0000-0000-000000000002"
+
+const leadRows: LeadRow[] = [
+  {
+    vibe_leadid: SANNE,
+    vibe_firstname: "Sanne",
+    vibe_lastname: "Bakker",
+    vibe_company: "Tailspin Toys",
+    vibe_email: "sanne@tailspin.example",
+    vibe_leadsource: 841200000,
+    vibe_leadstatus: 841200000,
+    _ownerid_value: ADELE,
+    [OWNER_NAME]: "Adele Vance",
+    createdon: "2026-10-07T09:00:00Z",
+  },
+  {
+    vibe_leadid: JORIS,
+    vibe_firstname: "Joris",
+    vibe_lastname: "Willems",
+    vibe_company: "Proseware",
+    vibe_leadstatus: 841200003,
+    vibe_disqualifyreason: 841200000,
+    vibe_disqualifiedon: "2026-10-04T09:00:00Z",
+    _vibe_disqualifiedby_value: MEGAN,
+    _ownerid_value: ADELE,
+    createdon: "2026-09-09T09:00:00Z",
+  },
+]
+
 /** A fake Dataverse that understands the one filter the gateway sends for direct reports. */
 function fakeClient(signedIn: string) {
   return {
     accounts: fakeTable("accountid", accountRows),
     contacts: fakeTable("contactid", contactRows),
+    leads: fakeTable("vibe_leadid", leadRows),
     opportunities: fakeTable("vibe_opportunityid", opportunityRows),
     whoAmI: vi.fn(async () => signedIn),
     getSystemUser: vi.fn(async (id: string) => {
@@ -145,8 +176,8 @@ describe("DataverseSalesGateway.getCurrentUser", () => {
 describe("DataverseSalesGateway, methods still to build", () => {
   it("fails loudly, naming the ticket", async () => {
     const gateway = new DataverseSalesGateway(fakeClient(ADELE))
-    await expect(gateway.listLeads({ view: "my" })).rejects.toThrow(NotAvailableYetError)
-    await expect(gateway.listLeads({ view: "my" })).rejects.toThrow("listLeads is not available yet (#29)")
+    await expect(gateway.getHome()).rejects.toThrow(NotAvailableYetError)
+    await expect(gateway.getHome()).rejects.toThrow("getHome is not available yet (#33)")
   })
 })
 
@@ -305,12 +336,143 @@ describe("DataverseSalesGateway, Accounts and Contacts", () => {
     await expect(gateway.getAccount("bbbbbbbb-0000-0000-0000-00000000ffff")).rejects.toMatchObject({ code: "notFound" })
   })
 
-  it("searches Accounts and Contacts", async () => {
+  it("searches Leads, Accounts and Contacts", async () => {
     const client = fakeClient(ADELE)
     const results = await new DataverseSalesGateway(client).search("tail")
     expect(results.accounts).toHaveLength(2)
     expect(results.contacts).toHaveLength(1)
-    expect(results.leads).toEqual([])
+    expect(results.leads).toHaveLength(2)
+    expect(client.leads.list.mock.calls[0][0]).toMatchObject({
+      filter: "(contains(vibe_name,'tail') or contains(vibe_email,'tail'))",
+      pageSize: 10,
+    })
     expect(client.accounts.list.mock.calls[0][0]).toMatchObject({ filter: "statecode eq 0 and contains(name,'tail')", pageSize: 10 })
+  })
+})
+
+describe("DataverseSalesGateway, Leads", () => {
+  it("lists Leads of every status, filtered by Lead status and searched by name and email", async () => {
+    const client = fakeClient(MEGAN)
+    const gateway = new DataverseSalesGateway(client)
+    const page = await gateway.listLeads({
+      view: "myTeam",
+      status: "disqualified",
+      search: "o'b",
+      sort: { field: "company", direction: "asc" },
+    })
+    expect(client.leads.list).toHaveBeenCalledWith({
+      filter:
+        `(_ownerid_value eq ${MEGAN} or _ownerid_value eq ${ADELE} or _ownerid_value eq ${ALEX}) and ` +
+        "vibe_leadstatus eq 841200003 and (contains(vibe_name,'o''b') or contains(vibe_email,'o''b'))",
+      orderBy: ["vibe_company asc", "vibe_leadid asc"],
+      pageSize: 50,
+      skipToken: undefined,
+    })
+    expect(page.items[0]).toMatchObject({
+      firstName: "Sanne",
+      company: "Tailspin Toys",
+      leadSource: "website",
+      status: "notContacted",
+      ownerName: "Adele Vance",
+    })
+    expect(page.items[1]).toMatchObject({ status: "disqualified", disqualifyReason: "noBudget", disqualifiedById: MEGAN })
+  })
+
+  it("sends no filter for All without conditions", async () => {
+    const client = fakeClient(ADELE)
+    await new DataverseSalesGateway(client).listLeads({ view: "all" })
+    expect(client.leads.list.mock.calls[0][0].filter).toBeUndefined()
+  })
+
+  it("creates a Not Contacted Lead named after the person", async () => {
+    const client = fakeClient(ADELE)
+    const lead = await new DataverseSalesGateway(client).createLead({
+      firstName: "Noor",
+      lastName: "Jansen",
+      company: "Contoso",
+      leadSource: "event",
+    })
+    expect(client.leads.create).toHaveBeenCalledWith({
+      vibe_firstname: "Noor",
+      vibe_lastname: "Jansen",
+      vibe_company: "Contoso",
+      vibe_leadsource: 841200002,
+      vibe_name: "Noor Jansen",
+      vibe_leadstatus: 841200000,
+    })
+    expect(lead).toMatchObject({ lastName: "Jansen", status: "notContacted", ownerId: ADELE })
+  })
+
+  it("refuses a Lead without Last name or Company without calling Dataverse", async () => {
+    const client = fakeClient(ADELE)
+    await expect(new DataverseSalesGateway(client).createLead({ lastName: " ", company: "" })).rejects.toMatchObject({
+      code: "invalid",
+      fieldErrors: { lastName: "Last name is required.", company: "Company is required." },
+    })
+    expect(client.leads.create).not.toHaveBeenCalled()
+  })
+
+  it("renames the Lead when the name changes, and clears blanked fields", async () => {
+    const client = fakeClient(ADELE)
+    await new DataverseSalesGateway(client).updateLead(SANNE, { lastName: "de Vries", email: "", leadSource: undefined })
+    expect(client.leads.update).toHaveBeenCalledWith(SANNE, {
+      vibe_lastname: "de Vries",
+      vibe_email: null,
+      vibe_name: "Sanne de Vries",
+    })
+  })
+
+  it("moves a Lead to Working and back", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    expect(await gateway.setLeadStatus(SANNE, "working")).toMatchObject({ status: "working" })
+    expect(client.leads.update).toHaveBeenLastCalledWith(SANNE, { vibe_leadstatus: 841200001 })
+    expect(await gateway.setLeadStatus(SANNE, "notContacted")).toMatchObject({ status: "notContacted" })
+  })
+
+  it("disqualifies with reason, comment, when and by whom, and deactivates the Lead", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    await expect(gateway.disqualifyLead(SANNE, {})).rejects.toMatchObject({ code: "invalid", fieldErrors: { reason: expect.any(String) } })
+    const lead = await gateway.disqualifyLead(SANNE, { reason: "duplicate", comment: "  Same as Lucas " })
+    const sent = client.leads.update.mock.lastCall![1]
+    expect(sent).toMatchObject({
+      vibe_leadstatus: 841200003,
+      vibe_disqualifyreason: 841200004,
+      vibe_disqualifycomment: "Same as Lucas",
+      "vibe_DisqualifiedBy@odata.bind": `/systemusers(${ADELE})`,
+      statecode: 1,
+      statuscode: 2,
+    })
+    expect(Date.parse(sent.vibe_disqualifiedon as string)).not.toBeNaN()
+    expect(lead).toMatchObject({ status: "disqualified", disqualifyReason: "duplicate" })
+  })
+
+  it("refuses to edit or move a Disqualified Lead, and reopens it to Working", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    await expect(gateway.updateLead(JORIS, { company: "X" })).rejects.toMatchObject({ code: "invalid" })
+    await expect(gateway.setLeadStatus(JORIS, "working")).rejects.toMatchObject({ code: "invalid" })
+    expect(client.leads.update).not.toHaveBeenCalled()
+
+    const lead = await gateway.reopenLead(JORIS)
+    expect(client.leads.update).toHaveBeenCalledWith(JORIS, {
+      vibe_leadstatus: 841200001,
+      vibe_disqualifyreason: null,
+      vibe_disqualifycomment: null,
+      vibe_disqualifiedon: null,
+      vibe_DisqualifiedBy: null,
+      statecode: 0,
+      statuscode: 1,
+    })
+    expect(lead.status).toBe("working")
+  })
+
+  it("loads a Lead with the Opportunity it became, and Edit for the manager only", async () => {
+    const client = fakeClient(MEGAN)
+    const details = await new DataverseSalesGateway(client).getLead(SANNE)
+    expect(client.opportunities.list.mock.calls[0][0].filter).toBe(`_vibe_originatingleadid_value eq ${SANNE}`)
+    expect(details).toMatchObject({ lead: { lastName: "Bakker" }, canEdit: true })
+    expect((await new DataverseSalesGateway(fakeClient(ALEX)).getLead(SANNE)).canEdit).toBe(false)
   })
 })

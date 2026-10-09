@@ -84,7 +84,7 @@ describe("app shell on a desktop", () => {
 
   it.each([
     ["/pipeline", "Pipeline"],
-    ["/leads/lead-sanne", "Lead"],
+    ["/leads/lead-sanne", "Sanne Bakker"],
     ["/opportunities/opp-tailwind-workplace", "Opportunity"],
     ["/accounts/acc-tailwind", "Tailwind Traders"],
     ["/contacts/con-lotte", "Lotte de Groot"],

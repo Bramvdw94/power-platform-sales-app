@@ -26,6 +26,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "vibe_leads": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "vibe_leadid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "vibe_opportunities": {
     "tableId": "",
     "version": "",

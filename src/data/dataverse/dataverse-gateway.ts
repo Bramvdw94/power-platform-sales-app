@@ -9,18 +9,31 @@ import {
   type ContactDetails,
   type ContactUpdate,
   type CurrentUser,
+  type DisqualifyInput,
+  type LeadDetails,
+  type LeadListQuery,
+  type LeadUpdate,
   type ListQuery,
   type Page,
   type SalesGateway,
   type SearchResults,
 } from "@/data/gateway"
 import {
+  DISQUALIFY_REASONS,
   LEAD_SOURCES,
+  LEAD_STATUSES,
   LOST_REASONS,
   STAGES,
   accountErrors,
   canEdit,
   contactErrors,
+  disqualifyErrors,
+  fullName,
+  isLeadReadOnly,
+  leadErrors,
+  leadStatusAfter,
+  manualLeadAction,
+  SalesRuleError,
   teamMemberIds,
   type Account,
   type AccountInput,
@@ -28,14 +41,19 @@ import {
   type ContactInput,
   type FieldErrors,
   type Id,
+  type Lead,
+  type LeadAction,
+  type LeadInput,
   type ListView,
   type Opportunity,
   type User,
 } from "@/sales"
 import {
   CONTACT_ACCOUNT_NAVIGATION,
+  LEAD_DISQUALIFIED_BY_NAVIGATION,
   type AccountRow,
   type ContactRow,
+  type LeadRow,
   type DataverseClient,
   type Fields,
   type ListOptions,
@@ -83,6 +101,14 @@ const CHOICE_BASE = 841200000
 function fromChoice<T extends string>(options: readonly T[], value: number | null | undefined): T | undefined {
   return value === null || value === undefined ? undefined : options[value - CHOICE_BASE]
 }
+
+function toChoice<T extends string>(options: readonly T[], value: T): number {
+  return CHOICE_BASE + options.indexOf(value)
+}
+
+/** statecode and statuscode of a record that is read-only (deactivated) or open again. */
+const DEACTIVATED = { statecode: 1, statuscode: 2 }
+const ACTIVATED = { statecode: 0, statuscode: 1 }
 
 /** The display name of a lookup, from the formatted value Dataverse returns with it. */
 export function lookupName(row: Record<string, unknown>, lookup: string): string | undefined {
@@ -197,6 +223,29 @@ export function toOpportunity(row: OpportunityRow): Opportunity {
   }
 }
 
+export function toLead(row: LeadRow): Lead {
+  return {
+    id: row.vibe_leadid,
+    firstName: optional(row.vibe_firstname),
+    lastName: row.vibe_lastname ?? "",
+    company: row.vibe_company ?? "",
+    jobTitle: optional(row.vibe_jobtitle),
+    email: optional(row.vibe_email),
+    phone: optional(row.vibe_phone),
+    website: optional(row.vibe_website),
+    leadSource: fromChoice(LEAD_SOURCES, row.vibe_leadsource),
+    description: optional(row.vibe_description),
+    status: fromChoice(LEAD_STATUSES, row.vibe_leadstatus) ?? "notContacted",
+    disqualifyReason: fromChoice(DISQUALIFY_REASONS, row.vibe_disqualifyreason),
+    disqualifyComment: optional(row.vibe_disqualifycomment),
+    disqualifiedOn: optional(row.vibe_disqualifiedon),
+    disqualifiedById: optional(row._vibe_disqualifiedby_value),
+    ownerId: row._ownerid_value ?? "",
+    ownerName: lookupName(row, "ownerid") ?? "",
+    createdOn: row.createdon ?? "",
+  }
+}
+
 /** How a list's sortable fields map to columns. */
 const ACCOUNT_SORT: Partial<Record<keyof Account, string>> = {
   name: "name",
@@ -206,6 +255,19 @@ const ACCOUNT_SORT: Partial<Record<keyof Account, string>> = {
   city: "address1_city",
   postcode: "address1_postalcode",
   country: "address1_country",
+  ownerName: "_ownerid_value",
+  createdOn: "createdon",
+}
+
+const LEAD_SORT: Partial<Record<keyof Lead, string>> = {
+  firstName: "vibe_firstname",
+  lastName: "vibe_lastname",
+  company: "vibe_company",
+  jobTitle: "vibe_jobtitle",
+  email: "vibe_email",
+  phone: "vibe_phone",
+  leadSource: "vibe_leadsource",
+  status: "vibe_leadstatus",
   ownerName: "_ownerid_value",
   createdOn: "createdon",
 }
@@ -288,15 +350,35 @@ export class DataverseSalesGateway implements SalesGateway {
     return { items: page.rows.map(toContact), totalCount: page.totalCount }
   }
 
-  /** Accounts and Contacts for now; Leads (#29) and Opportunities (#30) join in their tickets. */
+  /**
+   * Every Lead status is listed: Qualified and Disqualified Leads are
+   * deactivated in Dataverse but still Leads to look up, so this list doesn't
+   * filter on statecode.
+   */
+  async listLeads(query: LeadListQuery): Promise<Page<Lead>> {
+    const search = query.search?.trim()
+    const conditions = [
+      query.status && `vibe_leadstatus eq ${toChoice(LEAD_STATUSES, query.status)}`,
+      search && `(contains(vibe_name,${text(search)}) or contains(vibe_email,${text(search)}))`,
+    ].filter(Boolean)
+    const filter = await this.listFilter(query.view, conditions.join(" and ") || undefined, { activeOnly: false })
+    const orderBy = this.orderBy(query, LEAD_SORT, "vibe_lastname", "vibe_leadid")
+    const page = await this.page("leads", this.client.leads, filter, orderBy, query)
+    return { items: page.rows.map(toLead), totalCount: page.totalCount }
+  }
+
+  /** Leads and Accounts and Contacts for now; Opportunities (#30) join in their ticket. */
   async search(searchText: string): Promise<SearchResults> {
     if (!searchText.trim()) return { leads: [], opportunities: [], accounts: [], contacts: [] }
     const query = { view: "all" as const, search: searchText, pageSize: SEARCH_LIMIT }
-    const [accounts, contacts] = await Promise.all([this.listAccounts(query), this.listContacts(query)])
-    return { leads: [], opportunities: [], accounts: accounts.items, contacts: contacts.items }
+    const [leads, accounts, contacts] = await Promise.all([
+      this.listLeads(query),
+      this.listAccounts(query),
+      this.listContacts(query),
+    ])
+    return { leads: leads.items, opportunities: [], accounts: accounts.items, contacts: contacts.items }
   }
 
-  listLeads = notYet("listLeads", "#29")
   listOpportunities = notYet("listOpportunities", "#30")
   getHome = notYet("getHome", "#33")
   getPipeline = notYet("getPipeline", "#32")
@@ -334,7 +416,19 @@ export class DataverseSalesGateway implements SalesGateway {
     }
   }
 
-  getLead = notYet("getLead", "#29")
+  async getLead(id: Id): Promise<LeadDetails> {
+    const key = guid(id)
+    const [row, opportunities] = await Promise.all([
+      this.call(() => this.client.leads.get(key)),
+      this.related(this.client.opportunities, `_vibe_originatingleadid_value eq ${key}`, ["createdon asc"]),
+    ])
+    const opportunity = opportunities[0]
+    return {
+      lead: toLead(row),
+      opportunity: opportunity && toOpportunity(opportunity),
+      canEdit: await this.mayEdit(row._ownerid_value),
+    }
+  }
   getOpportunity = notYet("getOpportunity", "#30")
 
   // ---- Accounts and Contacts ------------------------------------------------
@@ -371,11 +465,78 @@ export class DataverseSalesGateway implements SalesGateway {
 
   // ---- Leads ----------------------------------------------------------------
 
-  createLead = notYet("createLead", "#29")
-  updateLead = notYet("updateLead", "#29")
-  setLeadStatus = notYet("setLeadStatus", "#29")
-  disqualifyLead = notYet("disqualifyLead", "#29")
-  reopenLead = notYet("reopenLead", "#29")
+  // A Lead's primary name (vibe_name) is its full name, written by the app.
+
+  async createLead(input: LeadInput): Promise<Lead> {
+    invalid("The Lead cannot be saved.", leadErrors(input))
+    const created = await this.call(() =>
+      this.client.leads.create(
+        fields({
+          ...leadFields(input),
+          vibe_name: fullName(input),
+          vibe_leadstatus: toChoice(LEAD_STATUSES, "notContacted"),
+        }),
+      ),
+    )
+    return this.readLead(created.vibe_leadid)
+  }
+
+  async updateLead(id: Id, update: LeadUpdate): Promise<Lead> {
+    const current = await this.readLead(id)
+    if (isLeadReadOnly(current)) throw new GatewayError("invalid", `A ${current.status} Lead is read-only.`)
+    // A blank Lead source clears it, like a blank text field.
+    const next = { ...current, ...update, leadSource: (update.leadSource ?? current.leadSource) || undefined }
+    invalid("The Lead cannot be saved.", leadErrors(next))
+    const name = update.firstName !== undefined || update.lastName !== undefined ? fullName(next) : undefined
+    await this.call(() => this.client.leads.update(current.id, fields({ ...leadFields(update), vibe_name: name })))
+    return this.readLead(current.id)
+  }
+
+  async setLeadStatus(id: Id, status: "notContacted" | "working"): Promise<Lead> {
+    const action = manualLeadAction(status)
+    if (!action) throw new GatewayError("invalid", `A Lead cannot be set to ${status} by hand.`)
+    const current = await this.readLead(id)
+    const next = leadRule(current, action)
+    await this.call(() => this.client.leads.update(current.id, { vibe_leadstatus: toChoice(LEAD_STATUSES, next) }))
+    return this.readLead(current.id)
+  }
+
+  /** Records the reason, when and by whom, and deactivates the Lead: Disqualified Leads are read-only. */
+  async disqualifyLead(id: Id, input: DisqualifyInput): Promise<Lead> {
+    const current = await this.readLead(id)
+    const next = leadRule(current, "disqualify")
+    invalid("The Lead cannot be disqualified.", disqualifyErrors(input))
+    const { user } = await this.getCurrentUser()
+    await this.call(() =>
+      this.client.leads.update(current.id, {
+        vibe_leadstatus: toChoice(LEAD_STATUSES, next),
+        vibe_disqualifyreason: toChoice(DISQUALIFY_REASONS, input.reason!),
+        vibe_disqualifycomment: input.comment?.trim() || null,
+        vibe_disqualifiedon: new Date().toISOString(),
+        [`${LEAD_DISQUALIFIED_BY_NAVIGATION}@odata.bind`]: `/systemusers(${guid(user.id)})`,
+        ...DEACTIVATED,
+      }),
+    )
+    return this.readLead(current.id)
+  }
+
+  /** Disqualified -> Working: clears the disqualification and activates the Lead again. */
+  async reopenLead(id: Id): Promise<Lead> {
+    const current = await this.readLead(id)
+    const next = leadRule(current, "reopen")
+    await this.call(() =>
+      this.client.leads.update(current.id, {
+        vibe_leadstatus: toChoice(LEAD_STATUSES, next),
+        vibe_disqualifyreason: null,
+        vibe_disqualifycomment: null,
+        vibe_disqualifiedon: null,
+        [LEAD_DISQUALIFIED_BY_NAVIGATION]: null,
+        ...ACTIVATED,
+      }),
+    )
+    return this.readLead(current.id)
+  }
+
   getQualifySuggestions = notYet("getQualifySuggestions", "#31")
   qualifyLead = notYet("qualifyLead", "#31")
 
@@ -407,6 +568,10 @@ export class DataverseSalesGateway implements SalesGateway {
     }
   }
 
+  private async readLead(id: Id): Promise<Lead> {
+    return toLead(await this.call(() => this.client.leads.get(guid(id))))
+  }
+
   /** Owner, or the Owner's manager: the same rule the role and hierarchy security enforce. */
   private async mayEdit(ownerId: Id | null | undefined): Promise<boolean> {
     if (!ownerId) return false
@@ -414,16 +579,16 @@ export class DataverseSalesGateway implements SalesGateway {
     return canEdit(user.id, ownerId, [user, ...directReports])
   }
 
-  /** Active records in the view, matching the search. */
-  private async listFilter(view: ListView, search: string | undefined): Promise<string> {
-    const parts = [ACTIVE]
+  /** Records in the view (active ones only, unless told otherwise), matching the search. */
+  private async listFilter(view: ListView, search: string | undefined, { activeOnly = true } = {}): Promise<string | undefined> {
+    const parts = activeOnly ? [ACTIVE] : []
     if (view !== "all") {
       const { user, directReports } = await this.getCurrentUser()
       const owners = view === "my" ? [user.id] : teamMemberIds(user.id, [user, ...directReports])
       parts.push(`(${owners.map((o) => `_ownerid_value eq ${guid(o)}`).join(" or ")})`)
     }
     if (search) parts.push(search)
-    return parts.join(" and ")
+    return parts.join(" and ") || undefined
   }
 
   /** The sort column, then a unique one so paging is stable. */
@@ -441,7 +606,7 @@ export class DataverseSalesGateway implements SalesGateway {
   private async page<T>(
     table: string,
     client: TableClient<T>,
-    filter: string,
+    filter: string | undefined,
     orderBy: string[],
     query: { page?: number; pageSize?: number },
   ): Promise<{ rows: T[]; totalCount: number }> {
@@ -490,6 +655,31 @@ function accountFields(input: Partial<AccountInput>) {
     address1_postalcode: column(input.postcode),
     address1_country: column(input.country),
     description: column(input.description),
+  }
+}
+
+/** The Lead status after an action, or an "invalid" GatewayError when the sales rules refuse it. */
+function leadRule(lead: Lead, action: LeadAction) {
+  try {
+    return leadStatusAfter(lead.status, action)
+  } catch (error) {
+    if (error instanceof SalesRuleError) throw new GatewayError("invalid", error.message)
+    throw error
+  }
+}
+
+function leadFields(input: Partial<LeadInput>) {
+  return {
+    vibe_firstname: column(input.firstName),
+    vibe_lastname: column(input.lastName),
+    vibe_company: column(input.company),
+    vibe_jobtitle: column(input.jobTitle),
+    vibe_email: column(input.email),
+    vibe_phone: column(input.phone),
+    vibe_website: column(input.website),
+    vibe_description: column(input.description),
+    vibe_leadsource:
+      input.leadSource === undefined ? undefined : input.leadSource ? toChoice(LEAD_SOURCES, input.leadSource) : null,
   }
 }
 

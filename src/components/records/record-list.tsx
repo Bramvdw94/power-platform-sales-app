@@ -31,13 +31,24 @@ export type Column<T> = {
 
 type Sort<T> = { field: keyof T & string; direction: SortDirection }
 
+/** A list's own filter, such as Lead status: one value at a time, or all. Kept in the URL as `?filter=`. */
+export type ListFilter = {
+  label: string
+  /** The option for no filter, e.g. "All statuses". */
+  allLabel: string
+  options: { value: string; label: string }[]
+}
+
+const ALL = "all"
+
 type RecordListProps<T extends { id: string }> = {
   title: string
   /** Plural record name for the query key and empty state, e.g. "Accounts". */
   noun: string
   /** Singular record name for the New button, e.g. "Account". */
   singular: string
-  load: (gateway: SalesGateway, query: ListQuery<T>) => Promise<Page<T>>
+  /** `filter` is the picked value of the list's filter, if it has one. */
+  load: (gateway: SalesGateway, query: ListQuery<T>, filter: string | undefined) => Promise<Page<T>>
   columns: Column<T>[]
   defaultSort: Sort<T>
   /** The first column links to the record page. */
@@ -45,6 +56,7 @@ type RecordListProps<T extends { id: string }> = {
   searchLabel: string
   /** The New dialog, opened by the New button and by `?new=1` (the top bar's "+ New"). */
   renderNewDialog: (props: { open: boolean; onOpenChange: (open: boolean) => void }) => ReactNode
+  filter?: ListFilter
 }
 
 function parseView(value: string | null): ListView {
@@ -57,7 +69,7 @@ function parseView(value: string | null): ListView {
  * shared links keep it.
  */
 export function RecordList<T extends { id: string }>(props: RecordListProps<T>) {
-  const { title, noun, singular, load, columns, defaultSort, href, searchLabel, renderNewDialog } = props
+  const { title, noun, singular, load, columns, defaultSort, href, searchLabel, renderNewDialog, filter } = props
   const gateway = useGateway()
   const [params, setParams] = useSearchParams()
 
@@ -66,10 +78,12 @@ export function RecordList<T extends { id: string }>(props: RecordListProps<T>) 
   const page = Math.max(1, Number(params.get("page")) || 1)
   const sort = parseSort(params.get("sort"), columns) ?? defaultSort
   const query: ListQuery<T> = { view, search: search || undefined, sort, page, pageSize: PAGE_SIZE }
+  const filterParam = params.get("filter")
+  const filterValue = filter?.options.some((o) => o.value === filterParam) ? filterParam! : undefined
 
   const { data, error, isPending, isPlaceholderData } = useQuery({
-    queryKey: [noun, query],
-    queryFn: () => load(gateway, query),
+    queryKey: [noun, query, filterValue],
+    queryFn: () => load(gateway, query, filterValue),
     placeholderData: keepPreviousData,
   })
 
@@ -122,6 +136,21 @@ export function RecordList<T extends { id: string }>(props: RecordListProps<T>) 
             ))}
           </SelectContent>
         </Select>
+        {filter && (
+          <Select value={filterValue ?? ALL} onValueChange={(value) => update({ filter: value === ALL ? null : value })}>
+            <SelectTrigger aria-label={filter.label} className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>{filter.allLabel}</SelectItem>
+              {filter.options.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <ListSearch key={search} initial={search} label={searchLabel} onSearch={(text) => update({ q: text })} />
       </div>
 

@@ -85,6 +85,47 @@ export const CONTACT_COLUMNS = [
   "createdon",
 ] as const
 
+/** The vibe_lead columns the app reads. */
+export type LeadRow = Row & {
+  vibe_leadid: Id
+  vibe_firstname?: string | null
+  vibe_lastname?: string | null
+  vibe_company?: string | null
+  vibe_jobtitle?: string | null
+  vibe_email?: string | null
+  vibe_phone?: string | null
+  vibe_website?: string | null
+  vibe_leadsource?: number | null
+  vibe_description?: string | null
+  vibe_leadstatus?: number | null
+  vibe_disqualifyreason?: number | null
+  vibe_disqualifycomment?: string | null
+  vibe_disqualifiedon?: string | null
+  _vibe_disqualifiedby_value?: Id | null
+  _ownerid_value?: Id | null
+  createdon?: string | null
+}
+
+export const LEAD_COLUMNS = [
+  "vibe_leadid",
+  "vibe_firstname",
+  "vibe_lastname",
+  "vibe_company",
+  "vibe_jobtitle",
+  "vibe_email",
+  "vibe_phone",
+  "vibe_website",
+  "vibe_leadsource",
+  "vibe_description",
+  "vibe_leadstatus",
+  "vibe_disqualifyreason",
+  "vibe_disqualifycomment",
+  "vibe_disqualifiedon",
+  "_vibe_disqualifiedby_value",
+  "_ownerid_value",
+  "createdon",
+] as const
+
 /** The vibe_opportunity columns the app reads. */
 export type OpportunityRow = Row & {
   vibe_opportunityid: Id
@@ -166,8 +207,12 @@ export interface DataverseClient {
   listSystemUsers(filter: string): Promise<SystemUserRow[]>
   accounts: TableClient<AccountRow>
   contacts: TableClient<ContactRow>
+  leads: TableClient<LeadRow>
   opportunities: TableClient<OpportunityRow>
 }
+
+/** A Lead's Disqualified by lookup (to systemuser), as a navigation property. */
+export const LEAD_DISQUALIFIED_BY_NAVIGATION = "vibe_DisqualifiedBy"
 
 /** A Contact's company lookup as an Account: the per-target navigation property (#12). */
 export const CONTACT_ACCOUNT_NAVIGATION = "parentcustomerid_account"

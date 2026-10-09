@@ -1,6 +1,31 @@
-import type { Opportunity, Stage } from "@/sales"
+import type { DisqualifyReason, LeadSource, LeadStatus, Opportunity, Stage } from "@/sales"
 
 // Display formatting shared by list and record pages. Terms follow GLOSSARY.md.
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  notContacted: "Not Contacted",
+  working: "Working",
+  qualified: "Qualified",
+  disqualified: "Disqualified",
+}
+
+export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
+  website: "Website",
+  referral: "Referral",
+  event: "Event",
+  coldOutreach: "Cold outreach",
+  partner: "Partner",
+  other: "Other",
+}
+
+export const DISQUALIFY_REASON_LABELS: Record<DisqualifyReason, string> = {
+  noBudget: "No budget",
+  noNeed: "No need",
+  cantReachThem: "Can't reach them",
+  choseCompetitor: "Chose a competitor",
+  duplicate: "Duplicate",
+  other: "Other",
+}
 
 export const STAGE_LABELS: Record<Stage, string> = {
   qualification: "Qualification",
