@@ -29,8 +29,12 @@ npm install
 pac auth create
 pac code init --environment <environmentId> --displayName "Sales App"
 
-npm run dev
+npm run dev          # against Dataverse
+npm run dev:memory   # on the in-memory seed data, no environment needed
 ```
+
+`dev:memory` signs in as Adele Vance; set `VITE_SALES_USER` to `megan`,
+`alex`, `diego` or `bram` (for example in `.env.memory.local`) to be someone else.
 
 ## Tests
 
@@ -54,9 +58,27 @@ Run all three before opening a pull request.
   manages Adele Vance and Alex Wilber; Diego Siciliani is outside her team),
   used by tests and local development.
 - `src/data/dataverse/`: the Dataverse gateway, the only code allowed to import
-  the generated Dataverse services (ESLint enforces this).
+  the generated Dataverse services (ESLint enforces this). It reaches Dataverse
+  through a small `DataverseClient` port (`client.ts`); `generated-client.ts`
+  implements it over `src/generated`. Methods a later ticket builds throw
+  `NotAvailableYetError` naming that ticket.
+- `src/components/shell/` and `src/routes.tsx`: the app shell (sidebar and top
+  bar on a desktop, bottom tabs on a phone) and every route in the spec.
 
 UI tests render with `renderWithGateway()` from `src/test/render.tsx`.
+
+## Dataverse data sources
+
+Generated with the npm Power Apps CLI (`pa`) into `src/generated/` and committed.
+Add a table or Dataverse function with:
+
+```bash
+pa app add data-source --connector dataverse --table <logical-name>
+pa app add dataverse-api --api-name <name>
+```
+
+Then wire it into `src/data/dataverse/generated-client.ts`. Tables so far:
+`systemuser`, plus the `WhoAmI` function.
 
 ## Deploy
 
