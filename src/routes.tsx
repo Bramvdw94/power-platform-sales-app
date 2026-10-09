@@ -9,7 +9,9 @@ import LeadListPage from "@/pages/leads/lead-list"
 import LeadRecordPage from "@/pages/leads/lead-record"
 import MenuPage from "@/pages/menu"
 import NotFoundPage from "@/pages/not-found"
-import { ListPlaceholder, PlaceholderPage, RecordPlaceholder } from "@/pages/placeholder"
+import OpportunityListPage from "@/pages/opportunities/opportunity-list"
+import OpportunityRecordPage from "@/pages/opportunities/opportunity-record"
+import { PlaceholderPage } from "@/pages/placeholder"
 import SearchPage from "@/pages/search"
 
 /** Every page in the spec (#23). Placeholders are replaced by the ticket they name. */
@@ -22,8 +24,8 @@ export const routes: RouteObject[] = [
       { path: "pipeline", element: <PlaceholderPage title="Pipeline" ticket="#32" /> },
       { path: "leads", element: <LeadListPage /> },
       { path: "leads/:id", element: <LeadRecordPage /> },
-      { path: "opportunities", element: <ListPlaceholder title="Opportunities" ticket="#30" /> },
-      { path: "opportunities/:id", element: <RecordPlaceholder title="Opportunity" ticket="#30" /> },
+      { path: "opportunities", element: <OpportunityListPage /> },
+      { path: "opportunities/:id", element: <OpportunityRecordPage /> },
       { path: "accounts", element: <AccountListPage /> },
       { path: "accounts/:id", element: <AccountRecordPage /> },
       { path: "contacts", element: <ContactListPage /> },

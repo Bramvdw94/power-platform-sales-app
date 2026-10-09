@@ -216,3 +216,11 @@ export const LEAD_DISQUALIFIED_BY_NAVIGATION = "vibe_DisqualifiedBy"
 
 /** A Contact's company lookup as an Account: the per-target navigation property (#12). */
 export const CONTACT_ACCOUNT_NAVIGATION = "parentcustomerid_account"
+
+/** The vibe_opportunity lookups' navigation properties, for `@odata.bind` writes. */
+export const OPPORTUNITY_NAVIGATION = {
+  account: "vibe_AccountId",
+  primaryContact: "vibe_PrimaryContactId",
+  closedBy: "vibe_ClosedBy",
+  originatingLead: "vibe_OriginatingLeadId",
+} as const

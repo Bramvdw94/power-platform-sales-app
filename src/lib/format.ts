@@ -1,4 +1,4 @@
-import type { DisqualifyReason, LeadSource, LeadStatus, Opportunity, Stage } from "@/sales"
+import type { DisqualifyReason, LeadSource, LeadStatus, LostReason, Opportunity, Stage } from "@/sales"
 
 // Display formatting shared by list and record pages. Terms follow GLOSSARY.md.
 
@@ -55,4 +55,12 @@ export function formatDate(value: string): string {
 /** One line about an Opportunity in a related list or search result: Stage, value and close date. */
 export function opportunitySummary(o: Pick<Opportunity, "stage" | "estimatedValue" | "expectedCloseDate">): string {
   return `${STAGE_LABELS[o.stage]} · ${formatEuro(o.estimatedValue)} · ${formatDate(o.expectedCloseDate)}`
+}
+
+export const LOST_REASON_LABELS: Record<LostReason, string> = {
+  price: "Price",
+  choseCompetitor: "Chose a competitor",
+  noBudget: "No budget",
+  noDecision: "No decision",
+  other: "Other",
 }

@@ -164,7 +164,9 @@ export class InMemorySalesGateway implements SalesGateway {
   }
 
   async listOpportunities(query: OpportunityListQuery): Promise<Page<Opportunity>> {
-    const rows = [...this.store.opportunities.values()].filter((o) => !query.stage || o.stage === query.stage)
+    const rows = [...this.store.opportunities.values()].filter(
+      (o) => !query.stage || o.stage === query.stage || (query.stage === "open" && isOpenStage(o.stage)),
+    )
     return this.page(rows.map((r) => this.toOpportunity(r)), query, (o) => [o.name])
   }
 
@@ -453,9 +455,10 @@ export class InMemorySalesGateway implements SalesGateway {
     if (isOpportunityReadOnly(row)) throw new GatewayError("invalid", "A closed Opportunity is read-only.")
     if (update.accountId) this.accountRow(update.accountId)
     if (update.primaryContactId) this.contactRow(update.primaryContactId)
-    const patch: Partial<OpportunityRow> = defined(clone(update))
+    // A blank Lead source clears it: withoutBlanks drops "" values below.
+    const patch = defined(clone(update)) as Partial<OpportunityRow>
     delete patch.stage // the Stage only changes through changeStage, close and reopen
-    const next: OpportunityRow = { ...row, ...patch }
+    const next: OpportunityRow = withoutBlanks({ ...row, ...patch })
     invalid("The Opportunity cannot be saved.", opportunityErrors(next as OpportunityInput))
     return this.saveOpportunity(next)
   }
@@ -703,6 +706,7 @@ export class InMemorySalesGateway implements SalesGateway {
       ownerName: this.ownerName(row.ownerId),
       accountName: this.store.accounts.get(row.accountId)?.name ?? "",
       primaryContactName: contact && fullName(contact),
+      closedByName: row.closedById && this.ownerName(row.closedById),
     })
   }
 

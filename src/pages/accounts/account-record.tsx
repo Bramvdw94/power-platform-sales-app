@@ -16,6 +16,7 @@ import { useGateway } from "@/hooks/use-gateway"
 import { opportunitySummary } from "@/lib/format"
 import { fullName, type Account } from "@/sales"
 import { NewContactDialog } from "@/pages/contacts/contact-form"
+import { NewOpportunityDialog } from "@/pages/opportunities/opportunity-form"
 import { EditAccountForm } from "./account-form"
 
 export default function AccountRecordPage() {
@@ -23,6 +24,7 @@ export default function AccountRecordPage() {
   const gateway = useGateway()
   const [editing, setEditing] = useState(false)
   const [addingContact, setAddingContact] = useState(false)
+  const [addingOpportunity, setAddingOpportunity] = useState(false)
   const { data, error, isPending } = useQuery({ queryKey: ["Account", id], queryFn: () => gateway.getAccount(id) })
 
   if (isPending) return <RecordLoading />
@@ -78,7 +80,15 @@ export default function AccountRecordPage() {
         />
       </RecordSection>
 
-      <RecordSection title={`Opportunities (${opportunities.length})`}>
+      <RecordSection
+        title={`Opportunities (${opportunities.length})`}
+        action={
+          <Button variant="ghost" size="sm" onClick={() => setAddingOpportunity(true)}>
+            <Plus aria-hidden />
+            New Opportunity
+          </Button>
+        }
+      >
         <RelatedList
           empty="No Opportunities yet."
           items={opportunities.map((o) => ({
@@ -93,6 +103,11 @@ export default function AccountRecordPage() {
       <NewContactDialog
         open={addingContact}
         onOpenChange={setAddingContact}
+        account={{ id: account.id, name: account.name }}
+      />
+      <NewOpportunityDialog
+        open={addingOpportunity}
+        onOpenChange={setAddingOpportunity}
         account={{ id: account.id, name: account.name }}
       />
     </RecordPage>

@@ -11,7 +11,7 @@ export type TextFieldSpec<K extends string = string> = {
   name: K
   label: string
   required?: boolean
-  type?: "text" | "email" | "url" | "tel" | "textarea"
+  type?: "text" | "email" | "url" | "tel" | "number" | "date" | "textarea"
   /** Spans both columns of the form grid. */
   wide?: boolean
 }

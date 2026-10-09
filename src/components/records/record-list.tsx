@@ -37,6 +37,8 @@ export type ListFilter = {
   /** The option for no filter, e.g. "All statuses". */
   allLabel: string
   options: { value: string; label: string }[]
+  /** The option used when the URL names none, e.g. open Stages; without it the list starts unfiltered. */
+  defaultValue?: string
 }
 
 const ALL = "all"
@@ -79,7 +81,11 @@ export function RecordList<T extends { id: string }>(props: RecordListProps<T>) 
   const sort = parseSort(params.get("sort"), columns) ?? defaultSort
   const query: ListQuery<T> = { view, search: search || undefined, sort, page, pageSize: PAGE_SIZE }
   const filterParam = params.get("filter")
-  const filterValue = filter?.options.some((o) => o.value === filterParam) ? filterParam! : undefined
+  const filterValue = filter?.options.some((o) => o.value === filterParam)
+    ? filterParam!
+    : filterParam === ALL
+      ? undefined
+      : filter?.defaultValue
 
   const { data, error, isPending, isPlaceholderData } = useQuery({
     queryKey: [noun, query, filterValue],
@@ -137,7 +143,9 @@ export function RecordList<T extends { id: string }>(props: RecordListProps<T>) 
           </SelectContent>
         </Select>
         {filter && (
-          <Select value={filterValue ?? ALL} onValueChange={(value) => update({ filter: value === ALL ? null : value })}>
+          <Select value={filterValue ?? ALL} onValueChange={(value) =>
+              update({ filter: value === (filter.defaultValue ?? ALL) ? null : value })
+            }>
             <SelectTrigger aria-label={filter.label} className="w-44">
               <SelectValue />
             </SelectTrigger>

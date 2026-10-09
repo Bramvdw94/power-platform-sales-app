@@ -336,9 +336,10 @@ describe("DataverseSalesGateway, Accounts and Contacts", () => {
     await expect(gateway.getAccount("bbbbbbbb-0000-0000-0000-00000000ffff")).rejects.toMatchObject({ code: "notFound" })
   })
 
-  it("searches Leads, Accounts and Contacts", async () => {
+  it("searches Leads, Opportunities, Accounts and Contacts", async () => {
     const client = fakeClient(ADELE)
     const results = await new DataverseSalesGateway(client).search("tail")
+    expect(results.opportunities).toHaveLength(1)
     expect(results.accounts).toHaveLength(2)
     expect(results.contacts).toHaveLength(1)
     expect(results.leads).toHaveLength(2)
@@ -346,6 +347,7 @@ describe("DataverseSalesGateway, Accounts and Contacts", () => {
       filter: "(contains(vibe_name,'tail') or contains(vibe_email,'tail'))",
       pageSize: 10,
     })
+    expect(client.opportunities.list.mock.calls[0][0]).toMatchObject({ filter: "contains(vibe_name,'tail')", pageSize: 10 })
     expect(client.accounts.list.mock.calls[0][0]).toMatchObject({ filter: "statecode eq 0 and contains(name,'tail')", pageSize: 10 })
   })
 })
@@ -474,5 +476,117 @@ describe("DataverseSalesGateway, Leads", () => {
     expect(client.opportunities.list.mock.calls[0][0].filter).toBe(`_vibe_originatingleadid_value eq ${SANNE}`)
     expect(details).toMatchObject({ lead: { lastName: "Bakker" }, canEdit: true })
     expect((await new DataverseSalesGateway(fakeClient(ALEX)).getLead(SANNE)).canEdit).toBe(false)
+  })
+})
+
+describe("DataverseSalesGateway, Opportunities", () => {
+  const OPP = "eeeeeeee-0000-0000-0000-000000000001"
+
+  it("filters by Stage, closed (deactivated) ones included", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    const page = await gateway.listOpportunities({ view: "my", stage: "open", sort: { field: "estimatedValue", direction: "desc" } })
+    expect(page.items[0]).toMatchObject({ name: "Tailwind Traders - Managed workplace", stage: "proposal", leadSource: "referral", accountName: "Tailwind Traders" })
+    expect(client.opportunities.list.mock.calls[0][0]).toMatchObject({
+      filter: `(_ownerid_value eq ${ADELE}) and (vibe_stage eq 841200000 or vibe_stage eq 841200001 or vibe_stage eq 841200002 or vibe_stage eq 841200003)`,
+      orderBy: ["vibe_estimatedvalue desc", "vibe_opportunityid asc"],
+    })
+
+    await gateway.listOpportunities({ view: "all", stage: "closedLost" })
+    expect(client.opportunities.list.mock.calls[1][0].filter).toBe("vibe_stage eq 841200005")
+    await gateway.listOpportunities({ view: "all" })
+    expect(client.opportunities.list.mock.calls[2][0].filter).toBeUndefined()
+  })
+
+  it("loads an Opportunity with its Account and Primary Contact", async () => {
+    const client = fakeClient(MEGAN)
+    await client.opportunities.update(OPP, { _vibe_primarycontactid_value: LOTTE })
+    const details = await new DataverseSalesGateway(client).getOpportunity(OPP)
+    expect(details.account.name).toBe("Tailwind Traders")
+    expect(details.primaryContact?.lastName).toBe("de Groot")
+    expect(details.canEdit).toBe(true)
+  })
+
+  it("creates an Opportunity with the Stage's Probability, binding its lookups", async () => {
+    const client = fakeClient(ADELE)
+    await new DataverseSalesGateway(client).createOpportunity({
+      name: "Northwind BV - Teams",
+      accountId: NORTHWIND,
+      primaryContactId: LOTTE,
+      stage: "needsAnalysis",
+      estimatedValue: 36000,
+      expectedCloseDate: "2026-12-15",
+    })
+    expect(client.opportunities.create).toHaveBeenCalledWith({
+      vibe_name: "Northwind BV - Teams",
+      vibe_estimatedvalue: 36000,
+      vibe_expectedclosedate: "2026-12-15",
+      "vibe_AccountId@odata.bind": `/accounts(${NORTHWIND})`,
+      "vibe_PrimaryContactId@odata.bind": `/contacts(${LOTTE})`,
+      vibe_stage: 841200001,
+      vibe_probability: 25,
+    })
+  })
+
+  it("updates fields and clears a blank Primary Contact and Lead source", async () => {
+    const client = fakeClient(ADELE)
+    await new DataverseSalesGateway(client).updateOpportunity(OPP, { probability: 35, nextStep: "", primaryContactId: "", leadSource: "" })
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, {
+      vibe_probability: 35,
+      vibe_nextstep: null,
+      vibe_leadsource: null,
+      vibe_PrimaryContactId: null,
+    })
+  })
+
+  it("resets the Probability on a Stage change", async () => {
+    const client = fakeClient(ADELE)
+    const updated = await new DataverseSalesGateway(client).changeStage(OPP, "negotiation")
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, { vibe_stage: 841200003, vibe_probability: 75 })
+    expect(updated).toMatchObject({ stage: "negotiation", probability: 75 })
+  })
+
+  it("closes as lost, recording who closed it, and deactivates the record", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    await expect(gateway.closeOpportunity(OPP, { outcome: "lost" })).rejects.toMatchObject({
+      code: "invalid",
+      fieldErrors: { lostReason: "Pick a Lost reason." },
+    })
+    await gateway.closeOpportunity(OPP, { outcome: "lost", lostReason: "price", closeDate: "2026-10-01" })
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, {
+      vibe_stage: 841200005,
+      vibe_probability: 0,
+      vibe_actualvalue: null,
+      vibe_closedate: "2026-10-01",
+      vibe_lostreason: 841200000,
+      vibe_lostcomment: null,
+      "vibe_ClosedBy@odata.bind": `/systemusers(${ADELE})`,
+      statecode: 1,
+      statuscode: 2,
+    })
+  })
+
+  it("closes as won with the Estimated value, refuses edits, and reopens clearing the close", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.closeOpportunity(OPP, { outcome: "won", closeDate: "2026-10-09" })
+    expect(client.opportunities.update.mock.lastCall?.[1]).toMatchObject({ vibe_stage: 841200004, vibe_actualvalue: 48000, statecode: 1 })
+
+    await expect(gateway.updateOpportunity(OPP, { name: "Changed" })).rejects.toMatchObject({ code: "invalid" })
+    await expect(gateway.changeStage(OPP, "proposal")).rejects.toMatchObject({ code: "invalid" })
+
+    await gateway.reopenOpportunity(OPP, "proposal")
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, {
+      vibe_stage: 841200002,
+      vibe_probability: 50,
+      vibe_actualvalue: null,
+      vibe_closedate: null,
+      vibe_lostreason: null,
+      vibe_lostcomment: null,
+      vibe_ClosedBy: null,
+      statecode: 0,
+      statuscode: 1,
+    })
   })
 })
