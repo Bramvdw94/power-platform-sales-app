@@ -4,10 +4,16 @@
  */
 
 // Models
+export * as AccountsModel from './models/AccountsModel';
 export * as CommonModels from './models/CommonModels';
+export * as ContactsModel from './models/ContactsModel';
 export * as SystemusersModel from './models/SystemusersModel';
+export * as Vibe_opportunitiesModel from './models/Vibe_opportunitiesModel';
 export * as WhoAmIModel from './models/WhoAmIModel';
 
 // Services
+export * from './services/AccountsService';
+export * from './services/ContactsService';
 export * from './services/SystemusersService';
+export * from './services/Vibe_opportunitiesService';
 export * from './services/WhoAmIService';

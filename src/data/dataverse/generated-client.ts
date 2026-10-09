@@ -3,9 +3,19 @@
 // sources; this file is the only place that knows their shape.
 
 import type { IOperationResult } from "@microsoft/power-apps/data"
-import { SystemusersService, WhoAmIService } from "@/generated"
+import { AccountsService, ContactsService, SystemusersService, Vibe_opportunitiesService, WhoAmIService } from "@/generated"
+import type { IGetAllOptions } from "@/generated/models/CommonModels"
 import type { Id } from "@/sales"
-import { SYSTEM_USER_COLUMNS, type DataverseClient, type SystemUserRow } from "./client"
+import {
+  ACCOUNT_COLUMNS,
+  CONTACT_COLUMNS,
+  OPPORTUNITY_COLUMNS,
+  SYSTEM_USER_COLUMNS,
+  type DataverseClient,
+  type Fields,
+  type SystemUserRow,
+  type TableClient,
+} from "./client"
 
 const select = [...SYSTEM_USER_COLUMNS]
 
@@ -15,6 +25,38 @@ function unwrap<T>(result: IOperationResult<T>, operation: string): T {
     throw new Error(result.error?.message || `Dataverse ${operation} failed`)
   }
   return result.data
+}
+
+/** The calls every generated table service has. */
+type GeneratedService = {
+  get(id: string, options?: { select?: string[] }): Promise<IOperationResult<unknown>>
+  getAll(options?: IGetAllOptions): Promise<IOperationResult<unknown[]>>
+  create(record: never): Promise<IOperationResult<unknown>>
+  update(id: string, changedFields: never): Promise<IOperationResult<unknown>>
+}
+
+/** A TableClient over one generated service, reading only the given columns. */
+function table<T>(service: GeneratedService, name: string, columns: readonly string[]): TableClient<T> {
+  const select = [...columns]
+  return {
+    async get(id) {
+      return unwrap(await service.get(id, { select }), `${name} read`) as T
+    },
+    async list({ filter, orderBy, pageSize, skipToken }) {
+      const result = await service.getAll({ select, filter, orderBy, maxPageSize: pageSize, skipToken, count: true })
+      return {
+        rows: (unwrap(result, `${name} list`) ?? []) as T[],
+        skipToken: result.skipToken,
+        count: result.count,
+      }
+    },
+    async create(fields: Fields) {
+      return unwrap(await service.create(fields as never), `${name} create`) as T
+    },
+    async update(id, fields: Fields) {
+      return unwrap(await service.update(id, fields as never), `${name} update`) as T
+    },
+  }
 }
 
 export function createGeneratedClient(): DataverseClient {
@@ -44,5 +86,9 @@ export function createGeneratedClient(): DataverseClient {
       } while (skipToken)
       return rows
     },
+
+    accounts: table(AccountsService, "account", ACCOUNT_COLUMNS),
+    contacts: table(ContactsService, "contact", CONTACT_COLUMNS),
+    opportunities: table(Vibe_opportunitiesService, "vibe_opportunity", OPPORTUNITY_COLUMNS),
   }
 }

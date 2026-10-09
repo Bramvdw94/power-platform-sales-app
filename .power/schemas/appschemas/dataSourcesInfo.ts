@@ -5,10 +5,31 @@
  */
 
 export const dataSourcesInfo = {
+  "accounts": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "accountid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "contacts": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "contactid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "systemusers": {
     "tableId": "",
     "version": "",
     "primaryKey": "systemuserid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "vibe_opportunities": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "vibe_opportunityid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },

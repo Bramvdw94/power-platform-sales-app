@@ -23,6 +23,21 @@
           "entitySetName": "Environment",
           "logicalName": "environment_39a902ba",
           "isHidden": false
+        },
+        "accounts": {
+          "entitySetName": "accounts",
+          "logicalName": "account",
+          "isHidden": false
+        },
+        "contacts": {
+          "entitySetName": "contacts",
+          "logicalName": "contact",
+          "isHidden": false
+        },
+        "opportunities": {
+          "entitySetName": "vibe_opportunities",
+          "logicalName": "vibe_opportunity",
+          "isHidden": false
         }
       },
       "environmentVariableName": ""
