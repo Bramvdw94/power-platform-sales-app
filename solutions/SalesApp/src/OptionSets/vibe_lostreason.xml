@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="vibe_lostreason" localizedName="Lost reason" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Lost reason" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="841200000" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Price" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200001" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Chose a competitor" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200002" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="No budget" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200003" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="No decision" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200004" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Other" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>
