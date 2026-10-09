@@ -57,7 +57,7 @@ export interface Vibe_leadsBase {
   vibe_lastname: string;
   vibe_leadid: string;
   vibe_leadsource?: Vibe_leadsvibe_leadsource;
-  vibe_leadstatus?: Vibe_leadsvibe_leadstatus;
+  vibe_leadstatus: Vibe_leadsvibe_leadstatus;
   vibe_name: string;
   vibe_phone?: string;
   vibe_website?: string;
