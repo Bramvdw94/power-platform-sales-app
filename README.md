@@ -90,7 +90,8 @@ Then wire it into `src/data/dataverse/generated-client.ts`. Tables so far:
 The generated models list no bind key for polymorphic lookups such as a
 Contact's company (`parentcustomerid`). The SDK sends the body to the Web API
 as is, so the gateway binds the per-target navigation property itself
-(`parentcustomerid_account@odata.bind`).
+(`parentcustomerid_account@odata.bind`) and clears it by setting
+`parentcustomerid_account` to null.
 
 ## Deploy
 

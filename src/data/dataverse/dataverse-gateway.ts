@@ -33,7 +33,7 @@ import {
   type User,
 } from "@/sales"
 import {
-  CONTACT_ACCOUNT_BIND,
+  CONTACT_ACCOUNT_NAVIGATION,
   type AccountRow,
   type ContactRow,
   type DataverseClient,
@@ -502,7 +502,12 @@ function contactFields(input: Partial<ContactInput>) {
     emailaddress1: column(input.email),
     telephone1: column(input.phone),
     mobilephone: column(input.mobile),
-    // The company lookup is polymorphic: bind it to the account navigation property. Null clears it.
-    [CONTACT_ACCOUNT_BIND]: accountId === undefined ? undefined : accountId && `/accounts(${guid(accountId)})`,
+    // The company lookup is polymorphic: bind it through the account navigation property,
+    // and clear it by setting that navigation property to null.
+    ...(accountId
+      ? { [`${CONTACT_ACCOUNT_NAVIGATION}@odata.bind`]: `/accounts(${guid(accountId)})` }
+      : accountId === null
+        ? { [CONTACT_ACCOUNT_NAVIGATION]: null }
+        : {}),
   }
 }

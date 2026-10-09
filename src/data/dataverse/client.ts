@@ -169,5 +169,5 @@ export interface DataverseClient {
   opportunities: TableClient<OpportunityRow>
 }
 
-/** Writes a Contact's company lookup as an Account: per-target navigation binding (#12). */
-export const CONTACT_ACCOUNT_BIND = "parentcustomerid_account@odata.bind"
+/** A Contact's company lookup as an Account: the per-target navigation property (#12). */
+export const CONTACT_ACCOUNT_NAVIGATION = "parentcustomerid_account"

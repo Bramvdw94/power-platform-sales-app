@@ -273,7 +273,7 @@ describe("DataverseSalesGateway, Accounts and Contacts", () => {
     expect(client.contacts.update).toHaveBeenCalledWith(LOTTE, {
       jobtitle: null,
       emailaddress1: "lotte@example.com",
-      "parentcustomerid_account@odata.bind": null,
+      parentcustomerid_account: null,
     })
   })
 
