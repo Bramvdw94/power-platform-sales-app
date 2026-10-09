@@ -85,3 +85,7 @@ _Avoid_: Funnel
 **Owner**:
 The salesperson responsible for a record; the owner and the owner's manager may change it, everyone else may only read it.
 _Avoid_: Assignee, rep
+
+**Reassign**:
+Making another salesperson the Owner of a record. Only the Owner or the Owner's manager may reassign, and also a Qualified Lead or a closed Opportunity. The record's open Tasks and Phone Calls move with it; reassigning an Account leaves its Contacts and Opportunities with their own Owners.
+_Avoid_: Transfer, hand over, assign
