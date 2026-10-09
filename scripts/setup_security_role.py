@@ -63,6 +63,9 @@ EXTRAS = {
     "prvReadUser": (GLOBAL, "the app reads the signed-in user, their direct reports and every Owner's "
                     "name from systemuser; without it the app fails with 0x80040220 'missing "
                     "prvReadUser' on load (seen as Diego, #27)"),
+    "prvAppendToUser": (GLOBAL, "Disqualify sets vibe_DisqualifiedBy and Close sets vibe_ClosedBy, both "
+                        "lookups to systemuser; binding them fails with 0x80040220 'missing "
+                        "prvAppendToUser' without it (seen as Adele and Megan, #29)"),
 }
 
 # Dataverse puts these back on every role, even straight after a
