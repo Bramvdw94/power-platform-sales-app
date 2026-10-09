@@ -1,0 +1,13 @@
+// The sales rules: plain TypeScript with no React or Dataverse dependency,
+// shared by the sales data gateways and the UI.
+export * from "./types"
+export * from "./errors"
+export * from "./dates"
+export * from "./names"
+export * from "./lead-status"
+export * from "./stages"
+export * from "./permissions"
+export * from "./pipeline"
+export * from "./activities"
+export * from "./qualify"
+export * from "./validation"
