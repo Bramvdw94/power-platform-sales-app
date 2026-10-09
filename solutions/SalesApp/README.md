@@ -25,7 +25,7 @@ out of the commit.
 | `vibe_lead_*` and `vibe_opportunity_*` → activities (Tasks, PhoneCalls, Appointments, Emails, Faxes, Letters, RecurringAppointmentMasters, SocialActivities, chats, ActivityPointers) | Assign = Cascade Active | **Works.** Assign = `Active` (`ActiveOnly` in XML) on all 20. Reassigning a Lead or Opportunity moves only its open activities, so the gateway does not need its own fallback for this. |
 | `vibe_account_vibe_opportunity_accountid` (Account → Opportunity) | Delete Restrict, others NoCascade | **Works.** Set when the relationship was created. |
 | `vibe_contact_…_primarycontactid`, `vibe_lead_…_originatingleadid` | Delete RemoveLink, others NoCascade | **Works.** Set when the relationship was created. |
-| `contact_customer_accounts` (standard Account → Contact, `parentcustomerid`) | Assign = NoCascade | **Not changed yet.** Still Cascade on every action. The change was held for Bram's approval because it edits a standard relationship. Until it is changed, reassigning an Account also reassigns its Contacts. |
+| `contact_customer_accounts` (standard Account → Contact, `parentcustomerid`) | Assign = NoCascade | **Works.** Assign = `NoCascade`. Dataverse accepted Assign on its own, so Delete, Share, Unshare, Reparent and Merge keep their standard `Cascade`. The relationship is in the solution as a component (type 10), so the change travels with it. Reassigning an Account no longer moves its Contacts. |
 
 Two things to know when editing a relationship with
 `PUT RelationshipDefinitions(<id>)`:

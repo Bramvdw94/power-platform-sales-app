@@ -2,6 +2,7 @@
 <EntityRelationships xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <EntityRelationship Name="business_unit_vibe_lead" />
   <EntityRelationship Name="business_unit_vibe_opportunity" />
+  <EntityRelationship Name="contact_customer_accounts" />
   <EntityRelationship Name="lk_vibe_lead_createdby" />
   <EntityRelationship Name="lk_vibe_lead_modifiedby" />
   <EntityRelationship Name="lk_vibe_opportunity_createdby" />
