@@ -3,7 +3,7 @@
 // sources; this file is the only place that knows their shape.
 
 import type { IOperationResult } from "@microsoft/power-apps/data"
-import { SystemusersService, WhoAmIService } from "@/generated"
+import { AccountsService, ContactsService, SystemusersService, Vibe_opportunitiesService, WhoAmIService } from "@/generated"
 import type { IGetAllOptions } from "@/generated/models/CommonModels"
 import type { Id } from "@/sales"
 import {
