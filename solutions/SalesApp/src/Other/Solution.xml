@@ -93,6 +93,8 @@
       <RootComponent type="1" schemaName="task" behavior="2" />
       <RootComponent type="1" schemaName="vibe_lead" behavior="0" />
       <RootComponent type="1" schemaName="vibe_opportunity" behavior="0" />
+      <RootComponent type="20" id="{468142e9-dac3-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="20" id="{8a492620-dac3-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="300" schemaName="vibe_salesapp_65562" behavior="0" />
       <RootComponent type="9" schemaName="vibe_disqualifyreason" behavior="0" />
       <RootComponent type="9" schemaName="vibe_leadsource" behavior="0" />

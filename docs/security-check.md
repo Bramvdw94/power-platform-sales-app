@@ -20,8 +20,11 @@ the hierarchy settings or the tables.
 
 ## What it checks
 
-Prerequisites: Megan Bowen, Adele Vance, Alex Wilber and Diego Siciliani each
-hold SalesApp Salesperson; Adele and Alex have Megan as Manager; Diego does not.
+Prerequisites, set by `python scripts/setup_security_role.py --apply`: Megan
+Bowen, Adele Vance, Alex Wilber and Diego Siciliani each hold SalesApp
+Salesperson; Megan also holds SalesApp Sales Manager (the #21 fallback, since
+hierarchy does not grant Assign); Adele and Alex have Megan as Manager; Diego
+does not.
 
 The script creates its own records as Adele, all named `[security-check] …`:
 
@@ -30,11 +33,70 @@ The script creates its own records as Adele, all named `[security-check] …`:
 | Adele creates an Account, a Contact under it, a Lead and an Opportunity | allowed |
 | Note on a Lead, Task and Phone Call (no parties) on an Opportunity | allowed (polymorphic bind via the navigation property read from metadata) |
 | Alex (peer) and Diego (outsider) read Adele's Lead | 200 |
-| Alex and Diego update or reassign Adele's Lead, update her Opportunity, add a Note | 403 |
+| Alex and Diego update or reassign Adele's Lead, update her Opportunity, add a Note to her Lead or a Task to her Opportunity | 403 |
+| Alex and Diego create an Opportunity on Adele's Account | 204 (Append To at Organization on Account) |
 | Adele deletes her own Lead | 403 (no Delete in v1) |
-| Megan updates Adele's Lead and Opportunity, adds a Note | 204 |
+| Megan updates Adele's Lead and Opportunity, adds a Note and a Task | 204 (hierarchy) |
 | Megan reassigns Adele's Opportunity to Alex | 204, and its open Task moves along |
 | Megan reassigns Adele's deactivated Lead | 204 |
 | Megan updates or reassigns Diego's Lead | 403 |
 
 Cleanup deletes the records as the signed-in admin.
+
+## Last run
+
+2026-10-09, dev-salesapp, after Append To on Lead and Opportunity was lowered
+to User (story 97 enforced in Dataverse).
+
+```text
+Preflight
+  PASS  Megan Bowen has SalesApp Salesperson
+  PASS  Adele Vance has SalesApp Salesperson
+  PASS  Alex Wilber has SalesApp Salesperson
+  PASS  Diego Siciliani has SalesApp Salesperson
+  PASS  Adele Vance reports to Megan
+  PASS  Alex Wilber reports to Megan
+  PASS  Diego is outside Megan's team
+Create as Adele (Create privilege, polymorphic writes)
+  PASS  Adele creates an Account
+  PASS  Contact under an Account (parentcustomerid_account)  (204)
+  PASS  Adele creates a Lead and an Opportunity
+  PASS  Note on a Lead (objectid_vibe_lead)  (204)
+  PASS  Task on an Opportunity (regardingobjectid_vibe_opportunity_task)  (204)
+  PASS  Phone Call on an Opportunity, no parties (regardingobjectid_vibe_opportunity_phonecall)  (204)
+Peer and outsider: read yes; update, reassign and add activities no; link to the Account yes
+  PASS  Alex Wilber reads Adele's Lead  (200)
+  PASS  Alex Wilber updates Adele's Lead  (403 0x80048306)
+  PASS  Alex Wilber reassigns Adele's Lead to self  (403 0x80048306)
+  PASS  Alex Wilber updates Adele's Opportunity  (403 0x80048306)
+  PASS  Alex Wilber adds a Note to Adele's Lead  (403 0x80048306)
+  PASS  Alex Wilber adds a Task to Adele's Opportunity  (403 0x80048306)
+  PASS  Alex Wilber creates an Opportunity on Adele's Account  (204)
+  PASS  Diego Siciliani reads Adele's Lead  (200)
+  PASS  Diego Siciliani updates Adele's Lead  (403 0x80048306)
+  PASS  Diego Siciliani reassigns Adele's Lead to self  (403 0x80048306)
+  PASS  Diego Siciliani updates Adele's Opportunity  (403 0x80048306)
+  PASS  Diego Siciliani adds a Note to Adele's Lead  (403 0x80048306)
+  PASS  Diego Siciliani adds a Task to Adele's Opportunity  (403 0x80048306)
+  PASS  Diego Siciliani creates an Opportunity on Adele's Account  (204)
+No Delete privilege
+  PASS  Adele deletes her own Lead  (403 0x80040220)
+Manager: update and reassign a report's records
+  PASS  Megan updates Adele's Lead  (204)
+  PASS  Megan updates Adele's Opportunity  (204)
+  PASS  Megan adds a Note to Adele's Lead  (204)
+  PASS  Megan adds a Task to Adele's Opportunity  (204)
+  PASS  Megan reassigns Adele's Opportunity to Alex  (204)
+  PASS  Opportunity owner is now Alex
+  PASS  Open Task moved to Alex (Cascade Active)
+Manager: reassign an inactive (Disqualified) Lead
+  PASS  Adele deactivates her Lead  (204)
+  PASS  Megan reassigns Adele's inactive Lead to Alex  (204)
+  PASS  Lead owner is now Alex
+Manager: no reach outside the team
+  PASS  Megan updates Diego's Lead  (403 0x80048306)
+  PASS  Megan reassigns Diego's Lead  (403 0x80048306)
+Cleanup
+
+40/40 checks passed
+```

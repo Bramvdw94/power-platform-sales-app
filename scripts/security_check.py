@@ -27,7 +27,6 @@ import json
 import os
 import sys
 import urllib.error
-import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -62,7 +61,8 @@ class Dataverse:
         if as_user:
             headers["MSCRMCallerID"] = as_user
         data = json.dumps(body).encode() if body is not None else None
-        req = urllib.request.Request(self.base + path, data=data, method=method, headers=headers)
+        # Python 3.14 refuses raw spaces in a URL; OData filters are full of them.
+        req = urllib.request.Request(self.base + path.replace(" ", "%20"), data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req) as resp:
                 raw = resp.read()
@@ -96,7 +96,7 @@ class Dataverse:
 
 
 def q(value):
-    return urllib.parse.quote(value.replace("'", "''"))
+    return value.replace("'", "''")
 
 
 def nav_property(dv, referencing, referenced, attribute):
@@ -121,8 +121,11 @@ class Report:
         print(f"  {'PASS' if ok else 'FAIL'}  {name}" + (f"  ({detail})" if detail else ""), flush=True)
 
     def expect_status(self, name, result, expected):
-        status, _, code, _ = result
-        self.check(name, status == expected, f"{status}" + (f" {code}" if code else ""))
+        status, err, code, _ = result
+        detail = f"{status}" + (f" {code}" if code else "")
+        if status != expected and isinstance(err, dict) and err.get("message"):
+            detail += f": {err['message'][:240]}"
+        self.check(name, status == expected, detail)
 
     @property
     def failed(self):
@@ -178,10 +181,11 @@ def run(dv, report, created):
     lead = track("vibe_leads", dv.create("vibe_leads", {
         "vibe_lastname": f"{TAG} Lead", "vibe_company": f"{TAG} Company", "vibe_name": f"{TAG} Lead",
     }, as_user=adele))
-    stage = dv.get("GlobalOptionSetDefinitions(Name='vibe_stage')")["Options"][0]["Value"]
+    stage = dv.get("GlobalOptionSetDefinitions(Name='vibe_stage')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    opportunity_account = nav_property(dv, "vibe_opportunity", "account", "vibe_accountid")
     opportunity = track("vibe_opportunities", dv.create("vibe_opportunities", {
         "vibe_name": f"{TAG} Opportunity",
-        "vibe_accountid@odata.bind": f"/accounts({account})",
+        f"{opportunity_account}@odata.bind": f"/accounts({account})",
         "vibe_stage": stage,
         "vibe_estimatedvalue": 1000,
         "vibe_expectedclosedate": "2026-12-31",
@@ -214,7 +218,7 @@ def run(dv, report, created):
     if result[3]:
         track("phonecalls", result[3])
 
-    print("Peer and outsider: read yes, update and reassign no", flush=True)
+    print("Peer and outsider: read yes; update, reassign and add activities no; link to the Account yes", flush=True)
     for key in ("alex", "diego"):
         who = USERS[key]
         caller = users[key]
@@ -226,9 +230,26 @@ def run(dv, report, created):
             "PATCH", f"vibe_leads({lead})", {"ownerid@odata.bind": f"/systemusers({caller})"}, as_user=caller), 403)
         report.expect_status(f"{who} updates Adele's Opportunity", dv.call(
             "PATCH", f"vibe_opportunities({opportunity})", {"vibe_nextstep": who}, as_user=caller), 403)
-        report.expect_status(f"{who} adds a Note to Adele's Lead", dv.call("POST", "annotations", {
+        result = dv.call("POST", "annotations", {
             "subject": f"{TAG} {who} Note", f"{note_nav}@odata.bind": f"/vibe_leads({lead})",
-        }, as_user=caller), 403)
+        }, as_user=caller)
+        report.expect_status(f"{who} adds a Note to Adele's Lead", result, 403)
+        if result[3]:
+            track("annotations", result[3])
+        result = dv.call("POST", "tasks", {
+            "subject": f"{TAG} {who} Task", f"{task_nav}@odata.bind": f"/vibe_opportunities({opportunity})",
+        }, as_user=caller)
+        report.expect_status(f"{who} adds a Task to Adele's Opportunity", result, 403)
+        if result[3]:
+            track("tasks", result[3])
+        result = dv.call("POST", "vibe_opportunities", {
+            "vibe_name": f"{TAG} {who} Opportunity",
+            f"{opportunity_account}@odata.bind": f"/accounts({account})",
+            "vibe_stage": stage, "vibe_estimatedvalue": 500, "vibe_expectedclosedate": "2026-12-31",
+        }, as_user=caller)
+        report.expect_status(f"{who} creates an Opportunity on Adele's Account", result, 204)
+        if result[3]:
+            track("vibe_opportunities", result[3])
 
     print("No Delete privilege", flush=True)
     report.expect_status("Adele deletes her own Lead", dv.call("DELETE", f"vibe_leads({lead})", as_user=adele), 403)
@@ -243,6 +264,12 @@ def run(dv, report, created):
     }, as_user=megan), 204)
     if result[3]:
         track("annotations", result[3])
+    result = dv.call("POST", "tasks", {
+        "subject": f"{TAG} Megan Task", f"{task_nav}@odata.bind": f"/vibe_opportunities({opportunity})",
+    }, as_user=megan)
+    report.expect_status("Megan adds a Task to Adele's Opportunity", result, 204)
+    if result[3]:
+        track("tasks", result[3])
 
     result = dv.call("PATCH", f"vibe_opportunities({opportunity})",
                      {"ownerid@odata.bind": f"/systemusers({alex})"}, as_user=megan)
