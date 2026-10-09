@@ -3,12 +3,13 @@
 // sources; this file is the only place that knows their shape.
 
 import type { IOperationResult } from "@microsoft/power-apps/data"
-import { AccountsService, ContactsService, SystemusersService, Vibe_opportunitiesService, WhoAmIService } from "@/generated"
+import { AccountsService, ContactsService, SystemusersService, Vibe_leadsService, Vibe_opportunitiesService, WhoAmIService } from "@/generated"
 import type { IGetAllOptions } from "@/generated/models/CommonModels"
 import type { Id } from "@/sales"
 import {
   ACCOUNT_COLUMNS,
   CONTACT_COLUMNS,
+  LEAD_COLUMNS,
   OPPORTUNITY_COLUMNS,
   SYSTEM_USER_COLUMNS,
   type DataverseClient,
@@ -89,6 +90,7 @@ export function createGeneratedClient(): DataverseClient {
 
     accounts: table(AccountsService, "account", ACCOUNT_COLUMNS),
     contacts: table(ContactsService, "contact", CONTACT_COLUMNS),
+    leads: table(Vibe_leadsService, "vibe_lead", LEAD_COLUMNS),
     opportunities: table(Vibe_opportunitiesService, "vibe_opportunity", OPPORTUNITY_COLUMNS),
   }
 }

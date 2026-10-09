@@ -34,6 +34,11 @@
           "logicalName": "contact",
           "isHidden": false
         },
+        "leads": {
+          "entitySetName": "vibe_leads",
+          "logicalName": "vibe_lead",
+          "isHidden": false
+        },
         "opportunities": {
           "entitySetName": "vibe_opportunities",
           "logicalName": "vibe_opportunity",

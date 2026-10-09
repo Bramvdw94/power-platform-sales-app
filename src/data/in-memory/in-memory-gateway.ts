@@ -323,7 +323,7 @@ export class InMemorySalesGateway implements SalesGateway {
     const row = this.leadRow(id)
     this.requireEdit(row.ownerId)
     if (isLeadReadOnly(row)) throw new GatewayError("invalid", `A ${row.status} Lead is read-only.`)
-    const next = { ...row, ...defined(clone(update)) }
+    const next = withoutBlanks({ ...row, ...defined(clone(update)) })
     invalid("The Lead cannot be saved.", leadErrors(next))
     this.store.leads.set(id, next)
     return this.toLead(next)

@@ -5,6 +5,8 @@ import AccountRecordPage from "@/pages/accounts/account-record"
 import ContactListPage from "@/pages/contacts/contact-list"
 import ContactRecordPage from "@/pages/contacts/contact-record"
 import HomePage from "@/pages/home"
+import LeadListPage from "@/pages/leads/lead-list"
+import LeadRecordPage from "@/pages/leads/lead-record"
 import MenuPage from "@/pages/menu"
 import NotFoundPage from "@/pages/not-found"
 import { ListPlaceholder, PlaceholderPage, RecordPlaceholder } from "@/pages/placeholder"
@@ -18,8 +20,8 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <HomePage /> },
       { path: "pipeline", element: <PlaceholderPage title="Pipeline" ticket="#32" /> },
-      { path: "leads", element: <ListPlaceholder title="Leads" ticket="#29" /> },
-      { path: "leads/:id", element: <RecordPlaceholder title="Lead" ticket="#29" /> },
+      { path: "leads", element: <LeadListPage /> },
+      { path: "leads/:id", element: <LeadRecordPage /> },
       { path: "opportunities", element: <ListPlaceholder title="Opportunities" ticket="#30" /> },
       { path: "opportunities/:id", element: <RecordPlaceholder title="Opportunity" ticket="#30" /> },
       { path: "accounts", element: <AccountListPage /> },
