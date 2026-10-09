@@ -17,7 +17,10 @@ Scaffolded from Microsoft's
 ## Prerequisites
 
 - Node.js 22 or later
+- The npm Power Apps CLI (`pa`, `npm i -g @microsoft/power-apps-cli`) for data
+  sources and deploys
 - [Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction) (`pac`)
+  for solution sync
 - A Power Platform environment with code apps enabled
 
 ## Getting started
@@ -25,12 +28,15 @@ Scaffolded from Microsoft's
 ```bash
 npm install
 
-# Sign in and connect the app to your environment (first time only)
-pac auth create
-pac code init --environment <environmentId> --displayName "Sales App"
+# Sign in (first time only); power.config.json already points at dev-salesapp
+BROWSER=chromium pa auth login
 
-npm run dev
+npm run dev          # against Dataverse
+npm run dev:memory   # on the in-memory seed data, no environment needed
 ```
+
+`dev:memory` signs in as Adele Vance; set `VITE_SALES_USER` to `megan`,
+`alex`, `diego` or `bram` (for example in `.env.memory.local`) to be someone else.
 
 ## Tests
 
@@ -54,13 +60,58 @@ Run all three before opening a pull request.
   manages Adele Vance and Alex Wilber; Diego Siciliani is outside her team),
   used by tests and local development.
 - `src/data/dataverse/`: the Dataverse gateway, the only code allowed to import
-  the generated Dataverse services (ESLint enforces this).
+  the generated Dataverse services (ESLint enforces this). It reaches Dataverse
+  through a small `DataverseClient` port (`client.ts`); `generated-client.ts`
+  implements it over `src/generated`. Methods a later ticket builds throw
+  `NotAvailableYetError` naming that ticket.
+- `src/components/shell/` and `src/routes.tsx`: the app shell (sidebar and top
+  bar on a desktop, bottom tabs on a phone) and every route in the spec.
 
 UI tests render with `renderWithGateway()` from `src/test/render.tsx`.
+
+## Dataverse data sources
+
+Generated with the npm Power Apps CLI (`pa`) into `src/generated/` and committed.
+Add a table or Dataverse function with:
+
+```bash
+pa app add data-source --non-interactive --connector dataverse --table <logical-name>
+pa app add dataverse-api --non-interactive --api-name <name>
+```
+
+Each writes `src/generated/`, `.power/schemas/` and `power.config.json`;
+commit all three. `pa app find-dataverse-api --search <text>` finds an API's
+exact name.
+
+Then wire it into `src/data/dataverse/generated-client.ts`. Tables so far:
+`systemuser`, `account`, `contact` and `vibe_opportunity` (registered as
+`opportunities`), plus the `WhoAmI` function.
+
+The generated models list no bind key for polymorphic lookups such as a
+Contact's company (`parentcustomerid`). The SDK sends the body to the Web API
+as is, so the gateway binds the per-target navigation property itself
+(`parentcustomerid_account@odata.bind`) and clears it by setting
+`parentcustomerid_account` to null.
 
 ## Deploy
 
 ```bash
-npm run build
-pac code push
+npm run deploy
 ```
+
+This builds and runs `pa app push` pinned to the SalesApp solution
+(`f31fe92d-d5c3-f111-b377-7c1e5253a39d`); never push without the solution id,
+or the app lands in the environment's preferred solution. If `pa` reports
+"not signed in" right after signing in, push with the global CLI:
+`PA_CLI=$(which pa) npm run deploy`.
+
+Then bring the solution folder up to date and commit it:
+
+```bash
+cd solutions/SalesApp
+pac solution sync
+```
+
+The app is **Sales App** (app id `4ef54f2e-5c41-4b99-803d-763351b2cc01`) in
+dev-salesapp:
+<https://apps.powerapps.com/play/e/553590c6-6bcb-e2f3-bd06-7d21eb695ff6/app/4ef54f2e-5c41-4b99-803d-763351b2cc01>
