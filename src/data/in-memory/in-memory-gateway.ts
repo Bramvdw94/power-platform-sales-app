@@ -112,6 +112,11 @@ function defined<T extends object>(patch: T): Partial<T> {
   return Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as Partial<T>
 }
 
+/** Removes optional fields an edit set to "", as Dataverse stores a blank column as null. */
+function withoutBlanks<T extends object>(row: T): T {
+  return Object.fromEntries(Object.entries(row).filter(([, v]) => v !== "")) as T
+}
+
 function clone<T>(value: T): T {
   return structuredClone(value)
 }
@@ -281,7 +286,7 @@ export class InMemorySalesGateway implements SalesGateway {
   async updateAccount(id: Id, update: AccountUpdate): Promise<Account> {
     const row = this.accountRow(id)
     this.requireEdit(row.ownerId)
-    const next = { ...row, ...defined(clone(update)) }
+    const next = withoutBlanks({ ...row, ...defined(clone(update)) })
     invalid("The Account cannot be saved.", accountErrors(next))
     this.store.accounts.set(id, next)
     return this.toAccount(next)
@@ -299,7 +304,7 @@ export class InMemorySalesGateway implements SalesGateway {
     const row = this.contactRow(id)
     this.requireEdit(row.ownerId)
     if (update.accountId) this.accountRow(update.accountId)
-    const next = { ...row, ...defined(clone(update)) }
+    const next = withoutBlanks({ ...row, ...defined(clone(update)) })
     invalid("The Contact cannot be saved.", contactErrors(next))
     this.store.contacts.set(id, next)
     return this.toContact(next)

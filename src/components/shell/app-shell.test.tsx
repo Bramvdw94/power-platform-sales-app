@@ -63,7 +63,7 @@ describe("app shell on a desktop", () => {
     const { router } = renderApp()
     await user.type(screen.getByRole("searchbox", { name: /Search Leads/ }), "Fabrikam{Enter}")
     expect(router.state.location.pathname).toBe("/search")
-    expect(screen.getByText("Results for “Fabrikam”.")).toBeInTheDocument()
+    expect(await screen.findByRole("link", { name: "Fabrikam NV" })).toBeInTheDocument()
   })
 
   it("creates any record type from + New", async () => {
@@ -73,7 +73,7 @@ describe("app shell on a desktop", () => {
     expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Lead", "Opportunity", "Account", "Contact"])
     await user.click(screen.getByRole("menuitem", { name: "Account" }))
     expect(router.state.location.pathname).toBe("/accounts")
-    expect(screen.getByText("The New dialog opens here.")).toBeInTheDocument()
+    expect(await screen.findByRole("dialog", { name: "New Account" })).toBeInTheDocument()
   })
 
   it("shows a not-found page inside the shell for unknown links", async () => {
@@ -86,8 +86,8 @@ describe("app shell on a desktop", () => {
     ["/pipeline", "Pipeline"],
     ["/leads/lead-sanne", "Lead"],
     ["/opportunities/opp-tailwind-workplace", "Opportunity"],
-    ["/accounts/acc-tailwind", "Account"],
-    ["/contacts/con-lotte", "Contact"],
+    ["/accounts/acc-tailwind", "Tailwind Traders"],
+    ["/contacts/con-lotte", "Lotte de Groot"],
   ])("has a page at %s", async (path, heading) => {
     renderApp(path)
     expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument()
@@ -140,7 +140,8 @@ describe("app shell on a phone", () => {
     await user.click(within(mainNav()).getByRole("link", { name: "Search" }))
     await user.type(screen.getByRole("searchbox", { name: /Search Leads/ }), "Lotte{Enter}")
     expect(router.state.location.search).toBe("?q=Lotte")
-    expect(screen.getByText("Results for “Lotte”.")).toBeInTheDocument()
+    const contacts = await screen.findByRole("region", { name: "Contacts (1)" })
+    expect(within(contacts).getByRole("link", { name: "Lotte de Groot" })).toBeInTheDocument()
   })
 
   it("shows whoever is signed in", async () => {
