@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button"
 
 export default function NotFoundPage() {
   return (
-    <div className="min-h-full grid place-items-center">
-      <div className="w-full max-w-7xl px-8 text-center flex flex-col items-center space-y-6">
-        <h1 className="text-5xl leading-tight tracking-tight">404 – Not found</h1>
-        <p className="text-muted-foreground">This isn't the page you're looking for.</p>
-        <Button variant="outline"><Link to="/">Go home</Link></Button>
+    <div className="grid min-h-full place-items-center p-8">
+      <div className="flex flex-col items-center space-y-4 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Page not found</h1>
+        <p className="text-muted-foreground">This page doesn't exist, or the link is out of date.</p>
+        <Button variant="outline" asChild>
+          <Link to="/">Go to Home</Link>
+        </Button>
       </div>
     </div>
   )

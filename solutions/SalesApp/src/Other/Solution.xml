@@ -93,6 +93,7 @@
       <RootComponent type="1" schemaName="task" behavior="2" />
       <RootComponent type="1" schemaName="vibe_lead" behavior="0" />
       <RootComponent type="1" schemaName="vibe_opportunity" behavior="0" />
+      <RootComponent type="300" schemaName="vibe_salesapp_65562" behavior="0" />
       <RootComponent type="9" schemaName="vibe_disqualifyreason" behavior="0" />
       <RootComponent type="9" schemaName="vibe_leadsource" behavior="0" />
       <RootComponent type="9" schemaName="vibe_leadstatus" behavior="0" />
