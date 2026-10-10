@@ -1,13 +1,6 @@
 import type { User } from "@/sales"
+import { initials } from "@/lib/format"
 import { cn } from "@/lib/utils"
-
-function initials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  const first = parts[0][0]
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : ""
-  return (first + last).toUpperCase()
-}
 
 /** The signed-in user's initials in a circle; the full name is its accessible name. */
 export function UserAvatar({ user, className }: { user: User; className?: string }) {
