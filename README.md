@@ -121,3 +121,9 @@ pac solution sync
 The app is **Sales App** (app id `4ef54f2e-5c41-4b99-803d-763351b2cc01`) in
 dev-salesapp:
 <https://apps.powerapps.com/play/e/553590c6-6bcb-e2f3-bd06-7d21eb695ff6/app/4ef54f2e-5c41-4b99-803d-763351b2cc01>
+
+## Sample data
+
+`python scripts/load_sample_data.py --apply` loads fictional demo data into
+dev-salesapp and `python scripts/reset_sample_data.py --apply` removes it
+again; see [docs/sample-data.md](docs/sample-data.md).
