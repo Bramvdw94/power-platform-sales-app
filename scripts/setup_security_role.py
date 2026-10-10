@@ -66,6 +66,11 @@ EXTRAS = {
     "prvAppendToUser": (GLOBAL, "Disqualify sets vibe_DisqualifiedBy and Close sets vibe_ClosedBy, both "
                         "lookups to systemuser; binding them fails with 0x80040220 'missing "
                         "prvAppendToUser' without it (seen as Adele and Megan, #29)"),
+    "prvReadRole": (LOCAL, "Reassign lists who can own a record by filtering systemuser on "
+                    "systemuserroles_association/any(r:r/name eq 'SalesApp Salesperson'); that "
+                    "fails with 0x80040220 'missing prvReadRole' without it (seen as Adele and "
+                    "Megan, #34). Roles belong to a business unit and every user is in the root "
+                    "one, so Local is enough"),
 }
 
 # Dataverse puts these back on every role, even straight after a
