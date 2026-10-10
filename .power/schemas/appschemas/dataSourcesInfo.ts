@@ -5,31 +5,17 @@
  */
 
 export const dataSourcesInfo = {
-  "annotations": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "annotationid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "phonecalls": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "activityid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "tasks": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "activityid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
   "accounts": {
     "tableId": "",
     "version": "",
     "primaryKey": "accountid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "annotations": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "annotationid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },
@@ -40,10 +26,24 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "phonecalls": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "activityid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "systemusers": {
     "tableId": "",
     "version": "",
     "primaryKey": "systemuserid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "tasks": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "activityid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },

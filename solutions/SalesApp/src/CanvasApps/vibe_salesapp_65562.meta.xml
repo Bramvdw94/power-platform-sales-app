@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Name>vibe_salesapp_65562</Name>
-  <AppVersion>2026-10-10T07:15:05Z</AppVersion>
+  <AppVersion>2026-10-10T07:18:41Z</AppVersion>
   <Status>Ready</Status>
   <CreatedByClientVersion>0.0.0.0</CreatedByClientVersion>
   <MinClientVersion>0.0.0.0</MinClientVersion>
@@ -15,7 +15,7 @@
   <Publisher xsi:nil="true"></Publisher>
   <AuthorizationReferences>[]</AuthorizationReferences>
   <ConnectionReferences>{}</ConnectionReferences>
-  <DatabaseReferences>{"default.cds":{"databaseDetails":{"referenceType":"Environmental","environmentName":"default.cds","overrideValues":{"status":"NotSpecified","environmentVariableName":""}},"dataSources":{"users":{"entitySetName":"systemusers","logicalName":"systemuser"},"environment_39a902ba":{"entitySetName":"Environment","logicalName":"environment_39a902ba"},"accounts":{"entitySetName":"accounts","logicalName":"account"},"contacts":{"entitySetName":"contacts","logicalName":"contact"},"leads":{"entitySetName":"vibe_leads","logicalName":"vibe_lead"},"opportunities":{"entitySetName":"vibe_opportunities","logicalName":"vibe_opportunity"}}}}</DatabaseReferences>
+  <DatabaseReferences>{"default.cds":{"databaseDetails":{"referenceType":"Environmental","environmentName":"default.cds","overrideValues":{"status":"NotSpecified","environmentVariableName":""}},"dataSources":{"users":{"entitySetName":"systemusers","logicalName":"systemuser"},"environment_39a902ba":{"entitySetName":"Environment","logicalName":"environment_39a902ba"},"accounts":{"entitySetName":"accounts","logicalName":"account"},"contacts":{"entitySetName":"contacts","logicalName":"contact"},"leads":{"entitySetName":"vibe_leads","logicalName":"vibe_lead"},"opportunities":{"entitySetName":"vibe_opportunities","logicalName":"vibe_opportunity"},"annotations":{"entitySetName":"annotations","logicalName":"annotation"},"tasks":{"entitySetName":"tasks","logicalName":"task"},"phonecalls":{"entitySetName":"phonecalls","logicalName":"phonecall"}}}}</DatabaseReferences>
   <AppComponents>[]</AppComponents>
   <AppComponentDependencies>[]</AppComponentDependencies>
   <CanConsumeAppPass>1</CanConsumeAppPass>
@@ -24,12 +24,12 @@
   <AdminControlBypassConsent>0</AdminControlBypassConsent>
   <EmbeddedApp xsi:nil="true"></EmbeddedApp>
   <IntroducedVersion>1.0</IntroducedVersion>
-  <CdsDependencies>{"cdsdependencies":[{"logicalname":"systemuser","componenttype":1},{"logicalname":"account","componenttype":1},{"logicalname":"contact","componenttype":1},{"logicalname":"vibe_lead","componenttype":1},{"logicalname":"vibe_opportunity","componenttype":1}]}</CdsDependencies>
+  <CdsDependencies>{"cdsdependencies":[{"logicalname":"systemuser","componenttype":1},{"logicalname":"account","componenttype":1},{"logicalname":"contact","componenttype":1},{"logicalname":"vibe_lead","componenttype":1},{"logicalname":"vibe_opportunity","componenttype":1},{"logicalname":"annotation","componenttype":1},{"logicalname":"task","componenttype":1},{"logicalname":"phonecall","componenttype":1}]}</CdsDependencies>
   <IsCustomizable>1</IsCustomizable>
   <CodeAppPackageUris>
     <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-2bHZYriT.css_ContentType_text/css</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-eHRRn0MN.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-Ds9I2tfa.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-EucF-qIh.css_ContentType_text/css</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/power-apps.svg_ContentType_image/svg+xml</CodeAppPackageUri>
   </CodeAppPackageUris>
 </CanvasApp>
