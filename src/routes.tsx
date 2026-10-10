@@ -11,7 +11,7 @@ import MenuPage from "@/pages/menu"
 import NotFoundPage from "@/pages/not-found"
 import OpportunityListPage from "@/pages/opportunities/opportunity-list"
 import OpportunityRecordPage from "@/pages/opportunities/opportunity-record"
-import { PlaceholderPage } from "@/pages/placeholder"
+import PipelinePage from "@/pages/pipeline/pipeline-page"
 import SearchPage from "@/pages/search"
 
 /** Every page in the spec (#23). Placeholders are replaced by the ticket they name. */
@@ -21,7 +21,7 @@ export const routes: RouteObject[] = [
     element: <AppShell />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: "pipeline", element: <PlaceholderPage title="Pipeline" ticket="#32" /> },
+      { path: "pipeline", element: <PipelinePage /> },
       { path: "leads", element: <LeadListPage /> },
       { path: "leads/:id", element: <LeadRecordPage /> },
       { path: "opportunities", element: <OpportunityListPage /> },

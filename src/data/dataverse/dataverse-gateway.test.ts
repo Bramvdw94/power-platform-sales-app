@@ -662,6 +662,34 @@ describe("DataverseSalesGateway, Opportunities", () => {
     expect(client.opportunities.list.mock.calls[2][0].filter).toBeUndefined()
   })
 
+  it("loads the Pipeline for the filter, Dataverse narrowing by Owner, Stage and close date", async () => {
+    vi.useFakeTimers({ now: new Date(2026, 9, 9, 12), toFake: ["Date"] })
+    try {
+      const client = fakeClient(MEGAN)
+      const gateway = new DataverseSalesGateway(client)
+      const open = "(vibe_stage eq 841200000 or vibe_stage eq 841200001 or vibe_stage eq 841200002 or vibe_stage eq 841200003)"
+      const team = `(_ownerid_value eq ${MEGAN} or _ownerid_value eq ${ADELE} or _ownerid_value eq ${ALEX})`
+
+      const pipeline = await gateway.getPipeline({ owner: "myTeam", closeDate: "any", showClosed: false })
+      expect(pipeline.map((o) => o.name)).toEqual(["Tailwind Traders - Managed workplace"])
+      expect(client.opportunities.list.mock.calls[0][0]).toMatchObject({
+        filter: `${team} and ${open}`,
+        orderBy: ["vibe_expectedclosedate asc", "vibe_opportunityid asc"],
+      })
+
+      await gateway.getPipeline({ owner: "mine", closeDate: "thisQuarter", showClosed: true })
+      expect(client.opportunities.list.mock.calls[1][0].filter).toBe(
+        `(_ownerid_value eq ${MEGAN}) and ((${open} and vibe_expectedclosedate ge 2026-10-01 and vibe_expectedclosedate le 2026-12-31)` +
+          ` or ((vibe_stage eq 841200004 or vibe_stage eq 841200005) and vibe_closedate ge 2026-10-01 and vibe_closedate le 2026-12-31))`,
+      )
+      // Megan owns none of the rows, so the sales rules drop what the fake doesn't filter.
+      expect(await gateway.getPipeline({ owner: "mine", closeDate: "any", showClosed: true })).toEqual([])
+      expect(client.opportunities.list.mock.calls[2][0].filter).toBe(`(_ownerid_value eq ${MEGAN})`)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("loads an Opportunity with its Account and Primary Contact", async () => {
     const client = fakeClient(MEGAN)
     await client.opportunities.update(OPP, { _vibe_primarycontactid_value: LOTTE })
