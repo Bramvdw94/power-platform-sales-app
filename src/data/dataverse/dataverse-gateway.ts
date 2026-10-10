@@ -793,22 +793,30 @@ export class DataverseSalesGateway implements SalesGateway {
         `_vibe_originatingleadid_value eq ${guid(lead.id)}`,
         ["createdon asc"],
       )
-      if (existing) return existing.vibe_opportunityid
-      const draft = newOpportunityFromLead(lead, { accountId, primaryContactId: contactId }, input.opportunity)
-      const row = await this.call(() =>
-        this.client.opportunities.create(
-          fields({
-            ...opportunityFields(draft),
-            vibe_stage: toChoice(STAGES, draft.stage),
-            vibe_probability: draft.probability,
-            ...bind(OPPORTUNITY_NAVIGATION.originatingLead, "vibe_leads", lead.id),
-            // New records belong to whoever creates them; a manager qualifying gives it to the Lead's Owner.
-            ...(draft.ownerId !== user.id ? bind("ownerid", "systemusers", draft.ownerId) : {}),
-          }),
-        ),
-      )
-      created.opportunityId = row.vibe_opportunityid
-      return row.vibe_opportunityid
+      let id = existing?.vibe_opportunityid
+      if (!id) {
+        const draft = newOpportunityFromLead(lead, { accountId, primaryContactId: contactId }, input.opportunity)
+        const row = await this.call(() =>
+          this.client.opportunities.create(
+            fields({
+              ...opportunityFields(draft),
+              vibe_stage: toChoice(STAGES, draft.stage),
+              vibe_probability: draft.probability,
+              ...bind(OPPORTUNITY_NAVIGATION.originatingLead, "vibe_leads", lead.id),
+            }),
+          ),
+        )
+        id = row.vibe_opportunityid
+        created.opportunityId = id
+      }
+      // New records belong to whoever creates them. A manager qualifying hands the
+      // Opportunity to the Lead's Owner afterwards: creating it for someone else
+      // needs Create beyond User level, assigning only the manager's Assign.
+      const ownerId = existing ? existing._ownerid_value : user.id
+      if (ownerId !== lead.ownerId) {
+        await this.call(() => this.client.opportunities.update(id, bind("ownerid", "systemusers", lead.ownerId)))
+      }
+      return id
     })
 
     await step("lead", () =>
