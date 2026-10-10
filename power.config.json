@@ -43,6 +43,21 @@
           "entitySetName": "vibe_opportunities",
           "logicalName": "vibe_opportunity",
           "isHidden": false
+        },
+        "annotations": {
+          "entitySetName": "annotations",
+          "logicalName": "annotation",
+          "isHidden": false
+        },
+        "tasks": {
+          "entitySetName": "tasks",
+          "logicalName": "task",
+          "isHidden": false
+        },
+        "phonecalls": {
+          "entitySetName": "phonecalls",
+          "logicalName": "phonecall",
+          "isHidden": false
         }
       },
       "environmentVariableName": ""

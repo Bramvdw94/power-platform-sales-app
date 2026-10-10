@@ -171,6 +171,57 @@ export const OPPORTUNITY_COLUMNS = [
   "createdon",
 ] as const
 
+/** The annotation (Note) columns the app reads. */
+export type NoteRow = Row & {
+  annotationid: Id
+  subject?: string | null
+  notetext?: string | null
+  /** The record the Note is about: polymorphic. */
+  _objectid_value?: Id | null
+  _ownerid_value?: Id | null
+  createdon?: string | null
+}
+
+export const NOTE_COLUMNS = ["annotationid", "subject", "notetext", "_objectid_value", "_ownerid_value", "createdon"] as const
+
+/** The task and phonecall columns the app reads. */
+export type ActivityRow = Row & {
+  activityid: Id
+  subject?: string | null
+  description?: string | null
+  /** A Task's due date; an open Phone Call's planned date. */
+  scheduledend?: string | null
+  /** When a Task was completed; a logged Phone Call's date. */
+  actualend?: string | null
+  /** 0 open, 1 completed, 2 canceled. */
+  statecode?: number | null
+  /** The record the activity is about: polymorphic. */
+  _regardingobjectid_value?: Id | null
+  _ownerid_value?: Id | null
+  createdon?: string | null
+}
+
+const ACTIVITY_COLUMNS = [
+  "activityid",
+  "subject",
+  "description",
+  "scheduledend",
+  "actualend",
+  "statecode",
+  "_regardingobjectid_value",
+  "_ownerid_value",
+  "createdon",
+] as const
+
+export const TASK_COLUMNS = ACTIVITY_COLUMNS
+
+export type PhoneCallRow = ActivityRow & {
+  /** true: outgoing. */
+  directioncode?: boolean | null
+}
+
+export const PHONE_CALL_COLUMNS = [...ACTIVITY_COLUMNS, "directioncode"] as const
+
 export type ListOptions = {
   filter?: string
   orderBy?: string[]
@@ -209,6 +260,9 @@ export interface DataverseClient {
   contacts: TableClient<ContactRow>
   leads: TableClient<LeadRow>
   opportunities: TableClient<OpportunityRow>
+  notes: TableClient<NoteRow>
+  tasks: TableClient<ActivityRow>
+  phoneCalls: TableClient<PhoneCallRow>
 }
 
 /** A Lead's Disqualified by lookup (to systemuser), as a navigation property. */
@@ -224,3 +278,19 @@ export const OPPORTUNITY_NAVIGATION = {
   closedBy: "vibe_ClosedBy",
   originatingLead: "vibe_OriginatingLeadId",
 } as const
+
+/** The Dataverse tables behind the four record types, for polymorphic lookups. */
+export const RECORD_TABLES = {
+  lead: { logicalName: "vibe_lead", entitySet: "vibe_leads" },
+  opportunity: { logicalName: "vibe_opportunity", entitySet: "vibe_opportunities" },
+  account: { logicalName: "account", entitySet: "accounts" },
+  contact: { logicalName: "contact", entitySet: "contacts" },
+} as const
+
+/**
+ * The per-target navigation property of a Note's `objectid` or an activity's
+ * `regardingobjectid` (#12), e.g. `regardingobjectid_vibe_lead_task`.
+ */
+export function regardingNavigation(table: "annotation" | "task" | "phonecall", logicalName: string): string {
+  return table === "annotation" ? `objectid_${logicalName}` : `regardingobjectid_${logicalName}_${table}`
+}

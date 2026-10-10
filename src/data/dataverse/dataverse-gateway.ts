@@ -10,6 +10,7 @@ import {
   type ContactUpdate,
   type CurrentUser,
   type DisqualifyInput,
+  type HomeData,
   type LeadDetails,
   type LeadListQuery,
   type LeadUpdate,
@@ -17,9 +18,12 @@ import {
   type OpportunityDetails,
   type OpportunityListQuery,
   type OpportunityUpdate,
+  type NoteInput,
   type Page,
+  type PhoneCallInput,
   type SalesGateway,
   type SearchResults,
+  type TaskInput,
 } from "@/data/gateway"
 import {
   DISQUALIFY_REASONS,
@@ -41,6 +45,11 @@ import {
   leadErrors,
   leadStatusAfter,
   manualLeadAction,
+  noteErrors,
+  orderTimeline,
+  phoneCallErrors,
+  sortOpenTasks,
+  taskErrors,
   isOpportunityReadOnly,
   opportunityErrors,
   reopenOpportunity,
@@ -48,9 +57,11 @@ import {
   toDateOnly,
   type Account,
   type AccountInput,
+  type Activity,
   type CloseChange,
   type CloseInput,
   type Contact,
+  type DateOnly,
   type ContactInput,
   type FieldErrors,
   type Id,
@@ -58,22 +69,33 @@ import {
   type LeadAction,
   type LeadInput,
   type ListView,
+  type Note,
   type OpenStage,
   type Opportunity,
   type OpportunityInput,
+  type PhoneCall,
+  type RecordRef,
+  type RecordType,
+  type Task,
+  type Timestamp,
   type User,
 } from "@/sales"
 import {
   CONTACT_ACCOUNT_NAVIGATION,
   LEAD_DISQUALIFIED_BY_NAVIGATION,
   OPPORTUNITY_NAVIGATION,
+  RECORD_TABLES,
+  regardingNavigation,
   type AccountRow,
+  type ActivityRow,
   type ContactRow,
   type LeadRow,
   type DataverseClient,
   type Fields,
   type ListOptions,
+  type NoteRow,
   type OpportunityRow,
+  type PhoneCallRow,
   type RowPage,
   type SystemUserRow,
   type TableClient,
@@ -438,7 +460,34 @@ export class DataverseSalesGateway implements SalesGateway {
     return { items: page.rows.map(toOpportunity), totalCount: page.totalCount }
   }
 
-  getHome = notYet("getHome", "#33")
+  /** My open Tasks (overdue first), my open Opportunities closing this month, my Leads still Not Contacted. */
+  async getHome(): Promise<HomeData> {
+    const { user } = await this.getCurrentUser()
+    const mine = `_ownerid_value eq ${guid(user.id)}`
+    const today = new Date()
+    const monthStart = toDateOnly(new Date(today.getFullYear(), today.getMonth(), 1))
+    const monthEnd = toDateOnly(new Date(today.getFullYear(), today.getMonth() + 1, 0))
+    const openStages = OPEN_STAGES.map((s) => `vibe_stage eq ${toChoice(STAGES, s)}`).join(" or ")
+    const [tasks, opportunities, leads] = await Promise.all([
+      this.related(this.client.tasks, `${mine} and ${ACTIVE}`, ["scheduledend asc"]),
+      this.related(
+        this.client.opportunities,
+        `${mine} and (${openStages}) and vibe_expectedclosedate ge ${monthStart} and vibe_expectedclosedate le ${monthEnd}`,
+        ["vibe_expectedclosedate asc"],
+      ),
+      this.related(
+        this.client.leads,
+        `${mine} and vibe_leadstatus eq ${toChoice(LEAD_STATUSES, "notContacted")}`,
+        ["createdon desc"],
+      ),
+    ])
+    return {
+      openTasks: sortOpenTasks(tasks.map((row) => toTask(row)).filter((t): t is Task => t !== undefined)),
+      opportunitiesClosingThisMonth: opportunities.map(toOpportunity),
+      leadsNotContacted: leads.map(toLead),
+    }
+  }
+
   getPipeline = notYet("getPipeline", "#32")
 
   // ---- Record pages ---------------------------------------------------------
@@ -673,14 +722,113 @@ export class DataverseSalesGateway implements SalesGateway {
     return toOpportunity(await this.call(() => this.client.opportunities.get(guid(id))))
   }
 
-  // ---- Ownership and activities ---------------------------------------------
+  // ---- Ownership ---------------------------------------------------------------
 
   reassign = notYet("reassign", "#34")
-  listActivities = notYet("listActivities", "#33")
-  addNote = notYet("addNote", "#33")
-  addTask = notYet("addTask", "#33")
-  addPhoneCall = notYet("addPhoneCall", "#33")
-  completeTask = notYet("completeTask", "#33")
+
+  // ---- Activities -----------------------------------------------------------
+  // Notes, Tasks and Phone Calls link to their record through a polymorphic
+  // lookup, written through the per-target navigation property (#12).
+
+  /** The record's own Notes, Tasks and Phone Calls: open Tasks first, then the rest newest first. */
+  async listActivities(record: RecordRef): Promise<Activity[]> {
+    const key = guid(record.id)
+    const [notes, tasks, calls] = await Promise.all([
+      this.related(this.client.notes, `_objectid_value eq ${key}`, ["createdon desc"]),
+      this.related(this.client.tasks, `_regardingobjectid_value eq ${key}`, ["createdon desc"]),
+      this.related(this.client.phoneCalls, `_regardingobjectid_value eq ${key}`, ["createdon desc"]),
+    ])
+    const activities: (Activity | undefined)[] = [
+      ...notes.map((row) => toNote(row, record)),
+      ...tasks.map((row) => toTask(row, record)),
+      ...calls.map((row) => toPhoneCall(row, record)),
+    ]
+    return orderTimeline(activities.filter((a): a is Activity => a !== undefined))
+  }
+
+  async addNote(record: RecordRef, input: NoteInput): Promise<Note> {
+    await this.requireEditRecord(record)
+    invalid("The Note cannot be saved.", noteErrors(input))
+    const created = await this.call(() =>
+      this.client.notes.create({
+        subject: input.title.trim() || null,
+        notetext: input.text.trim() || null,
+        ...regarding("annotation", record),
+      }),
+    )
+    return toNote(await this.call(() => this.client.notes.get(created.annotationid)), record)!
+  }
+
+  async addTask(record: RecordRef, input: TaskInput): Promise<Task> {
+    await this.requireEditRecord(record)
+    invalid("The Task cannot be saved.", taskErrors(input))
+    const created = await this.call(() =>
+      this.client.tasks.create({
+        subject: input.subject.trim(),
+        description: input.description?.trim() || null,
+        scheduledend: input.dueDate ? toMoment(input.dueDate) : null,
+        ...regarding("task", record),
+      }),
+    )
+    return toTask(await this.call(() => this.client.tasks.get(created.activityid)), record)!
+  }
+
+  /**
+   * A logged call (the default) is created and then completed, as Made or
+   * Received; a planned call stays open. The platform sets the caller as From.
+   */
+  async addPhoneCall(record: RecordRef, input: PhoneCallInput): Promise<PhoneCall> {
+    await this.requireEditRecord(record)
+    invalid("The Phone Call cannot be saved.", phoneCallErrors(input))
+    const completed = input.completed ?? true
+    const created = await this.call(() =>
+      this.client.phoneCalls.create({
+        subject: input.subject.trim(),
+        description: input.notes?.trim() || null,
+        directioncode: input.direction === "outgoing",
+        [completed ? "actualend" : "scheduledend"]: toMoment(input.date),
+        ...regarding("phonecall", record),
+      }),
+    )
+    if (completed) {
+      await this.call(() =>
+        this.client.phoneCalls.update(created.activityid, {
+          statecode: 1,
+          statuscode: input.direction === "outgoing" ? PHONE_CALL_MADE : PHONE_CALL_RECEIVED,
+        }),
+      )
+    }
+    return toPhoneCall(await this.call(() => this.client.phoneCalls.get(created.activityid)), record)!
+  }
+
+  /** The Task's Owner or their manager completes it. */
+  async completeTask(taskId: Id): Promise<Task> {
+    const key = guid(taskId)
+    const row = await this.call(() => this.client.tasks.get(key))
+    if (!(await this.mayEdit(row._ownerid_value))) throw forbidden()
+    if (row.statecode !== OPEN_ACTIVITY) throw new GatewayError("invalid", "This Task is already complete.")
+    await this.call(() => this.client.tasks.update(key, { statecode: 1, statuscode: TASK_COMPLETED }))
+    const task = toTask(await this.call(() => this.client.tasks.get(key)))
+    if (!task) throw new GatewayError("notFound", `Task ${taskId} is not about a Lead, Opportunity, Account or Contact.`)
+    return task
+  }
+
+  /**
+   * Only the record's Owner or the Owner's manager adds activities to it.
+   * Dataverse backs this for Leads and Opportunities (Append To at User level),
+   * not for Accounts and Contacts, so the gateway checks it for all four.
+   */
+  private async requireEditRecord(record: RecordRef): Promise<void> {
+    const key = guid(record.id)
+    const tables: Record<RecordType, TableClient<{ _ownerid_value?: Id | null }>> = {
+      lead: this.client.leads,
+      opportunity: this.client.opportunities,
+      account: this.client.accounts,
+      contact: this.client.contacts,
+    }
+    const row = await this.call(() => tables[record.type].get(key))
+    if (!(await this.mayEdit(row._ownerid_value))) throw forbidden()
+  }
 
   // ---- Helpers ---------------------------------------------------------------
 
@@ -767,6 +915,104 @@ export class DataverseSalesGateway implements SalesGateway {
       skipToken = result.skipToken
     } while (skipToken && rows.length < RELATED_LIMIT)
     return rows
+  }
+}
+
+// ---- Activities ------------------------------------------------------------------
+
+/** An activity's statecode while open; Tasks and Phone Calls complete to 1. */
+const OPEN_ACTIVITY = 0
+const TASK_COMPLETED = 5
+const PHONE_CALL_MADE = 2
+const PHONE_CALL_RECEIVED = 4
+
+const RECORD_TYPES = Object.fromEntries(
+  Object.entries(RECORD_TABLES).map(([type, table]) => [table.logicalName, type as RecordType]),
+) as Record<string, RecordType>
+
+function forbidden() {
+  return new GatewayError("forbidden", "Only the Owner or the Owner's manager can change this record.")
+}
+
+/** The lookup that links a new Note, Task or Phone Call to its record. */
+function regarding(table: "annotation" | "task" | "phonecall", record: RecordRef): Fields {
+  const target = RECORD_TABLES[record.type]
+  return { [`${regardingNavigation(table, target.logicalName)}@odata.bind`]: `/${target.entitySet}(${guid(record.id)})` }
+}
+
+/**
+ * A date-only value as a moment for a date-and-time column (due date, call
+ * date): noon local time, so the calendar date survives any time zone shift.
+ */
+export function toMoment(date: DateOnly): Timestamp {
+  const [y, m, d] = date.split("-").map(Number)
+  return new Date(y, m - 1, d, 12).toISOString()
+}
+
+/** The local calendar date of a date-and-time column. */
+function fromMoment(value: string | null | undefined): DateOnly | undefined {
+  if (!value) return undefined
+  const moment = new Date(value)
+  return Number.isNaN(moment.getTime()) ? undefined : toDateOnly(moment)
+}
+
+/**
+ * The record an activity is about. When the caller asked for one record's
+ * activities it is that record; otherwise it comes from the lookup, and
+ * activities about other kinds of records are left out (undefined).
+ */
+function regardingOf(row: Record<string, unknown>, lookup: string, record?: RecordRef): Pick<Activity, "regarding" | "regardingName"> | undefined {
+  const regardingName = lookupName(row, lookup) ?? ""
+  if (record) return { regarding: { ...record }, regardingName }
+  const id = row[`_${lookup}_value`]
+  const type = RECORD_TYPES[lookupTable(row, lookup) ?? ""]
+  return typeof id === "string" && type ? { regarding: { type, id }, regardingName } : undefined
+}
+
+function activityBase(row: Record<string, unknown>, id: Id) {
+  return {
+    id,
+    ownerId: (row._ownerid_value as Id | null | undefined) ?? "",
+    ownerName: lookupName(row, "ownerid") ?? "",
+    createdOn: (row.createdon as string | null | undefined) ?? "",
+  }
+}
+
+export function toNote(row: NoteRow, record?: RecordRef): Note | undefined {
+  const about = regardingOf(row, "objectid", record)
+  if (!about) return undefined
+  return { kind: "note", ...activityBase(row, row.annotationid), ...about, title: row.subject ?? "", text: row.notetext ?? "" }
+}
+
+export function toTask(row: ActivityRow, record?: RecordRef): Task | undefined {
+  const about = regardingOf(row, "regardingobjectid", record)
+  if (!about) return undefined
+  const completed = row.statecode !== undefined && row.statecode !== null && row.statecode !== OPEN_ACTIVITY
+  return {
+    kind: "task",
+    ...activityBase(row, row.activityid),
+    ...about,
+    subject: row.subject ?? "",
+    description: optional(row.description),
+    dueDate: fromMoment(row.scheduledend),
+    completed,
+    completedOn: completed ? optional(row.actualend) : undefined,
+  }
+}
+
+export function toPhoneCall(row: PhoneCallRow, record?: RecordRef): PhoneCall | undefined {
+  const about = regardingOf(row, "regardingobjectid", record)
+  if (!about) return undefined
+  const completed = row.statecode !== undefined && row.statecode !== null && row.statecode !== OPEN_ACTIVITY
+  return {
+    kind: "phoneCall",
+    ...activityBase(row, row.activityid),
+    ...about,
+    subject: row.subject ?? "",
+    direction: row.directioncode === false ? "incoming" : "outgoing",
+    date: fromMoment(completed ? (row.actualend ?? row.scheduledend) : (row.scheduledend ?? row.actualend)) ?? "",
+    notes: optional(row.description),
+    completed,
   }
 }
 

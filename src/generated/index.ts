@@ -5,17 +5,23 @@
 
 // Models
 export * as AccountsModel from './models/AccountsModel';
+export * as AnnotationsModel from './models/AnnotationsModel';
 export * as CommonModels from './models/CommonModels';
 export * as ContactsModel from './models/ContactsModel';
+export * as PhonecallsModel from './models/PhonecallsModel';
 export * as SystemusersModel from './models/SystemusersModel';
+export * as TasksModel from './models/TasksModel';
 export * as Vibe_leadsModel from './models/Vibe_leadsModel';
 export * as Vibe_opportunitiesModel from './models/Vibe_opportunitiesModel';
 export * as WhoAmIModel from './models/WhoAmIModel';
 
 // Services
 export * from './services/AccountsService';
+export * from './services/AnnotationsService';
 export * from './services/ContactsService';
+export * from './services/PhonecallsService';
 export * from './services/SystemusersService';
+export * from './services/TasksService';
 export * from './services/Vibe_leadsService';
 export * from './services/Vibe_opportunitiesService';
 export * from './services/WhoAmIService';

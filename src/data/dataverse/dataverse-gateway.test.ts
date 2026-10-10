@@ -1,7 +1,20 @@
 import { describe, expect, it, vi } from "vitest"
 import { GatewayError } from "@/data/gateway"
-import type { AccountRow, ContactRow, DataverseClient, Fields, LeadRow, ListOptions, OpportunityRow, SystemUserRow, TableClient } from "./client"
-import { DataverseSalesGateway, NotAvailableYetError } from "./dataverse-gateway"
+import type {
+  AccountRow,
+  ActivityRow,
+  ContactRow,
+  DataverseClient,
+  Fields,
+  LeadRow,
+  ListOptions,
+  NoteRow,
+  OpportunityRow,
+  PhoneCallRow,
+  SystemUserRow,
+  TableClient,
+} from "./client"
+import { DataverseSalesGateway, NotAvailableYetError, toMoment } from "./dataverse-gateway"
 
 const MEGAN = "aaaaaaaa-0000-0000-0000-000000000001"
 const ADELE = "aaaaaaaa-0000-0000-0000-000000000002"
@@ -120,6 +133,30 @@ const leadRows: LeadRow[] = [
   },
 ]
 
+const OPP = "eeeeeeee-0000-0000-0000-000000000001"
+const OPEN_TASK = "99999999-0000-0000-0000-000000000001"
+const DONE_TASK = "99999999-0000-0000-0000-000000000002"
+const REGARDING_OPP = {
+  _regardingobjectid_value: OPP,
+  "_regardingobjectid_value@Microsoft.Dynamics.CRM.lookuplogicalname": "vibe_opportunity",
+  "_regardingobjectid_value@OData.Community.Display.V1.FormattedValue": "Tailwind Traders - Managed workplace",
+}
+
+const noteRows: NoteRow[] = [
+  { annotationid: "99999999-0000-0000-0000-000000000010", subject: "Kick-off", notetext: "Pilot first.", _objectid_value: OPP, _ownerid_value: ADELE, createdon: "2026-09-10T09:00:00Z" },
+]
+
+const taskRows: ActivityRow[] = [
+  { activityid: OPEN_TASK, subject: "Send proposal", scheduledend: "2026-10-14T10:00:00Z", statecode: 0, ...REGARDING_OPP, _ownerid_value: ADELE, [OWNER_NAME]: "Adele Vance", createdon: "2026-10-06T09:00:00Z" },
+  { activityid: DONE_TASK, subject: "Intro meeting", scheduledend: "2026-09-01T10:00:00Z", actualend: "2026-09-01T15:00:00Z", statecode: 1, ...REGARDING_OPP, _ownerid_value: ADELE, createdon: "2026-08-30T09:00:00Z" },
+  // About a record type the app doesn't show: left out of Home.
+  { activityid: "99999999-0000-0000-0000-000000000003", subject: "Expense report", statecode: 0, _regardingobjectid_value: "12345678-0000-0000-0000-000000000000", "_regardingobjectid_value@Microsoft.Dynamics.CRM.lookuplogicalname": "incident", _ownerid_value: ADELE, createdon: "2026-10-01T09:00:00Z" },
+]
+
+const phoneCallRows: PhoneCallRow[] = [
+  { activityid: "99999999-0000-0000-0000-000000000020", subject: "First call", directioncode: false, actualend: "2026-09-02T10:00:00Z", statecode: 1, ...REGARDING_OPP, _ownerid_value: ADELE, createdon: "2026-09-02T10:05:00Z" },
+]
+
 /** A fake Dataverse that understands the one filter the gateway sends for direct reports. */
 function fakeClient(signedIn: string) {
   return {
@@ -127,6 +164,9 @@ function fakeClient(signedIn: string) {
     contacts: fakeTable("contactid", contactRows),
     leads: fakeTable("vibe_leadid", leadRows),
     opportunities: fakeTable("vibe_opportunityid", opportunityRows),
+    notes: fakeTable("annotationid", noteRows),
+    tasks: fakeTable("activityid", taskRows),
+    phoneCalls: fakeTable("activityid", phoneCallRows),
     whoAmI: vi.fn(async () => signedIn),
     getSystemUser: vi.fn(async (id: string) => {
       const user = users.find((u) => u.systemuserid === id)
@@ -176,8 +216,133 @@ describe("DataverseSalesGateway.getCurrentUser", () => {
 describe("DataverseSalesGateway, methods still to build", () => {
   it("fails loudly, naming the ticket", async () => {
     const gateway = new DataverseSalesGateway(fakeClient(ADELE))
-    await expect(gateway.getHome()).rejects.toThrow(NotAvailableYetError)
-    await expect(gateway.getHome()).rejects.toThrow("getHome is not available yet (#33)")
+    const reassign = gateway.reassign({ type: "lead", id: SANNE }, ALEX)
+    await expect(reassign).rejects.toThrow(NotAvailableYetError)
+    await expect(reassign).rejects.toThrow("reassign is not available yet (#34)")
+  })
+})
+
+describe("DataverseSalesGateway, activities", () => {
+  const opportunity = { type: "opportunity" as const, id: OPP }
+
+  it("lists a record's Notes, Tasks and Phone Calls with open Tasks on top", async () => {
+    const client = fakeClient(DIEGO)
+    const timeline = await new DataverseSalesGateway(client).listActivities(opportunity)
+
+    expect(client.notes.list.mock.calls[0][0].filter).toBe(`_objectid_value eq ${OPP}`)
+    expect(client.tasks.list.mock.calls[0][0].filter).toBe(`_regardingobjectid_value eq ${OPP}`)
+    expect(client.phoneCalls.list.mock.calls[0][0].filter).toBe(`_regardingobjectid_value eq ${OPP}`)
+    // The fake doesn't filter, so the Task about another record shows up here too; it still gets this record's ref.
+    expect(timeline.map((a) => a.kind === "note" ? a.title : a.subject)).toEqual([
+      "Send proposal",
+      "Expense report",
+      "Kick-off",
+      "First call",
+      "Intro meeting",
+    ])
+    expect(timeline[0]).toMatchObject({
+      kind: "task",
+      regarding: opportunity,
+      regardingName: "Tailwind Traders - Managed workplace",
+      ownerName: "Adele Vance",
+      dueDate: "2026-10-14",
+      completed: false,
+    })
+    expect(timeline.find((a) => a.kind === "phoneCall")).toMatchObject({ direction: "incoming", date: "2026-09-02", completed: true })
+    expect(timeline.find((a) => a.kind === "task" && a.completed)).toMatchObject({ completedOn: "2026-09-01T15:00:00Z" })
+  })
+
+  it("adds a Note to a Lead and a Task to an Opportunity through the per-target lookup", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+
+    const note = await gateway.addNote({ type: "lead", id: SANNE }, { title: " Budget ", text: "Approved for Q1" })
+    expect(client.notes.create).toHaveBeenCalledWith({
+      subject: "Budget",
+      notetext: "Approved for Q1",
+      "objectid_vibe_lead@odata.bind": `/vibe_leads(${SANNE})`,
+    })
+    expect(note).toMatchObject({ kind: "note", title: "Budget", regarding: { type: "lead", id: SANNE } })
+
+    const task = await gateway.addTask(opportunity, { subject: "Book demo", dueDate: "2026-10-12" })
+    expect(client.tasks.create).toHaveBeenCalledWith({
+      subject: "Book demo",
+      description: null,
+      scheduledend: toMoment("2026-10-12"),
+      "regardingobjectid_vibe_opportunity_task@odata.bind": `/vibe_opportunities(${OPP})`,
+    })
+    expect(task).toMatchObject({ kind: "task", dueDate: "2026-10-12", completed: false, regarding: opportunity })
+  })
+
+  it("logs a Phone Call on an Account as completed, Made or Received by direction", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    const account = { type: "account" as const, id: TAILWIND }
+
+    const call = await gateway.addPhoneCall(account, { subject: "Check-in", direction: "incoming", date: "2026-10-09", notes: "All good" })
+    expect(client.phoneCalls.create).toHaveBeenCalledWith({
+      subject: "Check-in",
+      description: "All good",
+      directioncode: false,
+      actualend: toMoment("2026-10-09"),
+      "regardingobjectid_account_phonecall@odata.bind": `/accounts(${TAILWIND})`,
+    })
+    expect(client.phoneCalls.update).toHaveBeenCalledWith(call.id, { statecode: 1, statuscode: 4 })
+    expect(call).toMatchObject({ direction: "incoming", date: "2026-10-09", completed: true })
+
+    const planned = await gateway.addPhoneCall(account, { subject: "Follow-up", direction: "outgoing", date: "2026-10-20", completed: false })
+    expect(client.phoneCalls.create.mock.lastCall?.[0]).toMatchObject({ directioncode: true, scheduledend: toMoment("2026-10-20") })
+    expect(client.phoneCalls.update).toHaveBeenCalledTimes(1)
+    expect(planned).toMatchObject({ date: "2026-10-20", completed: false })
+  })
+
+  it("lets only the Owner or the Owner's manager add activities, and checks the fields", async () => {
+    const peer = fakeClient(ALEX)
+    await expect(new DataverseSalesGateway(peer).addTask({ type: "account", id: TAILWIND }, { subject: "Sneaky" })).rejects.toMatchObject({ code: "forbidden" })
+    expect(peer.tasks.create).not.toHaveBeenCalled()
+
+    const manager = fakeClient(MEGAN)
+    await new DataverseSalesGateway(manager).addTask({ type: "account", id: TAILWIND }, { subject: "Coach Adele" })
+    expect(manager.tasks.create).toHaveBeenCalled()
+
+    const owner = new DataverseSalesGateway(fakeClient(ADELE))
+    await expect(owner.addTask(opportunity, { subject: " " })).rejects.toMatchObject({ code: "invalid", fieldErrors: { subject: "Subject is required." } })
+    await expect(owner.addNote(opportunity, { title: "", text: "" })).rejects.toMatchObject({ code: "invalid" })
+    await expect(owner.addPhoneCall(opportunity, { subject: "Call", direction: "outgoing", date: "" })).rejects.toMatchObject({
+      fieldErrors: { date: "Date is required." },
+    })
+  })
+
+  it("completes an open Task once", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    const done = await gateway.completeTask(OPEN_TASK)
+    expect(client.tasks.update).toHaveBeenCalledWith(OPEN_TASK, { statecode: 1, statuscode: 5 })
+    expect(done.completed).toBe(true)
+    await expect(gateway.completeTask(DONE_TASK)).rejects.toMatchObject({ code: "invalid" })
+    await expect(new DataverseSalesGateway(fakeClient(ALEX)).completeTask(OPEN_TASK)).rejects.toMatchObject({ code: "forbidden" })
+  })
+})
+
+describe("DataverseSalesGateway.getHome", () => {
+  it("asks for my open Tasks, my open Opportunities closing this month and my Not Contacted Leads", async () => {
+    vi.useFakeTimers({ now: new Date(2026, 9, 9, 10), toFake: ["Date"] })
+    try {
+      const client = fakeClient(ADELE)
+      const home = await new DataverseSalesGateway(client).getHome()
+      const mine = `_ownerid_value eq ${ADELE}`
+      expect(client.tasks.list.mock.calls[0][0].filter).toBe(`${mine} and statecode eq 0`)
+      expect(client.opportunities.list.mock.calls[0][0].filter).toBe(
+        `${mine} and (vibe_stage eq 841200000 or vibe_stage eq 841200001 or vibe_stage eq 841200002 or vibe_stage eq 841200003)` +
+          " and vibe_expectedclosedate ge 2026-10-01 and vibe_expectedclosedate le 2026-10-31",
+      )
+      expect(client.leads.list.mock.calls[0][0].filter).toBe(`${mine} and vibe_leadstatus eq 841200000`)
+      // The fake ignores filters, so the completed Task comes back too; the one about another kind of record is left out.
+      expect(home.openTasks.map((t) => t.subject)).toEqual(["Intro meeting", "Send proposal"])
+      expect(home.openTasks[1].regarding).toEqual({ type: "opportunity", id: OPP })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
@@ -480,7 +645,6 @@ describe("DataverseSalesGateway, Leads", () => {
 })
 
 describe("DataverseSalesGateway, Opportunities", () => {
-  const OPP = "eeeeeeee-0000-0000-0000-000000000001"
 
   it("filters by Stage, closed (deactivated) ones included", async () => {
     const client = fakeClient(ADELE)

@@ -21,7 +21,10 @@ import {
   newAccountFromLead,
   newContactFromLead,
   newOpportunityFromLead,
+  noteErrors,
   opportunityErrors,
+  phoneCallErrors,
+  taskErrors,
   orderTimeline,
   reopenOpportunity,
   sortOpenTasks,
@@ -516,15 +519,13 @@ export class InMemorySalesGateway implements SalesGateway {
 
   async addNote(record: RecordRef, input: NoteInput): Promise<Note> {
     this.requireEdit(this.ownedRow(record).ownerId)
-    const errors: FieldErrors = {}
-    if (!input.title.trim() && !input.text.trim()) errors.text = "Write a title or some text."
-    invalid("The Note cannot be saved.", errors)
+    invalid("The Note cannot be saved.", noteErrors(input))
     return this.addActivity({ kind: "note", title: input.title.trim(), text: input.text, ...this.newActivity(record) })
   }
 
   async addTask(record: RecordRef, input: TaskInput): Promise<Task> {
     this.requireEdit(this.ownedRow(record).ownerId)
-    invalid("The Task cannot be saved.", input.subject.trim() ? {} : { subject: "Subject is required." })
+    invalid("The Task cannot be saved.", taskErrors(input))
     return this.addActivity({
       kind: "task",
       subject: input.subject.trim(),
@@ -537,7 +538,7 @@ export class InMemorySalesGateway implements SalesGateway {
 
   async addPhoneCall(record: RecordRef, input: PhoneCallInput): Promise<PhoneCall> {
     this.requireEdit(this.ownedRow(record).ownerId)
-    invalid("The Phone Call cannot be saved.", input.subject.trim() ? {} : { subject: "Subject is required." })
+    invalid("The Phone Call cannot be saved.", phoneCallErrors(input))
     return this.addActivity({
       kind: "phoneCall",
       subject: input.subject.trim(),
