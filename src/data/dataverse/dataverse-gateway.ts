@@ -18,6 +18,11 @@ import {
   type OpportunityListQuery,
   type OpportunityUpdate,
   type Page,
+  QualifyError,
+  type QualifyInput,
+  type QualifyResult,
+  type QualifyStep,
+  type QualifySuggestions,
   type SalesGateway,
   type SearchResults,
 } from "@/data/gateway"
@@ -38,6 +43,7 @@ import {
   matchesPipelineFilter,
   closeOpportunity,
   contactErrors,
+  defaultOpportunityName,
   disqualifyErrors,
   fullName,
   isLeadReadOnly,
@@ -45,8 +51,13 @@ import {
   leadStatusAfter,
   manualLeadAction,
   isOpportunityReadOnly,
+  newAccountFromLead,
+  newContactFromLead,
+  newOpportunityFromLead,
   opportunityErrors,
   reopenOpportunity,
+  suggestAccounts,
+  suggestContacts,
   teamMemberIds,
   toDateOnly,
   type Account,
@@ -113,6 +124,8 @@ function text(value: string): string {
 
 const DEFAULT_PAGE_SIZE = 50
 const SEARCH_LIMIT = 10
+/** Qualify suggestions per query: enough to spot a duplicate, not a list to browse. */
+const SUGGESTION_LIMIT = 25
 /** Related lists stop here; more than this on one record is not a v1 case. */
 const RELATED_LIMIT = 500
 /** The Pipeline page loads at most this many Opportunities; a v1 team stays well below it. */
@@ -154,6 +167,11 @@ export function lookupName(row: Record<string, unknown>, lookup: string): string
 function lookupTable(row: Record<string, unknown>, lookup: string): string | undefined {
   const table = row[`_${lookup}_value@Microsoft.Dynamics.CRM.lookuplogicalname`] ?? row[`${lookup}type`]
   return typeof table === "string" ? table : undefined
+}
+
+function uniqueBy<T>(rows: T[], key: (row: T) => string): T[] {
+  const seen = new Set<string>()
+  return rows.filter((row) => !seen.has(key(row)) && seen.add(key(row)))
 }
 
 function optional<T>(value: T | null | undefined): T | undefined {
@@ -644,8 +662,112 @@ export class DataverseSalesGateway implements SalesGateway {
     return this.readLead(current.id)
   }
 
-  getQualifySuggestions = notYet("getQualifySuggestions", "#31")
-  qualifyLead = notYet("qualifyLead", "#31")
+  /**
+   * Active Accounts whose name contains the Company (plus any named exactly
+   * like it, so the strong match is never cut off by the limit), and active
+   * Contacts with the Lead's email or with its first and last name.
+   */
+  async getQualifySuggestions(leadId: Id): Promise<QualifySuggestions> {
+    const lead = await this.readLead(leadId)
+    const company = lead.company.trim()
+    const email = lead.email?.trim()
+    const lastName = lead.lastName.trim()
+    const suggestions = <T>(client: TableClient<T>, filter: string | false, orderBy: string): Promise<T[]> =>
+      filter
+        ? this.call(() => client.list({ filter: `${ACTIVE} and ${filter}`, orderBy: [orderBy], pageSize: SUGGESTION_LIMIT })).then((p) => p.rows)
+        : Promise.resolve([])
+    const [exact, containing, byEmail, byName] = await Promise.all([
+      suggestions(this.client.accounts, !!company && `name eq ${text(company)}`, "name asc"),
+      suggestions(this.client.accounts, !!company && `contains(name,${text(company)})`, "name asc"),
+      suggestions(this.client.contacts, !!email && `emailaddress1 eq ${text(email!)}`, "fullname asc"),
+      suggestions(this.client.contacts, !!lastName && `lastname eq ${text(lastName)}`, "fullname asc"),
+    ])
+    const accounts = uniqueBy([...exact, ...containing], (r) => r.accountid).map(toAccount)
+    const contacts = uniqueBy([...byEmail, ...byName], (r) => r.contactid).map(toContact)
+    return {
+      accounts: suggestAccounts(lead, accounts),
+      contacts: suggestContacts(lead, contacts),
+      opportunityName: defaultOpportunityName(lead),
+    }
+  }
+
+  /**
+   * Separate writes, ordered so the Lead is marked Qualified last: the Account
+   * (if new), the Contact (if new, under the chosen Account), the Opportunity
+   * (owned by the Lead's Owner, linked to the Lead), then the Lead. A failure
+   * in between throws a QualifyError naming the step and what was created,
+   * and leaves the Lead open. A retry reuses an Opportunity already created
+   * for this Lead, so it never makes a second one.
+   */
+  async qualifyLead(leadId: Id, input: QualifyInput): Promise<QualifyResult> {
+    const lead = await this.readLead(leadId)
+    if (!(await this.mayEdit(lead.ownerId))) {
+      throw new GatewayError("forbidden", "Only the Lead's Owner or the Owner's manager can qualify it.")
+    }
+    const next = leadRule(lead, "qualify")
+    invalid(
+      "The Opportunity details are incomplete.",
+      opportunityErrors({ ...input.opportunity, accountId: "chosen in the dialog", stage: "qualification" }),
+    )
+    const { user } = await this.getCurrentUser()
+
+    const created: QualifyError["created"] = {}
+    const step = async <T>(name: QualifyStep, run: () => Promise<T>): Promise<T> => {
+      try {
+        return await run()
+      } catch (error) {
+        const cause = toGatewayError(error)
+        const failure =
+          cause instanceof GatewayError ? cause : new GatewayError("invalid", cause instanceof Error ? cause.message : String(cause))
+        throw new QualifyError(name, failure, { ...created })
+      }
+    }
+
+    const { account: accountChoice, contact: contactChoice } = input
+    const accountId = await step("account", async () => {
+      if ("existingId" in accountChoice) return (await this.call(() => this.client.accounts.get(guid(accountChoice.existingId)))).accountid
+      const account = await this.createAccount(newAccountFromLead(lead))
+      created.accountId = account.id
+      return account.id
+    })
+
+    const contactId = await step("contact", async () => {
+      if ("existingId" in contactChoice) return (await this.call(() => this.client.contacts.get(guid(contactChoice.existingId)))).contactid
+      const contact = await this.createContact(newContactFromLead(lead, accountId))
+      created.contactId = contact.id
+      return contact.id
+    })
+
+    const opportunityId = await step("opportunity", async () => {
+      const [existing] = await this.related(
+        this.client.opportunities,
+        `_vibe_originatingleadid_value eq ${guid(lead.id)}`,
+        ["createdon asc"],
+      )
+      if (existing) return existing.vibe_opportunityid
+      const draft = newOpportunityFromLead(lead, { accountId, primaryContactId: contactId }, input.opportunity)
+      const row = await this.call(() =>
+        this.client.opportunities.create(
+          fields({
+            ...opportunityFields(draft),
+            vibe_stage: toChoice(STAGES, draft.stage),
+            vibe_probability: draft.probability,
+            ...bind(OPPORTUNITY_NAVIGATION.originatingLead, "vibe_leads", lead.id),
+            // New records belong to whoever creates them; a manager qualifying gives it to the Lead's Owner.
+            ...(draft.ownerId !== user.id ? bind("ownerid", "systemusers", draft.ownerId) : {}),
+          }),
+        ),
+      )
+      created.opportunityId = row.vibe_opportunityid
+      return row.vibe_opportunityid
+    })
+
+    await step("lead", () =>
+      this.call(() => this.client.leads.update(lead.id, { vibe_leadstatus: toChoice(LEAD_STATUSES, next), ...DEACTIVATED })),
+    )
+
+    return { leadId: lead.id, accountId, contactId, opportunityId }
+  }
 
   // ---- Opportunities --------------------------------------------------------
 

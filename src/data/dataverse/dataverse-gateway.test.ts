@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { GatewayError } from "@/data/gateway"
+import { GatewayError, QualifyError } from "@/data/gateway"
 import type { AccountRow, ContactRow, DataverseClient, Fields, LeadRow, ListOptions, OpportunityRow, SystemUserRow, TableClient } from "./client"
 import { DataverseSalesGateway, NotAvailableYetError } from "./dataverse-gateway"
 
@@ -616,5 +616,163 @@ describe("DataverseSalesGateway, Opportunities", () => {
       statecode: 0,
       statuscode: 1,
     })
+  })
+})
+
+describe("DataverseSalesGateway, Qualify", () => {
+  const details = { name: "Tailspin Toys - Laptops", estimatedValue: 24000, expectedCloseDate: "2026-12-15" }
+
+  /** The fake client, with the Opportunity list answering the "already qualified?" filter. */
+  function qualifyClient(signedIn: string) {
+    const client = fakeClient(signedIn)
+    const list = client.opportunities.list.getMockImplementation()!
+    client.opportunities.list.mockImplementation(async (options) => {
+      const page = await list({ ...options, pageSize: 1000, skipToken: undefined })
+      const leadId = /_vibe_originatingleadid_value eq ([0-9a-f-]+)/.exec(options.filter ?? "")?.[1]
+      const rows = page.rows.filter(
+        (r) => !leadId || r._vibe_originatingleadid_value === leadId || r["vibe_OriginatingLeadId@odata.bind"] === `/vibe_leads(${leadId})`,
+      )
+      return { rows, skipToken: undefined, count: rows.length }
+    })
+    return client
+  }
+
+  it("suggests active Accounts and Contacts and preselects one strong match", async () => {
+    const client = qualifyClient(ADELE)
+    await client.leads.update(SANNE, { vibe_company: "tailwind traders", vibe_email: "LOTTE@tailwind.example" })
+    const suggestions = await new DataverseSalesGateway(client).getQualifySuggestions(SANNE)
+
+    expect(client.accounts.list.mock.calls.map((c) => c[0].filter)).toEqual([
+      "statecode eq 0 and name eq 'tailwind traders'",
+      "statecode eq 0 and contains(name,'tailwind traders')",
+    ])
+    expect(client.contacts.list.mock.calls.map((c) => c[0].filter)).toEqual([
+      "statecode eq 0 and emailaddress1 eq 'LOTTE@tailwind.example'",
+      "statecode eq 0 and lastname eq 'Bakker'",
+    ])
+    expect(suggestions.accounts.preselectedId).toBe(TAILWIND)
+    expect(suggestions.contacts).toMatchObject({ matchedBy: "email", preselectedId: LOTTE })
+    expect(suggestions.opportunityName).toBe("tailwind traders - ")
+  })
+
+  it("links an existing Account, creates the Contact under it, then the Opportunity, and qualifies the Lead last", async () => {
+    const client = qualifyClient(ADELE)
+    const result = await new DataverseSalesGateway(client).qualifyLead(SANNE, {
+      account: { existingId: TAILWIND },
+      contact: { createNew: true },
+      opportunity: details,
+    })
+
+    expect(client.accounts.create).not.toHaveBeenCalled()
+    expect(client.accounts.update).not.toHaveBeenCalled()
+    expect(client.contacts.create).toHaveBeenCalledWith({
+      firstname: "Sanne",
+      lastname: "Bakker",
+      emailaddress1: "sanne@tailspin.example",
+      "parentcustomerid_account@odata.bind": `/accounts(${TAILWIND})`,
+    })
+    expect(client.opportunities.create).toHaveBeenCalledWith({
+      vibe_name: "Tailspin Toys - Laptops",
+      vibe_estimatedvalue: 24000,
+      vibe_expectedclosedate: "2026-12-15",
+      vibe_leadsource: 841200000,
+      "vibe_AccountId@odata.bind": `/accounts(${TAILWIND})`,
+      "vibe_PrimaryContactId@odata.bind": `/contacts(${result.contactId})`,
+      vibe_stage: 841200000,
+      vibe_probability: 10,
+      "vibe_OriginatingLeadId@odata.bind": `/vibe_leads(${SANNE})`,
+    })
+    expect(client.leads.update).toHaveBeenCalledWith(SANNE, { vibe_leadstatus: 841200002, statecode: 1, statuscode: 2 })
+    expect(client.leads.update.mock.invocationCallOrder[0]).toBeGreaterThan(client.opportunities.create.mock.invocationCallOrder[0])
+    expect(result).toMatchObject({ leadId: SANNE, accountId: TAILWIND })
+  })
+
+  it("creates a new Account from the Lead and gives the Opportunity the Lead's Owner when a manager qualifies", async () => {
+    const client = qualifyClient(MEGAN)
+    const result = await new DataverseSalesGateway(client).qualifyLead(SANNE, {
+      account: { createNew: true },
+      contact: { createNew: true },
+      opportunity: details,
+    })
+    expect(client.accounts.create).toHaveBeenCalledWith({ name: "Tailspin Toys" })
+    expect(client.contacts.create.mock.calls[0][0]["parentcustomerid_account@odata.bind"]).toBe(`/accounts(${result.accountId})`)
+    expect(client.opportunities.create.mock.calls[0][0]["ownerid@odata.bind"]).toBe(`/systemusers(${ADELE})`)
+  })
+
+  it("only links an existing Contact at another Account", async () => {
+    const client = qualifyClient(ADELE)
+    const result = await new DataverseSalesGateway(client).qualifyLead(SANNE, {
+      account: { existingId: NORTHWIND },
+      contact: { existingId: LOTTE },
+      opportunity: details,
+    })
+    expect(client.contacts.create).not.toHaveBeenCalled()
+    expect(client.contacts.update).not.toHaveBeenCalled()
+    expect(result.contactId).toBe(LOTTE)
+    expect(client.opportunities.create.mock.calls[0][0]).toMatchObject({
+      "vibe_AccountId@odata.bind": `/accounts(${NORTHWIND})`,
+      "vibe_PrimaryContactId@odata.bind": `/contacts(${LOTTE})`,
+    })
+  })
+
+  it("reports the failed step, leaves the Lead open, and a retry creates no duplicates", async () => {
+    const client = qualifyClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    client.opportunities.create.mockRejectedValueOnce(new Error("Generic SQL error"))
+
+    const error = await gateway
+      .qualifyLead(SANNE, { account: { createNew: true }, contact: { createNew: true }, opportunity: details })
+      .catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(QualifyError)
+    const { step, created, message } = error as QualifyError
+    expect(step).toBe("opportunity")
+    expect(message).toContain("Generic SQL error")
+    expect(created.accountId).toBeDefined()
+    expect(created.contactId).toBeDefined()
+    expect(client.leads.update).not.toHaveBeenCalled()
+
+    await gateway.qualifyLead(SANNE, {
+      account: { existingId: created.accountId! },
+      contact: { existingId: created.contactId! },
+      opportunity: details,
+    })
+    expect(client.accounts.create).toHaveBeenCalledTimes(1)
+    expect(client.contacts.create).toHaveBeenCalledTimes(1)
+    expect(client.opportunities.create).toHaveBeenCalledTimes(2)
+    expect(client.leads.update).toHaveBeenCalledTimes(1)
+  })
+
+  it("reuses the Opportunity already created when only the Lead step failed", async () => {
+    const client = qualifyClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    client.leads.update.mockRejectedValueOnce(new Error("SecLib::AccessCheckEx failed"))
+    const input = { account: { existingId: TAILWIND }, contact: { existingId: LOTTE }, opportunity: details }
+
+    const error = (await gateway.qualifyLead(SANNE, input).catch((e: unknown) => e)) as QualifyError
+    expect(error).toMatchObject({ step: "lead", code: "forbidden" })
+    expect(error.created.opportunityId).toBeDefined()
+
+    const retry = await gateway.qualifyLead(SANNE, input)
+    expect(retry.opportunityId).toBe(error.created.opportunityId)
+    expect(client.opportunities.create).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses a peer, a closed Lead and missing Opportunity details without writing anything", async () => {
+    const input = { account: { createNew: true as const }, contact: { createNew: true as const }, opportunity: details }
+    const peer = qualifyClient(ALEX)
+    await expect(new DataverseSalesGateway(peer).qualifyLead(SANNE, input)).rejects.toMatchObject({ code: "forbidden" })
+
+    const owner = qualifyClient(ADELE)
+    const gateway = new DataverseSalesGateway(owner)
+    await expect(gateway.qualifyLead(JORIS, input)).rejects.toMatchObject({ code: "invalid" })
+    await expect(
+      gateway.qualifyLead(SANNE, { ...input, opportunity: { name: " ", estimatedValue: Number.NaN, expectedCloseDate: "" } }),
+    ).rejects.toMatchObject({ code: "invalid" })
+
+    for (const client of [peer, owner]) {
+      expect(client.accounts.create).not.toHaveBeenCalled()
+      expect(client.opportunities.create).not.toHaveBeenCalled()
+      expect(client.leads.update).not.toHaveBeenCalled()
+    }
   })
 })
