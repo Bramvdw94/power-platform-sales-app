@@ -33,6 +33,9 @@ import {
   accountErrors,
   canEdit,
   changeStage,
+  closeDateRange,
+  isOpenStage,
+  matchesPipelineFilter,
   closeOpportunity,
   contactErrors,
   disqualifyErrors,
@@ -61,6 +64,9 @@ import {
   type OpenStage,
   type Opportunity,
   type OpportunityInput,
+  type PipelineFilter,
+  type PipelineOwnerFilter,
+  type Stage,
   type User,
 } from "@/sales"
 import {
@@ -109,7 +115,11 @@ const DEFAULT_PAGE_SIZE = 50
 const SEARCH_LIMIT = 10
 /** Related lists stop here; more than this on one record is not a v1 case. */
 const RELATED_LIMIT = 500
+/** The Pipeline page loads at most this many Opportunities; a v1 team stays well below it. */
+const PIPELINE_LIMIT = 2000
 const ACTIVE = "statecode eq 0"
+
+const PIPELINE_VIEW: Record<PipelineOwnerFilter, ListView> = { mine: "my", myTeam: "myTeam", everyone: "all" }
 
 /** A global choice column's value: the publisher's option prefix plus the option's position. */
 const CHOICE_BASE = 841200000
@@ -439,7 +449,29 @@ export class DataverseSalesGateway implements SalesGateway {
   }
 
   getHome = notYet("getHome", "#33")
-  getPipeline = notYet("getPipeline", "#32")
+  /**
+   * The Opportunities on the Pipeline page. Dataverse narrows by Owner, Stage
+   * and close date; the sales rules then decide, so both gateways agree.
+   */
+  async getPipeline(filter: PipelineFilter): Promise<Opportunity[]> {
+    const today = toDateOnly(new Date())
+    const stageIn = (stages: readonly Stage[]) => `(${stages.map((s) => `vibe_stage eq ${toChoice(STAGES, s)}`).join(" or ")})`
+    const closedStages = STAGES.filter((s) => !isOpenStage(s))
+    const parts: string[] = []
+    if (!filter.showClosed) parts.push(stageIn(OPEN_STAGES))
+    const range = closeDateRange(filter.closeDate, today)
+    if (range) {
+      const within = (column: string) => `${column} ge ${range.from} and ${column} le ${range.to}`
+      const open = `${stageIn(OPEN_STAGES)} and ${within("vibe_expectedclosedate")}`
+      parts.push(filter.showClosed ? `((${open}) or (${stageIn(closedStages)} and ${within("vibe_closedate")}))` : within("vibe_expectedclosedate"))
+    }
+    const view = PIPELINE_VIEW[filter.owner]
+    const where = await this.listFilter(view, parts.join(" and ") || undefined, { activeOnly: false })
+    const rows = await this.all(this.client.opportunities, where, ["vibe_expectedclosedate asc", "vibe_opportunityid asc"])
+    const { user, directReports } = await this.getCurrentUser()
+    const context = { userId: user.id, users: [user, ...directReports], today }
+    return rows.map(toOpportunity).filter((o) => matchesPipelineFilter(o, filter, context))
+  }
 
   // ---- Record pages ---------------------------------------------------------
 
@@ -759,13 +791,18 @@ export class DataverseSalesGateway implements SalesGateway {
 
   /** Every row of a related list, up to RELATED_LIMIT. */
   private async related<T>(client: TableClient<T>, filter: string, orderBy: string[]): Promise<T[]> {
+    return this.all(client, filter, orderBy, RELATED_LIMIT)
+  }
+
+  /** Every matching row, page by page, stopping once `limit` rows are in. */
+  private async all<T>(client: TableClient<T>, filter: string | undefined, orderBy: string[], limit = PIPELINE_LIMIT): Promise<T[]> {
     const rows: T[] = []
     let skipToken: string | undefined
     do {
       const result = await this.call(() => client.list({ filter, orderBy, pageSize: 100, skipToken }))
       rows.push(...result.rows)
       skipToken = result.skipToken
-    } while (skipToken && rows.length < RELATED_LIMIT)
+    } while (skipToken && rows.length < limit)
     return rows
   }
 }
