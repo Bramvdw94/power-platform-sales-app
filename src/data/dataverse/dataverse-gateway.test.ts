@@ -860,7 +860,29 @@ describe("DataverseSalesGateway, Qualify", () => {
     })
     expect(client.accounts.create).toHaveBeenCalledWith({ name: "Tailspin Toys" })
     expect(client.contacts.create.mock.calls[0][0]["parentcustomerid_account@odata.bind"]).toBe(`/accounts(${result.accountId})`)
-    expect(client.opportunities.create.mock.calls[0][0]["ownerid@odata.bind"]).toBe(`/systemusers(${ADELE})`)
+    // Created as the manager, then assigned: creating a record for someone else needs more than User-level Create.
+    expect(client.opportunities.create.mock.calls[0][0]["ownerid@odata.bind"]).toBeUndefined()
+    expect(client.opportunities.update).toHaveBeenCalledWith(result.opportunityId, { "ownerid@odata.bind": `/systemusers(${ADELE})` })
+  })
+
+  it("assigns an Opportunity left with the manager when only the assign failed, on retry", async () => {
+    const client = qualifyClient(MEGAN)
+    const gateway = new DataverseSalesGateway(client)
+    client.opportunities.update.mockRejectedValueOnce(new Error("SecLib::AccessCheckEx failed"))
+    const input = { account: { existingId: TAILWIND }, contact: { existingId: LOTTE }, opportunity: details }
+
+    const error = (await gateway.qualifyLead(SANNE, input).catch((e: unknown) => e)) as QualifyError
+    expect(error).toMatchObject({ step: "opportunity", code: "forbidden" })
+    expect(client.leads.update).not.toHaveBeenCalled()
+
+    // The fake owns created rows by Adele; make this one the manager's, as Dataverse would.
+    await client.opportunities.update.getMockImplementation()!(error.created.opportunityId!, { _ownerid_value: MEGAN })
+    await gateway.qualifyLead(SANNE, input)
+    expect(client.opportunities.create).toHaveBeenCalledTimes(1)
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(error.created.opportunityId, {
+      "ownerid@odata.bind": `/systemusers(${ADELE})`,
+    })
+    expect(client.leads.update).toHaveBeenCalledTimes(1)
   })
 
   it("only links an existing Contact at another Account", async () => {
