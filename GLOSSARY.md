@@ -42,7 +42,8 @@ _Avoid_: Deal, sale, prospect
 
 **Stage**:
 Where an Opportunity stands: Qualification, Needs Analysis, Proposal, Negotiation (the open stages), then Closed Won or Closed Lost. An Opportunity may move forward, back or skip stages; a closed one can be reopened only by its Owner or their manager.
-_Avoid_: Status, phase, step
+On an Opportunity that follows a Process, the Stage follows its current Step instead of being picked directly.
+_Avoid_: Status, phase
 
 **Probability**:
 How likely an Opportunity is to be won, as a percentage. Each Stage gives a default (Qualification 10, Needs Analysis 25, Proposal 50, Negotiation 75, Closed Won 100, Closed Lost 0) that the Owner may override.
@@ -89,3 +90,33 @@ _Avoid_: Assignee, rep
 **Reassign**:
 Making another salesperson the Owner of a record. Only the Owner or the Owner's manager may reassign, and also a Qualified Lead or a closed Opportunity. The record's open Tasks and Phone Calls move with it; reassigning an Account leaves its Contacts and Opportunities with their own Owners.
 _Avoid_: Transfer, hand over, assign
+
+### Processes
+
+**Process**:
+An ordered list of Steps that a manager builds to guide Leads or Opportunities towards Qualify or Close. A Lead Process ends at Qualify; the new Opportunity then follows its own Opportunity Process, so no Process spans both.
+_Avoid_: Flow, workflow, business process flow, playbook, pipeline
+
+**Step**:
+One stop in a Process. On an Opportunity each Step maps to one open Stage, and several Steps may map to the same Stage, in Stage order; on a Lead each Step maps to an open Lead status (Not Contacted or Working). The record moves forward or back one Step at a time and its Stage or Lead status follows. Close, Qualify and Disqualify stay outside the Steps: Close and Disqualify are possible from any Step, and leaving a Lead's last Step means Qualify.
+_Avoid_: Stage, phase, milestone
+
+**Gate**:
+The checks a record must pass to leave a Step forward. Moving back is never gated.
+_Avoid_: Validation, exit criteria, requirement
+
+**Action**:
+Something the app does by itself when a record enters a Step, such as creating a Task.
+_Avoid_: Trigger, automation, Next step
+
+**Key fields**:
+The fields a Step puts in front of the user while the record is on that Step.
+_Avoid_: Step fields
+
+**Guidance**:
+Tips text a Step shows the user on how to work the record at that point.
+_Avoid_: Help, instructions
+
+**Business rule**:
+An if/then rule a manager builds that applies to every record of one table (Lead, Opportunity, Account or Contact) whenever its condition holds, whichever Step the record is on, or whether it follows a Process at all.
+_Avoid_: Validation rule, policy, automation
