@@ -32,6 +32,7 @@
     <RolePrivilege name="prvReadAsyncOperation" level="Basic" />
     <RolePrivilege name="prvReadContact" level="Global" />
     <RolePrivilege name="prvReadNote" level="Global" />
+    <RolePrivilege name="prvReadRole" level="Local" />
     <RolePrivilege name="prvReadSharePointData" level="Global" />
     <RolePrivilege name="prvReadSharePointDocument" level="Global" />
     <RolePrivilege name="prvReadUser" level="Global" />
