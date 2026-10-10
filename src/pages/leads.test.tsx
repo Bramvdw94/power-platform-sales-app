@@ -106,7 +106,9 @@ describe("Leads flow", () => {
 
   it("keeps a Qualified Lead read-only and links to its Opportunity", async () => {
     renderApp(`/leads/${leads.qualified}`)
-    expect(within(await recordHeader("Lotte de Groot")).queryByRole("button")).not.toBeInTheDocument()
+    // Only Reassign is left: it changes the Owner, not the Lead.
+    const buttons = within(await recordHeader("Lotte de Groot")).getAllByRole("button")
+    expect(buttons.map((b) => b.textContent)).toEqual(["Reassign"])
     const opportunity = screen.getByRole("region", { name: "Opportunity" })
     expect(within(opportunity).getByRole("link", { name: "Tailwind Traders - Managed workplace" })).toBeInTheDocument()
   })

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Pencil } from "lucide-react"
+import { ReassignButton } from "@/components/records/reassign-dialog"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList } from "@/components/records/fields"
 import {
@@ -46,10 +47,13 @@ export default function ContactRecordPage() {
       actions={
         canEdit &&
         !editing && (
-          <Button variant="outline" onClick={() => setEditing(true)}>
-            <Pencil aria-hidden />
-            Edit
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setEditing(true)}>
+              <Pencil aria-hidden />
+              Edit
+            </Button>
+            <ReassignButton record={{ type: "contact", id: contact.id }} ownerId={contact.ownerId} name={fullName(contact)} />
+          </>
         )
       }
       activity={<ActivityTimeline record={{ type: "contact", id: contact.id }} canAdd={canEdit} />}

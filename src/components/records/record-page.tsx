@@ -34,7 +34,7 @@ export function RecordPage({ kind, name, highlights, actions, children, activity
             <p className="text-sm text-muted-foreground">{kind}</p>
             <h1 className="text-2xl font-semibold tracking-tight break-words">{name}</h1>
           </div>
-          {actions && <div className="flex gap-2">{actions}</div>}
+          {actions && <div className="flex flex-wrap justify-end gap-2">{actions}</div>}
         </div>
         <dl className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
           {highlights.map((item) => (

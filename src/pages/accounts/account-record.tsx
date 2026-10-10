@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Pencil, Plus } from "lucide-react"
+import { ReassignButton } from "@/components/records/reassign-dialog"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList } from "@/components/records/fields"
 import {
@@ -44,10 +45,13 @@ export default function AccountRecordPage() {
       actions={
         canEdit &&
         !editing && (
-          <Button variant="outline" onClick={() => setEditing(true)}>
-            <Pencil aria-hidden />
-            Edit
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setEditing(true)}>
+              <Pencil aria-hidden />
+              Edit
+            </Button>
+            <ReassignButton record={{ type: "account", id: account.id }} ownerId={account.ownerId} name={account.name} />
+          </>
         )
       }
       activity={<ActivityTimeline record={{ type: "account", id: account.id }} canAdd={canEdit} />}
