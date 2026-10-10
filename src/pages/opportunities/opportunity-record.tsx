@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { Check, Pencil, RotateCcw, Trophy } from "lucide-react"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
+import { ReassignButton } from "@/components/records/reassign-dialog"
 import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
 import { Button } from "@/components/ui/button"
 import { useGateway } from "@/hooks/use-gateway"
@@ -41,7 +42,7 @@ export default function OpportunityRecordPage() {
     </Link>
   )
 
-  // Closed Opportunities are read-only: no Edit, only Reopen.
+  // Closed Opportunities are read-only: no Edit, only Reopen and Reassign.
   const actions = canEdit && !editing && (
     <>
       {isOpen ? (
@@ -61,6 +62,7 @@ export default function OpportunityRecordPage() {
           Reopen
         </Button>
       )}
+      <ReassignButton record={{ type: "opportunity", id: opportunity.id }} ownerId={opportunity.ownerId} name={opportunity.name} />
     </>
   )
 

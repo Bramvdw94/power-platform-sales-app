@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { Ban, BadgeCheck, Pencil, PhoneCall, RotateCcw, Undo2 } from "lucide-react"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
+import { ReassignButton } from "@/components/records/reassign-dialog"
 import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
 import { Button } from "@/components/ui/button"
 import type { LeadDetails } from "@/data/gateway"
@@ -53,7 +54,7 @@ export default function LeadRecordPage() {
 /**
  * The header actions the Lead status allows, for the Owner and the Owner's
  * manager: Edit and the status moves while the Lead is open, Reopen once it is
- * Disqualified, nothing once it is Qualified.
+ * Disqualified, and Reassign whatever the status (the only one once Qualified).
  */
 function LeadActions({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
   const gateway = useGateway()
@@ -108,6 +109,7 @@ function LeadActions({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
           Edit
         </Button>
       )}
+      <ReassignButton record={{ type: "lead", id: lead.id }} ownerId={lead.ownerId} name={fullName(lead)} />
       {move.isError && <FormAlert error={move.error} className="basis-full text-right" />}
       <DisqualifyDialog lead={lead} open={disqualifying} onOpenChange={setDisqualifying} />
       {qualifying && <QualifyDialog lead={lead} open={qualifying} onOpenChange={setQualifying} />}

@@ -1,6 +1,4 @@
-// The sales data gateway over Dataverse. It grows ticket by ticket (spec
-// #23): methods not built yet throw a "not available yet" error naming the
-// ticket that brings them, so a page that calls one fails loudly.
+// The sales data gateway over Dataverse (spec #23).
 
 import {
   GatewayError,
@@ -118,19 +116,6 @@ import {
   type TableClient,
 } from "./client"
 
-/** Thrown by gateway methods that a later build ticket implements. */
-export class NotAvailableYetError extends Error {
-  constructor(method: string, ticket: string) {
-    super(`${method} is not available yet (${ticket})`)
-    this.name = "NotAvailableYetError"
-  }
-}
-
-function notYet<K extends keyof SalesGateway>(method: K, ticket: string): SalesGateway[K] {
-  const fail = (): Promise<never> => Promise.reject(new NotAvailableYetError(method, ticket))
-  return fail as SalesGateway[K]
-}
-
 /** OData string literal for a GUID; rejects anything that isn't one. */
 function guid(id: Id): string {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
@@ -153,6 +138,9 @@ const RELATED_LIMIT = 500
 /** The Pipeline page loads at most this many Opportunities; a v1 team stays well below it. */
 const PIPELINE_LIMIT = 2000
 const ACTIVE = "statecode eq 0"
+
+/** The security role whose holders a record can be Reassigned to. */
+export const SALESPERSON_ROLE = "SalesApp Salesperson"
 
 const PIPELINE_VIEW: Record<PipelineOwnerFilter, ListView> = { mine: "my", myTeam: "myTeam", everyone: "all" }
 
@@ -385,7 +373,7 @@ export function toUser(row: SystemUserRow): User {
     fullName: row.fullname ?? "",
     email: row.internalemailaddress ?? "",
     managerId: row._parentsystemuserid_value ?? null,
-    // Role membership is read by listSalespeople (#34); users read elsewhere are not checked.
+    // Role membership is read only by listSalespeople; users read elsewhere are not checked.
     isSalesperson: false,
   }
 }
@@ -423,7 +411,20 @@ export class DataverseSalesGateway implements SalesGateway {
     }
   }
 
-  listSalespeople = notYet("listSalespeople", "#34")
+  /**
+   * Enabled users holding the SalesApp Salesperson role directly (the app
+   * doesn't assign roles through teams), through the user-role relationship.
+   */
+  async listSalespeople(): Promise<User[]> {
+    const rows = await this.call(() =>
+      this.client.listSystemUsers(
+        `isdisabled eq false and systemuserroles_association/any(r:r/name eq ${text(SALESPERSON_ROLE)})`,
+      ),
+    )
+    return uniqueBy(rows, (r) => r.systemuserid)
+      .map((r) => ({ ...toUser(r), isSalesperson: true }))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName))
+  }
 
   // ---- Lists, search and Home ----------------------------------------------
 
@@ -886,7 +887,24 @@ export class DataverseSalesGateway implements SalesGateway {
 
   // ---- Ownership ---------------------------------------------------------------
 
-  reassign = notYet("reassign", "#34")
+  /**
+   * One Owner change, also on read-only (deactivated) records. Dataverse moves
+   * the record's open Tasks and Phone Calls along (assign cascade "Cascade
+   * Active" on those relationships) and leaves an Account's Contacts and
+   * Opportunities alone (no cascade); see solutions/SalesApp.
+   */
+  async reassign(record: RecordRef, newOwnerId: Id): Promise<void> {
+    const table = this.ownedTable(record.type)
+    const row = await this.call(() => table.get(guid(record.id)))
+    if (!(await this.mayEdit(row._ownerid_value))) throw forbidden()
+    const salespeople = await this.listSalespeople()
+    if (!salespeople.some((u) => u.id.toLowerCase() === newOwnerId.toLowerCase())) {
+      throw new GatewayError("invalid", "Records can only be reassigned to a salesperson.", {
+        ownerId: "Pick a salesperson.",
+      })
+    }
+    await this.call(() => table.update(guid(record.id), bind("ownerid", "systemusers", newOwnerId)))
+  }
 
   // ---- Activities -----------------------------------------------------------
   // Notes, Tasks and Phone Calls link to their record through a polymorphic
@@ -981,15 +999,19 @@ export class DataverseSalesGateway implements SalesGateway {
    * not for Accounts and Contacts, so the gateway checks it for all four.
    */
   private async requireEditRecord(record: RecordRef): Promise<void> {
-    const key = guid(record.id)
+    const row = await this.call(() => this.ownedTable(record.type).get(guid(record.id)))
+    if (!(await this.mayEdit(row._ownerid_value))) throw forbidden()
+  }
+
+  /** The table behind a record type, as far as ownership goes. */
+  private ownedTable(type: RecordType): TableClient<{ _ownerid_value?: Id | null }> {
     const tables: Record<RecordType, TableClient<{ _ownerid_value?: Id | null }>> = {
       lead: this.client.leads,
       opportunity: this.client.opportunities,
       account: this.client.accounts,
       contact: this.client.contacts,
     }
-    const row = await this.call(() => tables[record.type].get(key))
-    if (!(await this.mayEdit(row._ownerid_value))) throw forbidden()
+    return tables[type]
   }
 
   // ---- Helpers ---------------------------------------------------------------

@@ -14,7 +14,7 @@ import type {
   SystemUserRow,
   TableClient,
 } from "./client"
-import { DataverseSalesGateway, NotAvailableYetError, toMoment } from "./dataverse-gateway"
+import { DataverseSalesGateway, toMoment } from "./dataverse-gateway"
 
 const MEGAN = "aaaaaaaa-0000-0000-0000-000000000001"
 const ADELE = "aaaaaaaa-0000-0000-0000-000000000002"
@@ -174,6 +174,8 @@ function fakeClient(signedIn: string) {
       return user
     }),
     listSystemUsers: vi.fn(async (filter: string) => {
+      // Everyone in the fixture holds the SalesApp Salesperson role.
+      if (filter.includes("systemuserroles_association/any(")) return users
       const managerId = /_parentsystemuserid_value eq ([0-9a-f-]+) and isdisabled eq false/.exec(filter)?.[1]
       return users.filter((u) => u._parentsystemuserid_value === managerId)
     }),
@@ -213,12 +215,59 @@ describe("DataverseSalesGateway.getCurrentUser", () => {
   })
 })
 
-describe("DataverseSalesGateway, methods still to build", () => {
-  it("fails loudly, naming the ticket", async () => {
-    const gateway = new DataverseSalesGateway(fakeClient(ADELE))
-    const reassign = gateway.reassign({ type: "lead", id: SANNE }, ALEX)
-    await expect(reassign).rejects.toThrow(NotAvailableYetError)
-    await expect(reassign).rejects.toThrow("reassign is not available yet (#34)")
+describe("DataverseSalesGateway, Reassign", () => {
+  const lead = { type: "lead" as const, id: SANNE }
+
+  it("lists the enabled users holding the SalesApp Salesperson role, by name", async () => {
+    const client = fakeClient(ADELE)
+    const salespeople = await new DataverseSalesGateway(client).listSalespeople()
+    expect(client.listSystemUsers).toHaveBeenCalledWith(
+      "isdisabled eq false and systemuserroles_association/any(r:r/name eq 'SalesApp Salesperson')",
+    )
+    expect(salespeople.map((u) => [u.fullName, u.isSalesperson])).toEqual([
+      ["Adele Vance", true],
+      ["Alex Wilber", true],
+      ["Diego Siciliani", true],
+      ["Megan Bowen", true],
+    ])
+  })
+
+  it("binds the new Owner on the record, for its Owner", async () => {
+    const client = fakeClient(ADELE)
+    await new DataverseSalesGateway(client).reassign(lead, ALEX)
+    expect(client.leads.update).toHaveBeenCalledWith(SANNE, { "ownerid@odata.bind": `/systemusers(${ALEX})` })
+  })
+
+  it("lets the Owner's manager reassign", async () => {
+    const client = fakeClient(MEGAN)
+    await new DataverseSalesGateway(client).reassign({ type: "opportunity", id: OPP }, DIEGO)
+    expect(client.opportunities.update).toHaveBeenCalledWith(OPP, { "ownerid@odata.bind": `/systemusers(${DIEGO})` })
+  })
+
+  it("refuses a peer without writing", async () => {
+    const client = fakeClient(ALEX)
+    const error = await new DataverseSalesGateway(client).reassign(lead, ALEX).catch((e: unknown) => e)
+    expect(error).toMatchObject({ code: "forbidden" })
+    expect(client.leads.update).not.toHaveBeenCalled()
+  })
+
+  it("refuses a new Owner without the SalesApp Salesperson role", async () => {
+    const client = fakeClient(ADELE)
+    const error = await new DataverseSalesGateway(client)
+      .reassign(lead, "aaaaaaaa-0000-0000-0000-000000000099")
+      .catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(GatewayError)
+    expect(error).toMatchObject({ code: "invalid", fieldErrors: { ownerId: "Pick a salesperson." } })
+    expect(client.leads.update).not.toHaveBeenCalled()
+  })
+
+  it("reports Dataverse refusing the Assign as forbidden", async () => {
+    const client = fakeClient(ADELE)
+    client.accounts.update.mockRejectedValueOnce(
+      new Error("Principal user is missing prvAssignAccount privilege (0x80048306): does not have AssignAccess right(s)"),
+    )
+    const error = await new DataverseSalesGateway(client).reassign({ type: "account", id: TAILWIND }, ALEX).catch((e: unknown) => e)
+    expect(error).toMatchObject({ code: "forbidden" })
   })
 })
 

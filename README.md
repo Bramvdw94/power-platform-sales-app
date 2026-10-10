@@ -62,8 +62,7 @@ Run all three before opening a pull request.
 - `src/data/dataverse/`: the Dataverse gateway, the only code allowed to import
   the generated Dataverse services (ESLint enforces this). It reaches Dataverse
   through a small `DataverseClient` port (`client.ts`); `generated-client.ts`
-  implements it over `src/generated`. Methods a later ticket builds throw
-  `NotAvailableYetError` naming that ticket.
+  implements it over `src/generated`.
 - `src/components/shell/` and `src/routes.tsx`: the app shell (sidebar and top
   bar on a desktop, bottom tabs on a phone) and every route in the spec.
 
