@@ -53,6 +53,26 @@ export function contactErrors(contact: Partial<ContactInput>): FieldErrors {
   return isBlank(contact.lastName) ? { lastName: "Last name is required." } : {}
 }
 
+export function noteErrors(note: { title: string; text: string }): FieldErrors {
+  return isBlank(note.title) && isBlank(note.text) ? { text: "Write a title or some text." } : {}
+}
+
+export function taskErrors(task: { subject: string; dueDate?: string }): FieldErrors {
+  const errors: FieldErrors = {}
+  if (isBlank(task.subject)) errors.subject = "Subject is required."
+  if (task.dueDate && !isDateOnly(task.dueDate)) errors.dueDate = "Enter a valid date."
+  return errors
+}
+
+export function phoneCallErrors(call: { subject: string; direction?: string; date?: string }): FieldErrors {
+  const errors: FieldErrors = {}
+  if (isBlank(call.subject)) errors.subject = "Subject is required."
+  if (call.direction !== "incoming" && call.direction !== "outgoing") errors.direction = "Pick incoming or outgoing."
+  if (isBlank(call.date)) errors.date = "Date is required."
+  else if (!isDateOnly(call.date!)) errors.date = "Enter a valid date."
+  return errors
+}
+
 export function disqualifyErrors(input: { reason?: DisqualifyReason }): FieldErrors {
   return input.reason && DISQUALIFY_REASONS.includes(input.reason) ? {} : { reason: "Pick a Disqualify reason." }
 }

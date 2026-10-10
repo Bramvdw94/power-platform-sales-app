@@ -229,7 +229,7 @@ describe("Account and Contact pages", () => {
     expect(await screen.findByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByRole("region", { name: "Contacts (1)" })).toBeInTheDocument()
     await user.click(screen.getByRole("tab", { name: "Activity" }))
-    expect(screen.getByText(/Notes, Tasks and Phone Calls come in/)).toBeInTheDocument()
+    expect(await screen.findByText("No activities yet.")).toBeInTheDocument()
   })
 
   it("says so when a record doesn't exist", async () => {

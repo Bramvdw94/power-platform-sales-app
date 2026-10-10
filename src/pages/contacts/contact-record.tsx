@@ -2,9 +2,9 @@ import { useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Pencil } from "lucide-react"
+import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList } from "@/components/records/fields"
 import {
-  ActivityPlaceholder,
   RecordError,
   RecordLoading,
   RecordPage,
@@ -52,7 +52,7 @@ export default function ContactRecordPage() {
           </Button>
         )
       }
-      activity={<ActivityPlaceholder />}
+      activity={<ActivityTimeline record={{ type: "contact", id: contact.id }} canAdd={canEdit} />}
     >
       <RecordSection title="Details">
         {editing ? (

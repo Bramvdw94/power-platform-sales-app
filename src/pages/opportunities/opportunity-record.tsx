@@ -2,8 +2,9 @@ import { useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Check, Pencil, RotateCcw, Trophy } from "lucide-react"
+import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
-import { ActivityPlaceholder, RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
+import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
 import { Button } from "@/components/ui/button"
 import { useGateway } from "@/hooks/use-gateway"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
@@ -80,7 +81,7 @@ export default function OpportunityRecordPage() {
         { label: "Owner", value: opportunity.ownerName },
       ]}
       actions={actions || undefined}
-      activity={<ActivityPlaceholder />}
+      activity={<ActivityTimeline record={{ type: "opportunity", id: opportunity.id }} canAdd={canEdit} />}
     >
       <StagePath opportunity={opportunity} canChange={canEdit && !editing} />
 

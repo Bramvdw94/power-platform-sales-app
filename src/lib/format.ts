@@ -1,4 +1,4 @@
-import type { DisqualifyReason, LeadSource, LeadStatus, LostReason, Opportunity, Stage } from "@/sales"
+import type { DisqualifyReason, LeadSource, LeadStatus, LostReason, Opportunity, RecordRef, RecordType, Stage } from "@/sales"
 
 // Display formatting shared by list and record pages. Terms follow GLOSSARY.md.
 
@@ -63,6 +63,18 @@ export const LOST_REASON_LABELS: Record<LostReason, string> = {
   noBudget: "No budget",
   noDecision: "No decision",
   other: "Other",
+}
+
+const RECORD_PATHS: Record<RecordType, string> = {
+  lead: "leads",
+  opportunity: "opportunities",
+  account: "accounts",
+  contact: "contacts",
+}
+
+/** The page of a Lead, Opportunity, Account or Contact. */
+export function recordHref(record: RecordRef): string {
+  return `/${RECORD_PATHS[record.type]}/${record.id}`
 }
 
 /** "Megan Bowen" -> "MB": the Owner badge on cards and the signed-in user's avatar. */

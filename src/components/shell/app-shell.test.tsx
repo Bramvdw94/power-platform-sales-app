@@ -32,7 +32,7 @@ describe("app shell on a desktop", () => {
     renderApp()
     expect(await screen.findByRole("img", { name: "Adele Vance" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "My work" })).toBeInTheDocument()
-    expect(screen.getByText("Welcome, Adele.")).toBeInTheDocument()
+    expect(screen.getByText(/^Welcome, Adele\./)).toBeInTheDocument()
   })
 
   it("has a sidebar with every area, one click away", async () => {

@@ -49,9 +49,7 @@ export function RecordPage({ kind, name, highlights, actions, children, activity
       {isDesktop ? (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <div className="min-w-0 space-y-4">{children}</div>
-          <section aria-label="Activity" className="min-w-0">
-            {activity}
-          </section>
+          <div className="min-w-0">{activity}</div>
         </div>
       ) : (
         <Tabs defaultValue="details">
@@ -96,15 +94,6 @@ export function RelatedList({ items, empty }: { items: { id: string; href: strin
         </li>
       ))}
     </ul>
-  )
-}
-
-/** Until the activity timeline arrives (#33). */
-export function ActivityPlaceholder() {
-  return (
-    <RecordSection title="Activity">
-      <p className="text-sm text-muted-foreground">Notes, Tasks and Phone Calls come in #33.</p>
-    </RecordSection>
   )
 }
 

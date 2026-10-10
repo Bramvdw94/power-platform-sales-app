@@ -5,6 +5,27 @@
  */
 
 export const dataSourcesInfo = {
+  "annotations": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "annotationid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "phonecalls": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "activityid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "tasks": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "activityid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "accounts": {
     "tableId": "",
     "version": "",

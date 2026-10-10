@@ -85,13 +85,19 @@ exact name.
 
 Then wire it into `src/data/dataverse/generated-client.ts`. Tables so far:
 `systemuser`, `account`, `contact`, `vibe_lead` (registered as `leads`) and
-`vibe_opportunity` (registered as `opportunities`), plus the `WhoAmI` function.
+`vibe_opportunity` (registered as `opportunities`), `annotation` (Notes),
+`task` and `phonecall`, plus the `WhoAmI` function.
 
 The generated models list no bind key for polymorphic lookups such as a
 Contact's company (`parentcustomerid`). The SDK sends the body to the Web API
 as is, so the gateway binds the per-target navigation property itself
 (`parentcustomerid_account@odata.bind`) and clears it by setting
 `parentcustomerid_account` to null.
+Notes, Tasks and Phone Calls link to their record the same way:
+`objectid_<table>@odata.bind` for a Note and
+`regardingobjectid_<table>_<task|phonecall>@odata.bind` for a Task or Phone
+Call, where `<table>` is `vibe_lead`, `vibe_opportunity`, `account` or
+`contact`.
 
 ## Deploy
 

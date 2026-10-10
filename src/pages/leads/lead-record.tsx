@@ -2,8 +2,9 @@ import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Ban, BadgeCheck, Pencil, PhoneCall, RotateCcw, Undo2 } from "lucide-react"
+import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
-import { ActivityPlaceholder, RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
+import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
 import { Button } from "@/components/ui/button"
 import type { LeadDetails } from "@/data/gateway"
 import { useGateway } from "@/hooks/use-gateway"
@@ -36,7 +37,7 @@ export default function LeadRecordPage() {
         { label: "Owner", value: lead.ownerName },
       ]}
       actions={canEdit && !editing && <LeadActions lead={lead} onEdit={() => setEditing(true)} />}
-      activity={<ActivityPlaceholder />}
+      activity={<ActivityTimeline record={{ type: "lead", id: lead.id }} canAdd={canEdit} />}
     >
       {lead.status === "disqualified" && <DisqualifiedNotice lead={lead} />}
 
