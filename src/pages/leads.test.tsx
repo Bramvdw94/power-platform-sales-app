@@ -1,15 +1,16 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { RouterProvider, createMemoryRouter } from "react-router-dom"
 import { screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { SEED_IDS, SEED_USERS, type InMemorySalesStore } from "@/data/in-memory"
+import { GatewayError } from "@/data/gateway"
+import { SEED_IDS, SEED_USERS, createSeededStore, type InMemorySalesStore } from "@/data/in-memory"
 import { routes } from "@/routes"
 import { renderWithGateway } from "@/test/render"
 import { setViewport } from "@/test/viewport"
 import type { Id } from "@/sales"
 
 const { megan, adele, alex } = SEED_USERS
-const { leads } = SEED_IDS
+const { leads, accounts, contacts } = SEED_IDS
 
 function renderApp(path: string, options: { userId?: Id; store?: InMemorySalesStore } = {}) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
@@ -171,3 +172,103 @@ describe("Lead list and search", () => {
   })
 })
 
+
+describe("Qualify flow", () => {
+  async function openQualify(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole("button", { name: "Qualify" }))
+    const dialog = await screen.findByRole("dialog", { name: "Qualify Lead" })
+    await within(dialog).findByRole("group", { name: "Account" })
+    return dialog
+  }
+
+  async function fillOpportunity(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement, name: string) {
+    const nameField = within(dialog).getByLabelText(/Opportunity name/)
+    await user.type(nameField, name)
+    await user.type(within(dialog).getByLabelText(/Estimated value/), "36000")
+    await user.type(within(dialog).getByLabelText(/Expected close date/), "2026-12-15")
+  }
+
+  it("links an existing Account, creates the Contact under it and opens the new Opportunity", async () => {
+    const user = userEvent.setup()
+    const { store, router } = renderApp(`/leads/${leads.working}`, { userId: alex.id })
+    const dialog = await openQualify(user)
+
+    // "Fabrikam" only partly matches "Fabrikam NV": suggested, not preselected.
+    const account = within(dialog).getByRole("group", { name: "Account" })
+    expect(within(account).getByRole("radio", { name: /Create new Account "Fabrikam"/ })).toBeChecked()
+    await user.click(within(account).getByRole("radio", { name: /Fabrikam NV/ }))
+    const contact = within(dialog).getByRole("group", { name: "Contact" })
+    expect(within(contact).getByRole("radio", { name: /Create new Contact "Thomas Peeters"/ })).toBeChecked()
+
+    expect(within(dialog).getByLabelText(/Opportunity name/)).toHaveValue("Fabrikam - ")
+    await user.click(within(dialog).getByRole("button", { name: "Qualify" }))
+    expect(within(dialog).getByText("Estimated value is required (0 or more).")).toBeInTheDocument()
+    await fillOpportunity(user, dialog, "Managed workplace")
+    await user.click(within(dialog).getByRole("button", { name: "Qualify" }))
+
+    expect(await screen.findByRole("heading", { name: "Fabrikam - Managed workplace" })).toBeInTheDocument()
+    const opportunityId = router.state.location.pathname.split("/").pop()!
+    const opportunity = store.opportunities.get(opportunityId)!
+    expect(opportunity).toMatchObject({ accountId: accounts.fabrikam, stage: "qualification", ownerId: alex.id, originatingLeadId: leads.working })
+    expect(store.contacts.get(opportunity.primaryContactId!)).toMatchObject({ lastName: "Peeters", accountId: accounts.fabrikam })
+    expect(store.accounts.get(accounts.fabrikam)?.name).toBe("Fabrikam NV")
+    expect(store.leads.get(leads.working)?.status).toBe("qualified")
+    // The Primary Contact and the Originating Lead are both called Thomas Peeters.
+    const links = screen.getAllByRole("link", { name: "Thomas Peeters" }).map((link) => link.getAttribute("href"))
+    expect(links).toContain(`/leads/${leads.working}`)
+  })
+
+  it("creates a new Account and Contact when nothing matches", async () => {
+    const user = userEvent.setup()
+    const { store, router } = renderApp(`/leads/${leads.notContacted}`)
+    const dialog = await openQualify(user)
+    expect(within(dialog).getByText('No Account named like "Tailspin Toys".')).toBeInTheDocument()
+    await fillOpportunity(user, dialog, "Laptops")
+    await user.click(within(dialog).getByRole("button", { name: "Qualify" }))
+
+    expect(await screen.findByRole("heading", { name: "Tailspin Toys - Laptops" })).toBeInTheDocument()
+    const opportunity = store.opportunities.get(router.state.location.pathname.split("/").pop()!)!
+    expect(store.accounts.get(opportunity.accountId)?.name).toBe("Tailspin Toys")
+    expect(store.contacts.get(opportunity.primaryContactId!)).toMatchObject({ firstName: "Sanne", accountId: opportunity.accountId })
+  })
+
+  it("preselects the one Contact with the Lead's email and leaves them at their own Account", async () => {
+    const user = userEvent.setup()
+    const { store } = renderApp(`/leads/${leads.notContacted}`, { store: withLeadEmail("femke@northwind.example") })
+    const dialog = await openQualify(user)
+    const contact = within(dialog).getByRole("group", { name: "Contact" })
+    expect(within(contact).getByRole("radio", { name: /Femke Visser/ })).toBeChecked()
+    expect(within(contact).getByText("An existing Contact stays at their own Account; Qualify only links them.")).toBeInTheDocument()
+    await fillOpportunity(user, dialog, "Laptops")
+    await user.click(within(dialog).getByRole("button", { name: "Qualify" }))
+
+    expect(await screen.findByRole("heading", { name: "Tailspin Toys - Laptops" })).toBeInTheDocument()
+    expect(store.contacts.get(contacts.femke)?.accountId).toBe(accounts.northwind)
+  })
+
+  it("keeps the Lead open when a step fails, and a retry reuses what was created", async () => {
+    const user = userEvent.setup()
+    const { store, gateway } = renderApp(`/leads/${leads.notContacted}`)
+    vi.spyOn(gateway, "createContact").mockRejectedValueOnce(new GatewayError("invalid", "Dataverse refused the Contact."))
+    const dialog = await openQualify(user)
+    await fillOpportunity(user, dialog, "Laptops")
+    await user.click(within(dialog).getByRole("button", { name: "Qualify" }))
+
+    expect(await within(dialog).findByText(/Qualify stopped while creating the Contact/)).toBeInTheDocument()
+    expect(store.leads.get(leads.notContacted)?.status).toBe("notContacted")
+    const account = within(dialog).getByRole("group", { name: "Account" })
+    expect(within(account).getByRole("radio", { name: "Another existing Account" })).toBeChecked()
+
+    await user.click(within(dialog).getByRole("button", { name: "Try again" }))
+    expect(await screen.findByRole("heading", { name: "Tailspin Toys - Laptops" })).toBeInTheDocument()
+    expect([...store.accounts.values()].filter((a) => a.name === "Tailspin Toys")).toHaveLength(1)
+    expect(store.leads.get(leads.notContacted)?.status).toBe("qualified")
+  })
+})
+
+/** The seeded store, with Sanne Bakker's email changed. */
+function withLeadEmail(email: string): InMemorySalesStore {
+  const store = createSeededStore(new Date())
+  store.leads.set(leads.notContacted, { ...store.leads.get(leads.notContacted)!, email })
+  return store
+}

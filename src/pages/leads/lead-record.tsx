@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { Ban, Pencil, PhoneCall, RotateCcw, Undo2 } from "lucide-react"
+import { Ban, BadgeCheck, Pencil, PhoneCall, RotateCcw, Undo2 } from "lucide-react"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
 import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
@@ -13,6 +13,7 @@ import { DISQUALIFY_REASON_LABELS, LEAD_SOURCE_LABELS, formatDate, opportunitySu
 import { allowedLeadActions, fullName, isLeadReadOnly, type Lead } from "@/sales"
 import { DisqualifyDialog } from "./disqualify-dialog"
 import { EditLeadForm } from "./lead-form"
+import { QualifyDialog } from "./qualify-dialog"
 import { LeadStatusBadge } from "./lead-list"
 
 export default function LeadRecordPage() {
@@ -52,12 +53,13 @@ export default function LeadRecordPage() {
 /**
  * The header actions the Lead status allows, for the Owner and the Owner's
  * manager: Edit and the status moves while the Lead is open, Reopen once it is
- * Disqualified, nothing once it is Qualified. Qualify comes with #31.
+ * Disqualified, nothing once it is Qualified.
  */
 function LeadActions({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
   const [disqualifying, setDisqualifying] = useState(false)
+  const [qualifying, setQualifying] = useState(false)
   const actions = allowedLeadActions(lead.status)
 
   const move = useMutation({
@@ -70,6 +72,12 @@ function LeadActions({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
 
   return (
     <div className="flex flex-wrap justify-end gap-2">
+      {actions.includes("qualify") && (
+        <Button onClick={() => setQualifying(true)}>
+          <BadgeCheck aria-hidden />
+          Qualify
+        </Button>
+      )}
       {actions.includes("markWorking") && (
         <Button variant="outline" disabled={move.isPending} onClick={() => move.mutate("markWorking")}>
           <PhoneCall aria-hidden />
@@ -102,6 +110,7 @@ function LeadActions({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
       )}
       {move.isError && <FormAlert error={move.error} className="basis-full text-right" />}
       <DisqualifyDialog lead={lead} open={disqualifying} onOpenChange={setDisqualifying} />
+      {qualifying && <QualifyDialog lead={lead} open={qualifying} onOpenChange={setQualifying} />}
     </div>
   )
 }
