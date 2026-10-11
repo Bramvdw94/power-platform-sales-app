@@ -102,7 +102,7 @@ _Avoid_: Transfer, hand over, assign
 ### Processes
 
 **Process**:
-An ordered list of Steps that a manager builds to guide Leads or Opportunities towards Qualify or Close. A Lead Process ends at Qualify; the new Opportunity then follows its own Opportunity Process, so no Process spans both.
+An ordered list of Steps that a Process builder builds to guide Leads or Opportunities towards Qualify or Close. A Lead Process ends at Qualify; the new Opportunity then follows its own Opportunity Process, so no Process spans both. Processes apply organisation-wide, whoever owns the record.
 _Avoid_: Flow, workflow, business process flow, playbook, pipeline
 
 **Step**:
@@ -126,5 +126,21 @@ Tips text a Step shows the user on how to work the record at that point.
 _Avoid_: Help, instructions
 
 **Business rule**:
-An if/then rule a manager builds that applies to every record of one table (Lead, Opportunity, Account or Contact) whenever its condition holds, whichever Step the record is on, or whether it follows a Process at all.
+An if/then rule a Process builder builds that applies to every record of one table (Lead, Opportunity, Account or Contact) whenever its condition holds, whichever Step the record is on, or whether it follows a Process at all.
 _Avoid_: Validation rule, policy, automation
+
+**Entry criteria**:
+The conditions that decide which Process a new Lead or Opportunity gets. Each table's Processes are in a priority order and the first one whose Entry criteria match wins; one Process may be the fallback, with no criteria. A record that matches none follows no Process. The Process is picked once, when the record is created, and never changes by itself afterwards.
+_Avoid_: Assignment rule, filter, trigger
+
+**Switch Process**:
+Moving a record to another Process, or to none. Only the Owner's manager or a Process builder may do it. The record lands on the first Step that maps to its current Stage or Lead status, without checking Gates, and its progress on the old Process is not kept.
+_Avoid_: Change process, reassign
+
+**Publish**:
+Making a draft Process or Business rule take effect. Until then edits change nothing for users. A published Process can be retired, after which no new record gets it; a Business rule can be turned off.
+_Avoid_: Activate, deploy, save
+
+**Process builder**:
+A person allowed to build and Publish Processes and Business rules. It is a right given separately from being a manager; everyone in sales can read the definitions.
+_Avoid_: Admin, designer, customizer
