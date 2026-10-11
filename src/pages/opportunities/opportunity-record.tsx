@@ -22,6 +22,7 @@ import type { OpportunityDetails } from "@/data/gateway"
 import { ExpectedCloseDate } from "./expected-close-date"
 import { CloseOpportunityDialog, ReopenOpportunityDialog } from "./close-dialogs"
 import { EditOpportunityForm } from "./opportunity-form"
+import { ProcessBarMain, ProcessBarSide } from "@/prototype/process/process-bar"
 
 export default function OpportunityRecordPage() {
   const { id = "" } = useParams()
@@ -83,9 +84,19 @@ export default function OpportunityRecordPage() {
         { label: "Owner", value: opportunity.ownerName },
       ]}
       actions={actions || undefined}
-      activity={<ActivityTimeline record={{ type: "opportunity", id: opportunity.id }} canAdd={canEdit} />}
+      activity={
+        <div className="space-y-4">
+          <ProcessBarSide r={{ table: "opportunity", record: opportunity }} canEdit={canEdit} onFinish={() => setClosing(true)} />
+          <ActivityTimeline record={{ type: "opportunity", id: opportunity.id }} canAdd={canEdit} />
+        </div>
+      }
     >
-      <StagePath opportunity={opportunity} canChange={canEdit && !editing} />
+      <ProcessBarMain
+        r={{ table: "opportunity", record: opportunity }}
+        canEdit={canEdit && !editing}
+        onFinish={() => setClosing(true)}
+        fallback={<StagePath opportunity={opportunity} canChange={canEdit && !editing} />}
+      />
 
       {!isOpen && (
         <RecordSection title="Close">

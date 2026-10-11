@@ -16,11 +16,13 @@ import { DisqualifyDialog } from "./disqualify-dialog"
 import { EditLeadForm } from "./lead-form"
 import { QualifyDialog } from "./qualify-dialog"
 import { LeadStatusBadge } from "./lead-list"
+import { ProcessBarMain, ProcessBarSide } from "@/prototype/process/process-bar"
 
 export default function LeadRecordPage() {
   const { id = "" } = useParams()
   const gateway = useGateway()
   const [editing, setEditing] = useState(false)
+  const [qualifying, setQualifying] = useState(false)
   const { data, error, isPending } = useQuery({ queryKey: ["Lead", id], queryFn: () => gateway.getLead(id) })
 
   if (isPending) return <RecordLoading />
@@ -38,8 +40,17 @@ export default function LeadRecordPage() {
         { label: "Owner", value: lead.ownerName },
       ]}
       actions={canEdit && !editing && <LeadActions lead={lead} onEdit={() => setEditing(true)} />}
-      activity={<ActivityTimeline record={{ type: "lead", id: lead.id }} canAdd={canEdit} />}
+      activity={
+        <div className="space-y-4">
+          <ProcessBarSide r={{ table: "lead", record: lead }} canEdit={canEdit} onFinish={() => setQualifying(true)} />
+          <ActivityTimeline record={{ type: "lead", id: lead.id }} canAdd={canEdit} />
+        </div>
+      }
     >
+      {(lead.status === "notContacted" || lead.status === "working") && (
+        <ProcessBarMain r={{ table: "lead", record: lead }} canEdit={canEdit && !editing} onFinish={() => setQualifying(true)} />
+      )}
+      {qualifying && <QualifyDialog lead={lead} open={qualifying} onOpenChange={setQualifying} />}
       {lead.status === "disqualified" && <DisqualifiedNotice lead={lead} />}
 
       <RecordSection title="Details">

@@ -13,6 +13,8 @@ import OpportunityListPage from "@/pages/opportunities/opportunity-list"
 import OpportunityRecordPage from "@/pages/opportunities/opportunity-record"
 import PipelinePage from "@/pages/pipeline/pipeline-page"
 import SearchPage from "@/pages/search"
+import ProcessListPage from "@/prototype/process/process-list"
+import ProcessBuilderPage from "@/prototype/process/process-builder"
 
 /** Every page in the spec (#23). Placeholders are replaced by the ticket they name. */
 export const routes: RouteObject[] = [
@@ -32,6 +34,9 @@ export const routes: RouteObject[] = [
       { path: "contacts/:id", element: <ContactRecordPage /> },
       { path: "search", element: <SearchPage /> },
       { path: "menu", element: <MenuPage /> },
+      // PROTOTYPE (wayfinder #67)
+      { path: "processes", element: <ProcessListPage /> },
+      { path: "processes/:id", element: <ProcessBuilderPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

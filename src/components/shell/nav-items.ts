@@ -1,4 +1,4 @@
-import { Briefcase, Building2, Columns3, Home, type LucideIcon, UserPlus, Users } from "lucide-react"
+import { Briefcase, Building2, Columns3, Home, type LucideIcon, UserPlus, Users, Workflow } from "lucide-react"
 
 export type NavItem = { to: string; label: string; icon: LucideIcon }
 
@@ -11,6 +11,8 @@ export const RECORD_LISTS: NavItem[] = [
   { to: "/opportunities", label: "Opportunities", icon: Briefcase },
   { to: "/accounts", label: "Accounts", icon: Building2 },
   { to: "/contacts", label: "Contacts", icon: Users },
+  // PROTOTYPE (wayfinder #67)
+  { to: "/processes", label: "Processes", icon: Workflow },
 ]
 
 /** "+ New" menu entries: the list page opens its New dialog for `?new=1`. */
