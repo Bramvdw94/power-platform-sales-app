@@ -92,7 +92,7 @@ function CheckList({ results, compact }: { results: CheckResult[]; compact?: boo
           {x.passed ? (
             <CircleCheck className="mt-0.5 size-4 shrink-0 text-green-600" aria-label="Done" />
           ) : (
-            <CircleDashed className="mt-0.5 size-4 shrink-0 text-amber-600" aria-label="Open" />
+            <CircleDashed className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400" aria-label="Open" />
           )}
           <span className={cn(x.passed && "text-muted-foreground")}>
             {x.label}
@@ -169,7 +169,7 @@ function PathVariant({ p, r, canEdit, onFinish }: { p: RecordProcess } & BarProp
                   onClick={() => setViewing(i === p.stepIndex ? null : i)}
                   className={cn(
                     "flex h-10 w-full flex-col items-center justify-center px-3 text-sm [clip-path:polygon(0_0,calc(100%-10px)_0,100%_50%,calc(100%-10px)_100%,0_100%,10px_50%)] first:[clip-path:polygon(0_0,calc(100%-10px)_0,100%_50%,calc(100%-10px)_100%,0_100%)]",
-                    current ? "bg-primary text-primary-foreground" : done ? "bg-primary/20" : "bg-muted text-muted-foreground",
+                    current ? "bg-primary text-primary-foreground" : done ? "bg-primary/20" : "bg-muted text-foreground/75",
                     shown === i && !current && "ring-2 ring-primary ring-inset",
                   )}
                 >
@@ -183,7 +183,7 @@ function PathVariant({ p, r, canEdit, onFinish }: { p: RecordProcess } & BarProp
             )
           })}
           <li className="w-28 shrink-0">
-            <span className="flex h-10 items-center justify-center rounded-r-md bg-muted text-sm text-muted-foreground">
+            <span className="flex h-10 items-center justify-center rounded-r-md bg-muted text-sm text-foreground/75">
               {r.table === "opportunity" ? "Closed" : "Qualified"}
             </span>
           </li>
@@ -374,7 +374,7 @@ function StripVariant({ p, r, canEdit, onFinish }: { p: RecordProcess } & BarPro
               · {MAP_LABELS[step.maps]} · Step {p.stepIndex + 1} of {steps.length}
             </span>
             {step.guidance && (
-              <button type="button" className="ml-2 inline-flex align-middle text-amber-600" aria-label="Guidance" onClick={() => setTip(!tip)}>
+              <button type="button" className="ml-2 inline-flex align-middle text-amber-700 dark:text-amber-400" aria-label="Guidance" onClick={() => setTip(!tip)}>
                 <Lightbulb className="size-4" />
               </button>
             )}

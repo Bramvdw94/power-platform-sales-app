@@ -106,7 +106,7 @@ export default function ProcessBuilderPage() {
         <EntryCriteria def={def} change={change} />
         {problem && (
           <p role="alert" className="flex items-start gap-2 rounded-md bg-amber-500/10 p-2 text-sm">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden />
             {problem}
           </p>
         )}
@@ -427,7 +427,7 @@ function SentencesVariant({ def, change }: EditProps) {
                 onClick={() => setIndex(j)}
                 className={cn(
                   "flex h-11 w-full flex-col items-center justify-center px-3 text-sm [clip-path:polygon(0_0,calc(100%-10px)_0,100%_50%,calc(100%-10px)_100%,0_100%,10px_50%)]",
-                  j === i ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-primary/20",
+                  j === i ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/75 hover:bg-primary/20",
                 )}
               >
                 <span className="max-w-full truncate font-medium">{s.name}</span>

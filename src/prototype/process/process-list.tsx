@@ -16,7 +16,7 @@ export function statusBadge(p: ProcessRecord) {
   return (
     <span className="inline-flex flex-wrap gap-1">
       {p.status === "draft" && <Badge variant="outline">Draft</Badge>}
-      {p.status === "published" && <Badge className="bg-green-600 text-white">Published v{p.published?.version}</Badge>}
+      {p.status === "published" && <Badge className="bg-green-700 text-white">Published v{p.published?.version}</Badge>}
       {p.status === "retired" && <Badge variant="secondary">Retired</Badge>}
       {changed && p.status !== "draft" && <Badge variant="outline">Unpublished changes</Badge>}
     </span>

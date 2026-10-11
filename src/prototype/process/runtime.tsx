@@ -157,7 +157,7 @@ export function KeyField({ r, field, canEdit, compact }: { r: AnyRecord; field: 
     <label className={cn("block min-w-0 space-y-1", compact && "text-xs")}>
       <span className="text-xs text-muted-foreground">
         {label}
-        {empty && <span className="text-amber-600"> · empty</span>}
+        {empty && <span className="text-amber-700 dark:text-amber-400"> · empty</span>}
       </span>
       <div>{control}</div>
     </label>
