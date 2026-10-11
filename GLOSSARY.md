@@ -10,6 +10,14 @@ The sales app tracks the organisations and people a sales team sells to, and the
 An organisation the team sells to or has sold to.
 _Avoid_: Company, customer, client
 
+**Account type**:
+What kind of relationship the team has with an Account: Prospect, Customer, Partner, Reseller, Supplier, Competitor, or Other.
+_Avoid_: Relationship type, category, customer type
+
+**Industry**:
+The line of business an Account works in.
+_Avoid_: Sector, vertical
+
 **Contact**:
 A person the team deals with, usually working at an Account.
 _Avoid_: Person, customer
@@ -102,7 +110,7 @@ One stop in a Process. On an Opportunity each Step maps to one open Stage, and s
 _Avoid_: Stage, phase, milestone
 
 **Gate**:
-The checks a record must pass to leave a Step forward. Moving back is never gated.
+The checks a record must pass to leave a Step forward: a field has a value, a field meets a condition, or the record has enough related records (such as a completed Phone Call). Moving back is never gated. Closed Won must pass the last Step's Gate, from whichever Step it is closed.
 _Avoid_: Validation, exit criteria, requirement
 
 **Action**:
