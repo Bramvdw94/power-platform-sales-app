@@ -89,6 +89,24 @@ _Avoid_: Disqualify reason
 All open Opportunities, viewed by stage.
 _Avoid_: Funnel
 
+### Forecasting
+
+**Forecast category**:
+How firmly the Owner counts on an open Opportunity: Pipeline, Best case, Commit, or Omitted (not counted at all). Each open Stage gives a default (Qualification and Needs Analysis Pipeline, Proposal Best case, Negotiation Commit) that the Owner may override; changing the Stage, or reopening, resets it to the default. A closed Opportunity counts as won or lost by its Stage, never by its Forecast category.
+_Avoid_: Forecast stage, confidence, Won, Lost
+
+**Forecast**:
+The expected sales of a person or team per month or quarter: what is already Closed won, plus open Opportunities in their Expected close month, added up by Forecast category and weighted by Probability, set against the Quota.
+_Avoid_: Projection, prediction, pipeline
+
+**Quota**:
+The amount in euros a salesperson is expected to win in one month. A quarter's Quota is the sum of its months. A salesperson's manager sets it, and nobody sets their own; only the salesperson and their manager may see it.
+_Avoid_: Target, goal, budget
+
+**Gap**:
+How much of the Quota is not yet Closed won in a period.
+_Avoid_: Shortfall, remaining
+
 ### Products
 
 **Product**:
