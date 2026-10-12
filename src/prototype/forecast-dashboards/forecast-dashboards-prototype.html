@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forecast Layout Prototype</title>
+<!--
+  PROTOTYPE (wayfinder #84), throwaway. Never merge.
+  Question: where do the forecast, My numbers, the team dashboard and Quota entry live in the app,
+  and how do they look on desktop and on a phone?
+  Three structurally different placements, switchable with the bottom bar, the arrow keys or ?variant=A|B|C.
+  Data is made up and lives in memory; Quota edits are not saved.
+-->
+<style>
+:root {
+  --bg: #ffffff; --card: #ffffff; --fg: #0a0a0a; --muted-fg: #636363; --muted: #f5f5f5; --line: #e5e5e5;
+  --sidebar: #fafafa; --primary: #171717; --primary-fg: #fafafa; --link: #1d4ed8;
+  --page: #eef0f3; --frame: #c9cdd4;
+  --won: #15803d; --commit: #1d4ed8; --best: #3b82f6; --pipe: #8a8a8a; --quota: #0a0a0a;
+  --bad: #b91c1c; --bad-soft: #fde8e8; --good-soft: #e3f4e9; --warn: #8a5a00; --warn-soft: #fbf0d9;
+  --bar-bg: #171717; --bar-fg: #ffffff;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0a0a; --card: #171717; --fg: #fafafa; --muted-fg: #a1a1a1; --muted: #262626; --line: #2e2e2e;
+  --sidebar: #171717; --primary: #e5e5e5; --primary-fg: #171717; --link: #93b4ff;
+  --page: #050505; --frame: #3a3a3a;
+  --won: #4ade80; --commit: #3b82f6; --best: #93c5fd; --pipe: #8a8a8a; --quota: #fafafa;
+  --bad: #f87171; --bad-soft: #3b1414; --good-soft: #10301d; --warn: #f2c46b; --warn-soft: #3a2e14;
+  --bar-bg: #fafafa; --bar-fg: #0a0a0a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0a0a0a; --card: #171717; --fg: #fafafa; --muted-fg: #a1a1a1; --muted: #262626; --line: #2e2e2e;
+  --sidebar: #171717; --primary: #e5e5e5; --primary-fg: #171717; --link: #93b4ff;
+  --page: #050505; --frame: #3a3a3a;
+  --won: #4ade80; --commit: #3b82f6; --best: #93c5fd; --pipe: #8a8a8a; --quota: #fafafa;
+  --bad: #f87171; --bad-soft: #3b1414; --good-soft: #10301d; --warn: #f2c46b; --warn-soft: #3a2e14;
+  --bar-bg: #fafafa; --bar-fg: #0a0a0a; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--fg); line-height: 1.45; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.outer { max-width: 1280px; margin: 0 auto; padding: 20px 16px 110px; display: grid; gap: 16px; }
+.intro { display: grid; gap: 8px; }
+.intro h1 { margin: 0; font-size: 1.4rem; }
+.intro p { margin: 0; max-width: 80ch; }
+.tag { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: var(--warn-soft); color: var(--warn); width: fit-content; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.controls .grp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.controls .lbl { font-size: .82rem; font-weight: 600; color: var(--muted-fg); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+.seg button { border: 0; background: transparent; padding: 6px 11px; cursor: pointer; font-size: .88rem; font-weight: 500; color: var(--muted-fg); }
+.seg button[aria-pressed="true"] { background: var(--primary); color: var(--primary-fg); }
+.vardesc { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+.vardesc h2 { margin: 0; font-size: 1.05rem; }
+.vardesc ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.rec { background: var(--good-soft); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+.rec ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.muted { color: var(--muted-fg); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Device frames */
+.device-desktop { border: 1px solid var(--frame); border-radius: 12px; overflow: hidden; height: 780px; display: flex; background: var(--bg); }
+.device-phone { margin: 0 auto; width: 390px; max-width: 100%; height: max(560px, min(800px, calc(100dvh - 130px))); border: 10px solid var(--frame); border-radius: 36px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+
+/* App shell */
+.side { width: 220px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+.side .brand { height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
+.logo { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, #742774, #b4009e); }
+.side nav { padding: 8px; display: grid; gap: 2px; }
+.side nav .sep { height: 1px; background: var(--line); margin: 6px 4px; }
+.navbtn { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 0; background: transparent; cursor: pointer; text-align: left; font-size: .92rem; color: var(--fg); }
+.navbtn[aria-current="page"] { background: var(--muted); font-weight: 600; }
+.navbtn .ic { width: 18px; text-align: center; color: var(--muted-fg); }
+.navbtn .new { margin-left: auto; font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+.mainwrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar { height: 56px; flex-shrink: 0; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 16px; }
+.search { flex: 1; max-width: 420px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--muted-fg); font-size: .9rem; }
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: .9rem; font-weight: 500; }
+.btn.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+.btn.sm { padding: 4px 9px; font-size: .84rem; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--muted); display: grid; place-items: center; font-size: .78rem; font-weight: 700; }
+.main { flex: 1; min-height: 0; overflow: auto; }
+.page { padding: 20px 24px 32px; display: grid; gap: 16px; align-content: start; }
+.phone .page { padding: 14px 14px 24px; gap: 14px; }
+.phead { height: 48px; flex-shrink: 0; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 600; }
+.phead .r { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.ptabs { height: 62px; flex-shrink: 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); background: var(--bg); }
+.ptabs button { border: 0; background: transparent; display: grid; place-items: center; gap: 0; font-size: .72rem; color: var(--muted-fg); cursor: pointer; padding-top: 6px; }
+.ptabs button .ic { font-size: 1.15rem; line-height: 1; }
+.ptabs button[aria-current="page"] { color: var(--fg); font-weight: 700; }
+.ptabs button .new { font-size: .6rem; font-weight: 700; color: var(--warn); }
+
+h1.pt { margin: 0; font-size: 1.45rem; letter-spacing: -.01em; }
+.phone h1.pt { font-size: 1.2rem; }
+.sub { margin: 2px 0 0; font-size: .88rem; color: var(--muted-fg); }
+.hrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.hrow .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.card h3 { margin: 0; font-size: .98rem; }
+.card .ch { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.phone .grid3, .phone .grid2 { grid-template-columns: 1fr; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { border: 0; background: none; border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; font-weight: 600; color: var(--muted-fg); white-space: nowrap; font-size: .92rem; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--fg); }
+select.sel { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 5px 8px; font-size: .88rem; }
+
+/* KPI tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.phone .tiles { grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.tile .k { font-size: .76rem; font-weight: 600; color: var(--muted-fg); }
+.tile .v { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.phone .tile .v { font-size: 1.05rem; }
+.tile .s { font-size: .78rem; color: var(--muted-fg); }
+.meter { height: 6px; border-radius: 3px; background: var(--muted); overflow: hidden; margin-top: 4px; }
+.meter i { display: block; height: 100%; background: var(--won); }
+.bad { color: var(--bad); }
+.good { color: var(--won); }
+
+/* Tables */
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+table.t { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .88rem; }
+table.t th, table.t td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.t th { font-size: .76rem; font-weight: 600; color: var(--muted-fg); background: var(--card); }
+table.t th:first-child, table.t td:first-child { text-align: left; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t tr.tot td { font-weight: 700; background: var(--muted); }
+table.t .stick { position: sticky; left: 0; background: var(--card); z-index: 1; border-right: 1px solid var(--line); }
+table.t tr.tot .stick { background: var(--muted); }
+table.t input.q { width: 92px; text-align: right; border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; background: var(--bg); font-variant-numeric: tabular-nums; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .8rem; color: var(--muted-fg); }
+
+/* Phone period cards */
+.pcards { display: grid; gap: 10px; }
+.pcard { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 14px; display: grid; gap: 8px; }
+.pcard .top { display: flex; justify-content: space-between; align-items: baseline; }
+.pcard .top b { font-size: 1rem; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: .88rem; }
+.kv dt { color: var(--muted-fg); } .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.stepper button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-size: 1.1rem; }
+.stepper b { font-size: 1.05rem; }
+.dots { display: flex; gap: 5px; justify-content: center; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--fg); }
+
+/* Charts */
+.bars { display: grid; gap: 8px; }
+.barrow { display: grid; grid-template-columns: 110px 1fr 80px; gap: 8px; align-items: center; font-size: .86rem; }
+.phone .barrow { grid-template-columns: 92px 1fr 70px; }
+.barrow .track { height: 14px; border-radius: 4px; background: var(--muted); overflow: hidden; display: flex; }
+.barrow .track i { display: block; height: 100%; }
+.barrow .val { text-align: right; font-variant-numeric: tabular-nums; }
+svg.chart { width: 100%; height: auto; display: block; }
+svg.chart text { fill: var(--muted-fg); font-size: 11px; font-family: inherit; }
+
+/* Lists */
+ul.list { list-style: none; margin: 0; padding: 0; }
+ul.list li { padding: 8px 0; border-bottom: 1px solid var(--line); display: grid; gap: 1px; }
+ul.list li:last-child { border-bottom: 0; }
+ul.list a { color: var(--link); font-weight: 600; text-decoration: none; }
+ul.list .m { font-size: .84rem; color: var(--muted-fg); }
+.badge { display: inline-block; font-size: .72rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--bad-soft); color: var(--bad); }
+.note { font-size: .82rem; color: var(--muted-fg); }
+.placeholder { border: 2px dashed var(--line); border-radius: 12px; padding: 40px 16px; text-align: center; color: var(--muted-fg); }
+.menu-list { display: grid; gap: 2px; }
+.menu-list button { display: flex; gap: 12px; align-items: center; border: 0; background: none; padding: 12px 6px; border-bottom: 1px solid var(--line); text-align: left; cursor: pointer; font-size: .98rem; }
+.menu-list .new { margin-left: auto; font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+
+/* Dialog */
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 5; padding: 16px; }
+.dialog { background: var(--card); border: 1px solid var(--line); border-radius: 12px; width: min(900px, 100%); max-height: 100%; overflow: auto; padding: 16px 18px; display: grid; gap: 12px; }
+.phone .scrim { padding: 0; }
+.phone .dialog { border-radius: 0; height: 100%; }
+.relative { position: relative; }
+
+/* Floating variant switcher (prototype only) */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); background: var(--bar-bg); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 6px 22px rgba(0,0,0,.3); z-index: 50; max-width: calc(100vw - 32px); }
+.switcher button { font-size: 1.1rem; width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--bar-fg); cursor: pointer; }
+.switcher span { font-weight: 600; font-size: .9rem; padding-inline: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 700px) { .device-desktop { height: 700px; } .side { width: 64px; } .side .brand span, .navbtn .lbl, .navbtn .new { display: none; } }
+</style>
+</head>
+<body>
+<div class="outer">
+  <div class="intro">
+    <span class="tag">Prototype, throwaway</span>
+    <h1>Where the forecast and dashboards live</h1>
+    <p class="muted">Three different placements of the forecast, My numbers, the team dashboard and Quota entry. Flip variants with the bar at the bottom or the arrow keys. Click around inside the app: navigation, tabs, Month / Quarter and Quota cells all work. Numbers are made up; today is 12 Oct 2026.</p>
+  </div>
+  <div class="controls">
+    <div class="grp"><span class="lbl">Viewing as</span><div class="seg" id="c-user"></div></div>
+    <div class="grp"><span class="lbl">Device</span><div class="seg" id="c-device"></div></div>
+    <div class="grp"><span class="lbl">Theme</span><div class="seg" id="c-theme"></div></div>
+  </div>
+  <div class="rec">
+    <b>My recommendation: variant A, with the phone month picker from C</b>
+    <ul>
+      <li>A Forecast page next to Pipeline, as in Dynamics 365 and Salesforce (both have a separate Forecasts area). Pipeline stays about deals, Forecast about money per month.</li>
+      <li>My numbers as a tile row on top of Home: it is what a salesperson checks daily, and Home is where they land.</li>
+      <li>Team and Quotas as tabs on the Forecast page, only for people with direct reports, so a salesperson sees one clean page.</li>
+      <li>On a phone the wide grid becomes one card per month, so nothing scrolls sideways; Forecast sits under Menu.</li>
+    </ul>
+  </div>
+  <div class="vardesc" id="vardesc"></div>
+  <div id="device"></div>
+</div>
+<div class="switcher" role="group" aria-label="Prototype variant">
+  <button id="prev" aria-label="Previous variant">&#8592;</button>
+  <span id="vlabel"></span>
+  <button id="next" aria-label="Next variant">&#8594;</button>
+</div>
+
+<script>
+// ---------- Data (made up) ----------
+const MONTHS = ["Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
+const QUARTERS = [{ label: "Q4 2026", idx: [0, 1, 2] }, { label: "Q1 2027", idx: [3, 4, 5] }];
+const PEOPLE = {
+  megan: { name: "Megan Bowen", short: "Megan", initials: "MB", manager: null, reports: ["adele", "alex"] },
+  adele: { name: "Adele Vance", short: "Adele", initials: "AV", manager: "megan", reports: [] },
+  alex: { name: "Alex Wilber", short: "Alex", initials: "AW", manager: "megan", reports: [] },
+};
+// per month: won, open Commit, open Best case, open Pipeline-only, Weighted (open)
+const NUM = {
+  adele: { won: [18500, 0, 0, 0, 0, 0], oc: [14000, 22000, 9000, 0, 0, 0], ob: [6000, 18000, 24000, 12000, 0, 8000], op: [4000, 9000, 16000, 21000, 14000, 10000], w: [17100, 30300, 25400, 18300, 6200, 7000] },
+  alex: { won: [9000, 0, 0, 0, 0, 0], oc: [8000, 6000, 15000, 0, 0, 0], ob: [12000, 7000, 11000, 9000, 6000, 0], op: [7000, 18000, 6000, 15000, 19000, 22000], w: [15400, 13700, 20100, 11400, 9200, 6600] },
+  megan: { won: [6000, 0, 0, 0, 0, 0], oc: [0, 12000, 0, 0, 0, 0], ob: [0, 0, 8000, 0, 0, 0], op: [3000, 0, 4000, 6000, 0, 0], w: [1200, 9000, 5600, 1800, 0, 0] },
+};
+const quotas = { adele: [40000, 40000, 45000, 40000, 40000, 45000], alex: [35000, 35000, 40000, 35000, 35000, 40000], megan: [15000, 15000, 15000, 15000, 15000, 15000] };
+const OPPS = [
+  { name: "Contoso CRM rollout", acc: "Contoso", owner: "adele", stage: "Negotiation", value: 14000, close: "2026-10-28" },
+  { name: "Fabrikam renewal", acc: "Fabrikam", owner: "adele", stage: "Proposal", value: 6000, close: "2026-10-31" },
+  { name: "Litware pilot", acc: "Litware", owner: "adele", stage: "Needs Analysis", value: 4000, close: "2026-10-05" },
+  { name: "Northwind expansion", acc: "Northwind Traders", owner: "alex", stage: "Negotiation", value: 8000, close: "2026-10-20" },
+  { name: "Tailspin onboarding", acc: "Tailspin Toys", owner: "alex", stage: "Proposal", value: 12000, close: "2026-10-09" },
+  { name: "Woodgrove analytics", acc: "Woodgrove Bank", owner: "alex", stage: "Qualification", value: 7000, close: "2026-10-30" },
+  { name: "Adventure Works support", acc: "Adventure Works", owner: "megan", stage: "Qualification", value: 3000, close: "2026-09-30" },
+];
+const TODAY = "2026-10-12";
+const FUNNEL = { // open value by Stage
+  adele: [41000, 37000, 60000, 45000], alex: [52000, 30000, 41000, 29000], megan: [10000, 3000, 8000, 12000] };
+const STAGES = ["Qualification", "Needs Analysis", "Proposal", "Negotiation"];
+const HIST = { // last 90 days
+  adele: { won: 5, wonV: 96000, lost: 3, lostV: 41000, cycle: 38 },
+  alex: { won: 3, wonV: 51000, lost: 4, lostV: 63000, cycle: 52 },
+  megan: { won: 2, wonV: 21000, lost: 1, lostV: 9000, cycle: 29 },
+};
+
+// ---------- Helpers ----------
+const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const E = (n) => eur.format(n);
+const K = (n) => Math.abs(n) >= 1000 ? "€" + (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + "k" : E(n);
+const fmtDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const sum = (a) => a.reduce((x, y) => x + y, 0);
+function figures(ids, idx) {
+  let won = 0, oc = 0, ob = 0, op = 0, w = 0, quota = 0;
+  for (const id of ids) for (const i of idx) { const n = NUM[id]; won += n.won[i]; oc += n.oc[i]; ob += n.ob[i]; op += n.op[i]; w += n.w[i]; quota += quotas[id][i]; }
+  const commit = won + oc, best = commit + ob, pipeline = oc + ob + op, gap = quota - won;
+  return { won, commit, best, pipeline, weighted: w, quota, gap, coverage: gap > 0 ? pipeline / gap : null };
+}
+const periods = () => S.period === "month" ? MONTHS.map((label, i) => ({ label, idx: [i] })) : QUARTERS;
+const team = (u) => [u, ...PEOPLE[u].reports];
+const isMgr = (u) => PEOPLE[u].reports.length > 0;
+function scopeIds() {
+  if (S.scope === "team" && isMgr(S.user)) return team(S.user);
+  if (S.scope !== "me" && S.scope !== "team" && PEOPLE[S.scope]) return [S.scope];
+  return [S.user];
+}
+const covTxt = (c) => c == null ? "Met" : c.toFixed(1) + "×";
+const gapTxt = (g) => g <= 0 ? '<span class="good">Met</span>' : E(g);
+
+// ---------- State ----------
+const params = new URLSearchParams(location.search);
+const VARIANTS = {
+  A: { name: "Forecast page", desc: ["New <b>Forecast</b> page in the sidebar, next to Pipeline. Tabs: Forecast, Team and Quotas (Team and Quotas only for people with direct reports).", "<b>My numbers</b> is a row of tiles at the top of Home, above My work.", "Forecast grid: one row per month or quarter, the eight figures as columns.", "Phone: Forecast under Menu; the grid turns into one card per month."] },
+  B: { name: "Numbers hub", desc: ["One long <b>Numbers</b> page holds everything: summary tiles, the forecast, then the team section. A Me / My team switch at the top.", "Home stays as it is.", "Forecast grid is turned: figures as rows, months as columns, like a spreadsheet. Quota cells are edited right in the grid (Edit Quotas).", "Phone: Numbers gets its own bottom tab (Search moves to the header); the grid scrolls sideways with the figure names pinned."] },
+  C: { name: "Home and Pipeline", desc: ["No new page. Home gets tabs: My work, My numbers and Team.", "The forecast is a third view on Pipeline: Board, Funnel, Forecast, reusing the Pipeline owner filter.", "Forecast shown as a bar chart per month with the Quota line, and a compact table below.", "Quotas are set in a dialog from the Team tab. Phone: one month at a time with arrows."] },
+};
+const S = {
+  variant: VARIANTS[params.get("variant")] ? params.get("variant") : "A",
+  device: params.get("device") === "phone" ? "phone" : "desktop",
+  user: "megan", theme: "system", page: "home", tab: "forecast", hometab: "work", pview: "forecast",
+  period: "month", scope: "me", pidx: 0, quotaEdit: false, dialog: false,
+};
+function resetNav() { S.page = S.variant === "C" ? "home" : "home"; S.tab = "forecast"; S.hometab = "work"; S.pview = "forecast"; S.scope = "me"; S.pidx = 0; S.quotaEdit = false; S.dialog = false; }
+
+// ---------- Shared pieces ----------
+function seg(name, opts, cur) {
+  return `<div class="seg" role="group">${opts.map(([v, l]) => `<button data-act="${name}" data-v="${v}" aria-pressed="${v === cur}">${l}</button>`).join("")}</div>`;
+}
+function scopePicker() {
+  if (!isMgr(S.user)) return "";
+  const opts = [["me", "Me"], ["team", "My team"], ...PEOPLE[S.user].reports.map((r) => [r, PEOPLE[r].short])];
+  return `<select class="sel" data-act="scope" aria-label="Whose numbers">${opts.map(([v, l]) => `<option value="${v}" ${S.scope === v ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+}
+const periodToggle = () => seg("period", [["month", "Month"], ["quarter", "Quarter"]], S.period);
+const LEGEND = `<div class="legend"><span><i class="sw" style="background:var(--won)"></i>Closed won</span><span><i class="sw" style="background:var(--commit)"></i>Commit</span><span><i class="sw" style="background:var(--best)"></i>Best case</span><span><i class="sw" style="background:var(--pipe)"></i>Pipeline</span><span><i class="sw" style="background:var(--quota);height:2px;vertical-align:3px"></i>Quota</span></div>`;
+
+function myNumbersTiles(ids) {
+  const m = figures(ids, [0]), q = figures(ids, [0, 1, 2]);
+  const closing = OPPS.filter((o) => ids.includes(o.owner) && o.close.startsWith("2026-10") && o.close >= TODAY);
+  const overdue = OPPS.filter((o) => ids.includes(o.owner) && o.close < TODAY);
+  const pct = (a, b) => Math.min(100, Math.round((a / b) * 100));
+  return `<div class="tiles">
+    <div class="tile"><span class="k">Won this month</span><span class="v">${E(m.won)}</span><span class="s">of ${E(m.quota)} Quota</span><div class="meter"><i style="width:${pct(m.won, m.quota)}%"></i></div></div>
+    <div class="tile"><span class="k">Won this quarter</span><span class="v">${E(q.won)}</span><span class="s">of ${E(q.quota)} Quota</span><div class="meter"><i style="width:${pct(q.won, q.quota)}%"></i></div></div>
+    <div class="tile"><span class="k">Gap this quarter</span><span class="v">${gapTxt(q.gap)}</span><span class="s">Coverage ${covTxt(q.coverage)}</span></div>
+    <div class="tile"><span class="k">Commit</span><span class="v">${E(q.commit)}</span><span class="s">this quarter, incl. won</span></div>
+    <div class="tile"><span class="k">Best case</span><span class="v">${E(q.best)}</span><span class="s">this quarter, incl. Commit</span></div>
+    <div class="tile"><span class="k">Weighted pipeline</span><span class="v">${E(q.weighted)}</span><span class="s">this quarter</span></div>
+    <div class="tile"><span class="k">Closing this month</span><span class="v">${closing.length}</span><span class="s">${E(sum(closing.map((o) => o.value)))} open</span></div>
+    <div class="tile"><span class="k">Overdue close dates</span><span class="v ${overdue.length ? "bad" : ""}">${overdue.length}</span><span class="s">${overdue.length ? "update Expected close date" : "all up to date"}</span></div>
+  </div>`;
+}
+function dealLists(ids) {
+  const closing = OPPS.filter((o) => ids.includes(o.owner) && o.close.startsWith("2026-10") && o.close >= TODAY);
+  const overdue = OPPS.filter((o) => ids.includes(o.owner) && o.close < TODAY);
+  const li = (o, od) => `<li><a href="#" onclick="return false">${o.name}</a><span class="m">${o.acc} · ${o.stage} · ${E(o.value)} · ${fmtDate(o.close)}${ids.length > 1 ? " · " + PEOPLE[o.owner].short : ""} ${od ? '<span class="badge">Overdue</span>' : ""}</span></li>`;
+  return `<div class="grid2">
+    <div class="card"><h3>Closing this month</h3><ul class="list">${closing.map((o) => li(o)).join("") || '<li class="m">Nothing closing this month.</li>'}</ul></div>
+    <div class="card"><h3>Overdue close dates</h3><ul class="list">${overdue.map((o) => li(o, true)).join("") || '<li class="m">All Expected close dates are in the future.</li>'}</ul></div>
+  </div>`;
+}
+
+// Forecast grid, periods as rows (A)
+function forecastRowsTable(ids) {
+  const ps = periods();
+  const rows = ps.map((p) => ({ label: p.label, f: figures(ids, p.idx) }));
+  const all = figures(ids, [0, 1, 2, 3, 4, 5]);
+  const tr = (label, f, cls = "") => `<tr class="${cls}"><td>${label}</td><td>${E(f.won)}</td><td>${E(f.commit)}</td><td>${E(f.best)}</td><td>${E(f.pipeline)}</td><td>${E(f.weighted)}</td><td>${E(f.quota)}</td><td>${f.gap <= 0 ? '<span class="good">Met</span>' : E(f.gap)}</td><td>${covTxt(f.coverage)}</td></tr>`;
+  return `<div class="tw"><table class="t"><thead><tr><th>${S.period === "month" ? "Month" : "Quarter"}</th><th>Closed won</th><th>Commit</th><th>Best case</th><th>Pipeline</th><th>Weighted</th><th>Quota</th><th>Gap</th><th>Coverage</th></tr></thead>
+  <tbody>${rows.map((r) => tr(r.label, r.f)).join("")}${tr("Total", all, "tot")}</tbody></table></div>`;
+}
+// Forecast as phone cards (A)
+function forecastCards(ids) {
+  return `<div class="pcards">${periods().map((p) => { const f = figures(ids, p.idx); return `<div class="pcard"><div class="top"><b>${p.label}</b><span class="muted num">Quota ${E(f.quota)}</span></div>
+    <div class="meter"><i style="width:${Math.min(100, Math.round(f.won / f.quota * 100))}%"></i></div>
+    <dl class="kv"><dt>Closed won</dt><dd>${E(f.won)}</dd><dt>Commit</dt><dd>${E(f.commit)}</dd><dt>Best case</dt><dd>${E(f.best)}</dd><dt>Pipeline</dt><dd>${E(f.pipeline)}</dd><dt>Weighted</dt><dd>${E(f.weighted)}</dd><dt>Gap</dt><dd>${gapTxt(f.gap)}</dd><dt>Coverage</dt><dd>${covTxt(f.coverage)}</dd></dl></div>`; }).join("")}</div>`;
+}
+// Forecast grid, figures as rows (B)
+function forecastColsTable(ids) {
+  const ps = periods();
+  const fs = ps.map((p) => figures(ids, p.idx));
+  const single = ids.length === 1;
+  const canEdit = single && PEOPLE[ids[0]].manager === S.user;
+  const editing = S.quotaEdit && canEdit && S.period === "month";
+  const R = (label, key, fmt = E, cls = "") => `<tr class="${cls}"><td class="stick">${label}</td>${fs.map((f) => `<td>${fmt(f[key])}</td>`).join("")}</tr>`;
+  const quotaRow = editing
+    ? `<tr><td class="stick"><b>Quota</b></td>${ps.map((p) => `<td><input class="q" inputmode="numeric" data-act="q" data-p="${ids[0]}" data-i="${p.idx[0]}" value="${quotas[ids[0]][p.idx[0]]}" aria-label="Quota ${p.label}"></td>`).join("")}</tr>`
+    : R("<b>Quota</b>", "quota");
+  return `<div class="tw"><table class="t"><thead><tr><th class="stick">${single ? PEOPLE[ids[0]].short : "Team"}</th>${ps.map((p) => `<th>${p.label}</th>`).join("")}</tr></thead><tbody>
+    ${R('<i class="sw" style="background:var(--won)"></i>Closed won', "won")}
+    ${R('<i class="sw" style="background:var(--commit)"></i>Commit', "commit")}
+    ${R('<i class="sw" style="background:var(--best)"></i>Best case', "best")}
+    ${R('<i class="sw" style="background:var(--pipe)"></i>Pipeline', "pipeline")}
+    ${R("Weighted", "weighted")}
+    ${quotaRow}
+    ${R("Gap", "gap", (g) => g <= 0 ? '<span class="good">Met</span>' : E(g))}
+    ${R("Coverage", "coverage", covTxt)}
+  </tbody></table></div>`;
+}
+// Forecast bar chart (C)
+function forecastChart(ids) {
+  const ps = periods(), fs = ps.map((p) => figures(ids, p.idx));
+  const step = 20000, max = Math.ceil(Math.max(...fs.map((f) => Math.max(f.won + f.pipeline, f.quota))) * 1.05 / (step * 4)) * step * 4;
+  const W = 640, H = 230, padL = 46, padB = 26, cw = (W - padL - 8) / ps.length, bw = Math.min(44, cw * 0.5);
+  const y = (v) => H - padB - (v / max) * (H - padB - 10);
+  let s = "";
+  for (let t = 0; t <= 4; t++) { const v = (max / 4) * t; s += `<line x1="${padL}" x2="${W - 4}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${padL - 6}" y="${y(v) + 4}" text-anchor="end">${K(v)}</text>`; }
+  fs.forEach((f, i) => {
+    const x = padL + cw * i + (cw - bw) / 2;
+    const segs = [["won", f.won], ["commit", f.commit - f.won], ["best", f.best - f.commit], ["pipe", f.pipeline - (f.best - f.won)]];
+    let base = 0;
+    for (const [c, v] of segs) { if (v <= 0) continue; s += `<rect x="${x}" y="${y(base + v)}" width="${bw}" height="${y(base) - y(base + v)}" fill="var(--${c})"><title>${c}: ${E(v)}</title></rect>`; base += v; }
+    s += `<line x1="${x - 8}" x2="${x + bw + 8}" y1="${y(f.quota)}" y2="${y(f.quota)}" stroke="var(--quota)" stroke-width="2.5"/>`;
+    s += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${ps[i].label.replace(" 20", " ’")}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Forecast by ${S.period}">${s}</svg>${LEGEND}`;
+}
+function compactTable(ids) {
+  const ps = periods();
+  return `<div class="tw"><table class="t"><thead><tr><th>${S.period === "month" ? "Month" : "Quarter"}</th><th>Won</th><th>Commit</th><th>Best case</th><th>Pipeline</th><th>Weighted</th><th>Quota</th><th>Gap</th><th>Cov.</th></tr></thead><tbody>
+  ${ps.map((p) => { const f = figures(ids, p.idx); return `<tr><td>${p.label}</td><td>${K(f.won)}</td><td>${K(f.commit)}</td><td>${K(f.best)}</td><td>${K(f.pipeline)}</td><td>${K(f.weighted)}</td><td>${K(f.quota)}</td><td>${f.gap <= 0 ? '<span class="good">Met</span>' : K(f.gap)}</td><td>${covTxt(f.coverage)}</td></tr>`; }).join("")}</tbody></table></div>`;
+}
+// Phone stepper (C)
+function forecastStepper(ids) {
+  const ps = periods(); if (S.pidx >= ps.length) S.pidx = 0;
+  const p = ps[S.pidx], f = figures(ids, p.idx);
+  const max = Math.max(f.won + f.pipeline, f.quota) || 1;
+  const bar = (v, c) => `<div class="track"><i style="width:${Math.round(v / max * 100)}%;background:var(--${c})"></i></div>`;
+  return `<div class="card"><div class="stepper"><button data-act="pstep" data-v="-1" aria-label="Previous">&#8249;</button><b>${p.label}</b><button data-act="pstep" data-v="1" aria-label="Next">&#8250;</button></div>
+    <div class="dots">${ps.map((_, i) => `<i class="${i === S.pidx ? "on" : ""}"></i>`).join("")}</div>
+    <div class="bars">
+      <div class="barrow"><span>Closed won</span>${bar(f.won, "won")}<span class="val">${K(f.won)}</span></div>
+      <div class="barrow"><span>Commit</span>${bar(f.commit, "commit")}<span class="val">${K(f.commit)}</span></div>
+      <div class="barrow"><span>Best case</span>${bar(f.best, "best")}<span class="val">${K(f.best)}</span></div>
+      <div class="barrow"><span>Pipeline</span>${bar(f.pipeline, "pipe")}<span class="val">${K(f.pipeline)}</span></div>
+      <div class="barrow"><span>Quota</span>${bar(f.quota, "quota")}<span class="val">${K(f.quota)}</span></div>
+    </div>
+    <dl class="kv"><dt>Weighted</dt><dd>${E(f.weighted)}</dd><dt>Gap</dt><dd>${gapTxt(f.gap)}</dd><dt>Coverage</dt><dd>${covTxt(f.coverage)}</dd></dl></div>`;
+}
+
+// Team dashboard pieces
+function teamTable(u) {
+  const ids = team(u);
+  const row = (id) => { const m = figures([id], [0]), q = figures([id], [0, 1, 2]); const od = OPPS.filter((o) => o.owner === id && o.close < TODAY).length;
+    return `<tr><td class="stick">${PEOPLE[id].name}${id === u ? ' <span class="muted">(you)</span>' : ""}</td><td>${E(m.won)} / ${K(m.quota)}</td><td>${E(q.won)} / ${K(q.quota)}</td><td>${gapTxt(q.gap)}</td><td>${E(q.commit)}</td><td>${E(q.best)}</td><td>${E(q.weighted)}</td><td>${od ? `<span class="bad">${od}</span>` : "0"}</td></tr>`; };
+  const tm = figures(ids, [0]), tq = figures(ids, [0, 1, 2]);
+  return `<div class="tw"><table class="t"><thead><tr><th class="stick">Salesperson</th><th>Won / Quota (Oct)</th><th>Won / Quota (Q4)</th><th>Gap (Q4)</th><th>Commit (Q4)</th><th>Best case (Q4)</th><th>Weighted (Q4)</th><th>Overdue</th></tr></thead>
+  <tbody>${ids.map(row).join("")}<tr class="tot"><td class="stick">Team</td><td>${E(tm.won)} / ${K(tm.quota)}</td><td>${E(tq.won)} / ${K(tq.quota)}</td><td>${gapTxt(tq.gap)}</td><td>${E(tq.commit)}</td><td>${E(tq.best)}</td><td>${E(tq.weighted)}</td><td>${OPPS.filter((o) => ids.includes(o.owner) && o.close < TODAY).length}</td></tr></tbody></table></div>`;
+}
+function teamPhoneCards(u) {
+  return `<div class="pcards">${team(u).map((id) => { const q = figures([id], [0, 1, 2]); const od = OPPS.filter((o) => o.owner === id && o.close < TODAY).length;
+    return `<div class="pcard"><div class="top"><b>${PEOPLE[id].name}</b><span class="muted num">Q4</span></div><div class="meter"><i style="width:${Math.min(100, Math.round(q.won / q.quota * 100))}%"></i></div>
+    <dl class="kv"><dt>Won / Quota</dt><dd>${K(q.won)} / ${K(q.quota)}</dd><dt>Gap</dt><dd>${gapTxt(q.gap)}</dd><dt>Commit · Best case</dt><dd>${K(q.commit)} · ${K(q.best)}</dd><dt>Overdue close dates</dt><dd class="${od ? "bad" : ""}">${od}</dd></dl></div>`; }).join("")}</div>`;
+}
+function funnel(u) {
+  const ids = team(u), vals = STAGES.map((_, i) => sum(ids.map((id) => FUNNEL[id][i]))), max = Math.max(...vals);
+  return `<div class="card"><h3>Funnel by Stage</h3><div class="bars">${STAGES.map((s, i) => `<div class="barrow"><span>${s}</span><div class="track"><i style="width:${Math.round(vals[i] / max * 100)}%;background:var(--commit)"></i></div><span class="val">${K(vals[i])}</span></div>`).join("")}</div><span class="note">Open value, team, all close dates.</span></div>`;
+}
+function wonLost(u) {
+  const ids = team(u), max = Math.max(...ids.map((id) => HIST[id].wonV + HIST[id].lostV));
+  return `<div class="card"><h3>Won vs. lost by Owner</h3><div class="bars">${ids.map((id) => { const h = HIST[id]; return `<div class="barrow"><span>${PEOPLE[id].short}</span><div class="track"><i style="width:${h.wonV / max * 100}%;background:var(--won)"></i><i style="width:${h.lostV / max * 100}%;background:var(--bad)"></i></div><span class="val">${h.won} / ${h.lost}</span></div>`; }).join("")}</div>
+  <div class="legend"><span><i class="sw" style="background:var(--won)"></i>Won</span><span><i class="sw" style="background:var(--bad)"></i>Lost</span><span>last 90 days, count won / lost</span></div></div>`;
+}
+function kpis90(u) {
+  const ids = team(u), h = ids.map((id) => HIST[id]);
+  const won = sum(h.map((x) => x.won)), lost = sum(h.map((x) => x.lost)), wonV = sum(h.map((x) => x.wonV));
+  const cycle = Math.round(sum(h.map((x) => x.cycle * x.won)) / won);
+  return `<div class="tiles"><div class="tile"><span class="k">Win rate</span><span class="v">${Math.round(won / (won + lost) * 100)}%</span><span class="s">${won} won, ${lost} lost · 90 days</span></div>
+    <div class="tile"><span class="k">Average deal size</span><span class="v">${E(Math.round(wonV / won))}</span><span class="s">won deals · 90 days</span></div>
+    <div class="tile"><span class="k">Sales cycle</span><span class="v">${cycle} days</span><span class="s">created to won · 90 days</span></div></div>`;
+}
+function teamDashboard(u, phone) {
+  return `<div class="card"><div class="ch"><h3>My numbers per salesperson</h3><span class="note">You and your direct reports</span></div>${phone ? teamPhoneCards(u) : teamTable(u)}</div>
+    ${kpis90(u)}<div class="grid2">${funnel(u)}${wonLost(u)}</div>`;
+}
+// Quota grid (manager)
+function quotaGrid(u, phone) {
+  const ids = team(u);
+  const own = (id) => id === u && !PEOPLE[u].manager;
+  if (phone) {
+    return `<div class="pcards">${ids.map((id) => `<div class="pcard"><div class="top"><b>${PEOPLE[id].name}</b><span class="muted num">${own(id) ? "Set by admin" : "Q4 " + K(sum(quotas[id].slice(0, 3)))}</span></div>
+      <dl class="kv">${MONTHS.map((m, i) => `<dt>${m}</dt><dd>${own(id) ? E(quotas[id][i]) : `<input class="q" style="width:100px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:3px 6px;background:var(--bg)" inputmode="numeric" data-act="q" data-p="${id}" data-i="${i}" value="${quotas[id][i]}" aria-label="Quota ${PEOPLE[id].short} ${m}">`}</dd>`).join("")}</dl></div>`).join("")}</div>`;
+  }
+  return `<div class="tw"><table class="t"><thead><tr><th class="stick">Salesperson</th>${MONTHS.map((m) => `<th>${m}</th>`).join("")}<th>Q4 2026</th><th>Q1 2027</th></tr></thead><tbody>
+  ${ids.map((id) => `<tr><td class="stick">${PEOPLE[id].name}${own(id) ? '<br><span class="note">Set by a system administrator</span>' : ""}</td>${MONTHS.map((m, i) => `<td>${own(id) ? E(quotas[id][i]) : `<input class="q" inputmode="numeric" data-act="q" data-p="${id}" data-i="${i}" value="${quotas[id][i]}" aria-label="Quota ${PEOPLE[id].short} ${m}">`}</td>`).join("")}<td><b>${E(sum(quotas[id].slice(0, 3)))}</b></td><td><b>${E(sum(quotas[id].slice(3)))}</b></td></tr>`).join("")}
+  <tr class="tot"><td class="stick">Team</td>${MONTHS.map((_, i) => `<td>${E(sum(ids.map((id) => quotas[id][i])))}</td>`).join("")}<td>${E(sum(ids.map((id) => sum(quotas[id].slice(0, 3)))))}</td><td>${E(sum(ids.map((id) => sum(quotas[id].slice(3)))))}</td></tr></tbody></table></div>`;
+}
+function myWorkCards() {
+  return `<div class="grid3">
+    <div class="card"><h3>My open Tasks</h3><ul class="list"><li><a href="#" onclick="return false">Send revised proposal</a><span class="m">Contoso CRM rollout · Due 10 Oct <span class="badge">Overdue</span></span></li><li><a href="#" onclick="return false">Call back about budget</a><span class="m">Fabrikam renewal · Due 14 Oct</span></li></ul></div>
+    <div class="card"><h3>Closing this month</h3><ul class="list">${OPPS.filter((o) => o.owner === S.user && o.close.startsWith("2026-10")).map((o) => `<li><a href="#" onclick="return false">${o.name}</a><span class="m">${o.acc} · ${o.stage} · ${E(o.value)} · ${fmtDate(o.close)}</span></li>`).join("") || '<li class="m">None of your open Opportunities close this month.</li>'}</ul></div>
+    <div class="card"><h3>Leads to contact</h3><ul class="list"><li><a href="#" onclick="return false">Nestor Wilke</a><span class="m">Relecloud · Web · 8 Oct</span></li><li><a href="#" onclick="return false">Lidia Holloway</a><span class="m">Proseware · Referral · 11 Oct</span></li></ul></div>
+  </div>`;
+}
+const placeholder = (what) => `<div class="placeholder">${what} is unchanged and not part of this prototype.</div>`;
+const heading = (t, s, tools = "") => `<div class="hrow"><div><h1 class="pt">${t}</h1>${s ? `<p class="sub">${s}</p>` : ""}</div><div class="tools">${tools}</div></div>`;
+const firstName = () => PEOPLE[S.user].short;
+
+// ---------- Variant A: Forecast page ----------
+function pageA(phone) {
+  if (S.page === "home") return `${heading("My work", `Welcome, ${firstName()}. Here is what needs your attention.`)}
+    <div class="card"><div class="ch"><h3>My numbers</h3><button class="btn sm" data-act="go" data-v="forecast">Open Forecast</button></div>${myNumbersTiles([S.user])}</div>${myWorkCards()}`;
+  if (S.page === "forecast") {
+    const mgr = isMgr(S.user);
+    if (!mgr && S.tab !== "forecast") S.tab = "forecast";
+    const tabs = mgr ? `<div class="tabs" role="tablist">${[["forecast", "Forecast"], ["team", "Team"], ["quotas", "Quotas"]].map(([v, l]) => `<button role="tab" data-act="tab" data-v="${v}" aria-selected="${S.tab === v}">${l}</button>`).join("")}</div>` : "";
+    let body = "";
+    if (S.tab === "forecast") {
+      const ids = scopeIds();
+      body = `<div class="hrow"><div class="tools">${scopePicker()}${periodToggle()}</div><span class="note">Open deals by Expected close date; won deals by close date.</span></div>${phone ? forecastCards(ids) : forecastRowsTable(ids)}`;
+    } else if (S.tab === "team") body = teamDashboard(S.user, phone);
+    else body = `<p class="note">Set a monthly Quota for each direct report. A quarter is the sum of its months. Changes save when you leave a cell.</p>${quotaGrid(S.user, phone)}`;
+    return `${heading("Forecast", mgr ? "Your numbers and your team's, by close month." : "Your numbers by close month.")}${tabs}${body}`;
+  }
+  if (S.page === "menu") return menuPage([["forecast", "Forecast", true], ["leads", "Leads"], ["opportunities", "Opportunities"], ["accounts", "Accounts"], ["contacts", "Contacts"]]);
+  return placeholder(cap(S.page));
+}
+// ---------- Variant B: Numbers hub ----------
+function pageB(phone) {
+  if (S.page === "home") return `${heading("My work", `Welcome, ${firstName()}. Here is what needs your attention.`)}${myWorkCards()}<p class="note">Home is unchanged in this variant; all figures live on Numbers.</p>`;
+  if (S.page === "numbers") {
+    const mgr = isMgr(S.user), ids = scopeIds();
+    const single = ids.length === 1, canEdit = single && PEOPLE[ids[0]].manager === S.user;
+    const editBtn = mgr ? (S.scope === "team" ? `<button class="btn sm" data-act="dialog">Edit Quotas</button>` : canEdit ? `<button class="btn sm ${S.quotaEdit ? "primary" : ""}" data-act="qedit">${S.quotaEdit ? "Done" : "Edit Quotas"}</button>` : "") : "";
+    const scopeSeg = mgr ? `${seg("scope", [["me", "Me"], ["team", "My team"]], S.scope === "team" ? "team" : (S.scope === "me" ? "me" : ""))}<select class="sel" data-act="scope" aria-label="Salesperson"><option value="">Person…</option>${PEOPLE[S.user].reports.map((r) => `<option value="${r}" ${S.scope === r ? "selected" : ""}>${PEOPLE[r].short}</option>`).join("")}</select>` : "";
+    const who = S.scope === "team" ? "My team" : single ? (ids[0] === S.user ? "Me" : PEOPLE[ids[0]].name) : "";
+    let h = `${heading("Numbers", `${who}: summary, forecast${mgr && S.scope === "team" ? " and team" : ""}.`, scopeSeg)}
+      <h3 style="margin:4px 0 0">Summary</h3>${myNumbersTiles(ids)}
+      <div class="card"><div class="ch"><h3>Forecast</h3><div class="tools" style="display:flex;gap:8px;flex-wrap:wrap">${periodToggle()}${editBtn}</div></div>${forecastColsTable(ids)}${S.quotaEdit && S.period === "quarter" ? '<span class="note">Switch to Month to edit Quotas.</span>' : ""}</div>`;
+    if (mgr && S.scope === "team") h += `<h3 style="margin:4px 0 0">Team</h3>${teamDashboard(S.user, phone)}`;
+    h += dealLists(ids);
+    return h;
+  }
+  if (S.page === "menu") return menuPage([["leads", "Leads"], ["opportunities", "Opportunities"], ["accounts", "Accounts"], ["contacts", "Contacts"]]);
+  return placeholder(cap(S.page));
+}
+// ---------- Variant C: Home tabs + Pipeline view ----------
+function pageC(phone) {
+  const mgr = isMgr(S.user);
+  if (S.page === "home") {
+    if (!mgr && S.hometab === "team") S.hometab = "work";
+    const tabs = `<div class="tabs" role="tablist">${[["work", "My work"], ["numbers", "My numbers"], ...(mgr ? [["team", "Team"]] : [])].map(([v, l]) => `<button role="tab" data-act="hometab" data-v="${v}" aria-selected="${S.hometab === v}">${l}</button>`).join("")}</div>`;
+    let body = "";
+    if (S.hometab === "work") body = myWorkCards();
+    else if (S.hometab === "numbers") body = myNumbersTiles([S.user]) + dealLists([S.user]) + `<p class="note">The full forecast is on Pipeline, Forecast view.</p>`;
+    else body = `<div class="hrow"><span class="note">You and your direct reports, this month and quarter.</span><button class="btn sm" data-act="dialog">Set Quotas</button></div>${teamDashboard(S.user, phone)}`;
+    return `${heading("Home", `Welcome, ${firstName()}.`)}${tabs}${body}`;
+  }
+  if (S.page === "pipeline") {
+    const views = seg("pview", [["board", "Board"], ["funnel", "Funnel"], ["forecast", "Forecast"]], S.pview);
+    const owner = mgr ? `<select class="sel" data-act="scope" aria-label="Owner">${[["team", "My team"], ["me", "Me"], ...PEOPLE[S.user].reports.map((r) => [r, PEOPLE[r].short])].map(([v, l]) => `<option value="${v}" ${S.scope === v ? "selected" : ""}>Owner: ${l}</option>`).join("")}</select>` : "";
+    if (S.pview !== "forecast") return `${heading("Pipeline", "", views)}${placeholder("The " + (S.pview === "board" ? "Board" : "Funnel"))}`;
+    const ids = scopeIds();
+    return `${heading("Pipeline", "Forecast view: money by close month.", views)}<div class="hrow"><div class="tools">${owner}${periodToggle()}</div></div>
+      ${phone ? forecastStepper(ids) : `<div class="card">${forecastChart(ids)}</div>${compactTable(ids)}`}`;
+  }
+  if (S.page === "menu") return menuPage([["leads", "Leads"], ["opportunities", "Opportunities"], ["accounts", "Accounts"], ["contacts", "Contacts"]]);
+  return placeholder(cap(S.page));
+}
+function cap(s) { return s[0].toUpperCase() + s.slice(1); }
+function menuPage(items) {
+  return `${heading("Menu")}<div class="menu-list">${items.map(([v, l, n]) => `<button data-act="go" data-v="${v}">${l}${n ? '<span class="new">NEW</span>' : ""}</button>`).join("")}</div>`;
+}
+
+// ---------- Shell ----------
+const ICON = { home: "⌂", pipeline: "▥", forecast: "↗", numbers: "↗", leads: "+", opportunities: "◆", accounts: "▤", contacts: "◎", search: "⌕", menu: "≡" };
+function sideNav() {
+  const top = [["home", "Home"], ["pipeline", "Pipeline"]];
+  if (S.variant === "A") top.push(["forecast", "Forecast", true]);
+  if (S.variant === "B") top.push(["numbers", "Numbers", true]);
+  const lists = [["leads", "Leads"], ["opportunities", "Opportunities"], ["accounts", "Accounts"], ["contacts", "Contacts"]];
+  const b = ([v, l, n]) => `<button class="navbtn" data-act="go" data-v="${v}" ${S.page === v ? 'aria-current="page"' : ""}><span class="ic">${ICON[v]}</span><span class="lbl">${l}</span>${n ? '<span class="new">NEW</span>' : ""}</button>`;
+  return `<nav aria-label="Main">${top.map(b).join("")}<div class="sep"></div>${lists.map(b).join("")}</nav>`;
+}
+function phoneTabs() {
+  const t = S.variant === "B" ? [["home", "Home"], ["pipeline", "Pipeline"], ["numbers", "Numbers", true], ["menu", "Menu"]] : [["home", "Home"], ["pipeline", "Pipeline"], ["search", "Search"], ["menu", "Menu"]];
+  const inMenu = !t.some(([v]) => v === S.page);
+  return `<nav class="ptabs" aria-label="Main">${t.map(([v, l, n]) => `<button data-act="go" data-v="${v}" ${(S.page === v || (v === "menu" && inMenu)) ? 'aria-current="page"' : ""}><span class="ic">${ICON[v]}</span>${l}${n ? '<span class="new">NEW</span>' : ""}</button>`).join("")}</nav>`;
+}
+function pageBody(phone) {
+  if (S.page === "search") return `${heading("Search")}${placeholder("Search")}`;
+  return S.variant === "A" ? pageA(phone) : S.variant === "B" ? pageB(phone) : pageC(phone);
+}
+function dialog(phone) {
+  if (!S.dialog) return "";
+  return `<div class="scrim"><div class="dialog" role="dialog" aria-label="Quotas"><div class="hrow"><h3 style="margin:0">${S.variant === "C" ? "Set Quotas" : "Edit Quotas"}</h3><button class="btn sm primary" data-act="dialog">Done</button></div><p class="note" style="margin:0">Monthly Quota per direct report. A quarter is the sum of its months. Your own Quota is set by a system administrator.</p>${quotaGrid(S.user, phone)}</div></div>`;
+}
+function render() {
+  document.documentElement.dataset.theme = S.theme === "system" ? "" : S.theme;
+  if (S.theme === "system") delete document.documentElement.dataset.theme;
+  const v = VARIANTS[S.variant];
+  document.getElementById("vlabel").textContent = `${S.variant} (${v.name})`;
+  document.getElementById("vardesc").innerHTML = `<h2>Variant ${S.variant}: ${v.name}</h2><ul>${v.desc.map((d) => `<li>${d}</li>`).join("")}</ul>`;
+  document.getElementById("c-user").outerHTML = `<div class="seg" id="c-user">${["megan", "adele"].map((u) => `<button data-act="user" data-v="${u}" aria-pressed="${S.user === u}">${PEOPLE[u].short} (${isMgr(u) ? "manager" : "salesperson"})</button>`).join("")}</div>`;
+  document.getElementById("c-device").outerHTML = `<div class="seg" id="c-device">${[["desktop", "Desktop"], ["phone", "Phone"]].map(([d, l]) => `<button data-act="device" data-v="${d}" aria-pressed="${S.device === d}">${l}</button>`).join("")}</div>`;
+  document.getElementById("c-theme").outerHTML = `<div class="seg" id="c-theme">${[["system", "System"], ["light", "Light"], ["dark", "Dark"]].map(([d, l]) => `<button data-act="theme" data-v="${d}" aria-pressed="${S.theme === d}">${l}</button>`).join("")}</div>`;
+  const dev = document.getElementById("device");
+  const p = PEOPLE[S.user];
+  if (S.device === "desktop") {
+    dev.innerHTML = `<div class="device-desktop"><aside class="side"><div class="brand"><i class="logo"></i><span>Sales</span></div>${sideNav()}</aside>
+      <div class="mainwrap"><header class="topbar"><div class="search">Search Leads, Opportunities, Accounts, Contacts</div><button class="btn primary" style="margin-left:auto">+ New</button><span class="avatar">${p.initials}</span></header>
+      <main class="main relative"><div class="page">${pageBody(false)}</div>${dialog(false)}</main></div></div>`;
+  } else {
+    dev.innerHTML = `<div class="device-phone phone"><header class="phead"><i class="logo"></i>Sales<span class="r">${S.variant === "B" ? `<button class="btn sm" data-act="go" data-v="search" aria-label="Search">⌕</button>` : ""}<span class="avatar">${p.initials}</span></span></header>
+      <main class="main"><div class="page">${pageBody(true)}</div></main>${phoneTabs()}${dialog(true)}</div>`;
+  }
+  const u = new URL(location.href); u.searchParams.set("variant", S.variant); u.searchParams.set("device", S.device); history.replaceState(null, "", u);
+}
+
+// ---------- Events ----------
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b || b.tagName === "SELECT" || b.tagName === "INPUT") return;
+  const a = b.dataset.act, v = b.dataset.v;
+  if (a === "go") { S.page = v; S.dialog = false; }
+  else if (a === "tab") S.tab = v;
+  else if (a === "hometab") S.hometab = v;
+  else if (a === "pview") S.pview = v;
+  else if (a === "period") { S.period = v; S.pidx = 0; }
+  else if (a === "scope") { S.scope = v; S.quotaEdit = false; }
+  else if (a === "user") { S.user = v; S.scope = S.variant === "C" && S.page === "pipeline" && isMgr(v) ? "team" : "me"; S.quotaEdit = false; S.dialog = false; }
+  else if (a === "device") S.device = v;
+  else if (a === "theme") S.theme = v;
+  else if (a === "pstep") { const n = periods().length; S.pidx = (S.pidx + Number(v) + n) % n; }
+  else if (a === "qedit") S.quotaEdit = !S.quotaEdit;
+  else if (a === "dialog") S.dialog = !S.dialog;
+  else return;
+  render();
+});
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset.act === "scope") { S.scope = t.value || "me"; S.quotaEdit = false; render(); }
+  if (t.dataset.act === "q") { const n = Number(String(t.value).replace(/[^\d]/g, "")); if (!isNaN(n)) quotas[t.dataset.p][Number(t.dataset.i)] = n; render(); }
+});
+function cycle(d) {
+  const keys = Object.keys(VARIANTS); S.variant = keys[(keys.indexOf(S.variant) + d + keys.length) % keys.length];
+  resetNav(); if (S.variant === "C") { S.page = "pipeline"; S.scope = isMgr(S.user) ? "team" : "me"; } else S.page = S.variant === "A" ? "forecast" : "numbers";
+  render();
+}
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.key === "ArrowLeft") cycle(-1); if (e.key === "ArrowRight") cycle(1);
+});
+S.page = S.variant === "A" ? "forecast" : S.variant === "B" ? "numbers" : "pipeline";
+if (S.variant === "C") S.scope = "team";
+render();
+</script>
+</body>
+</html>
