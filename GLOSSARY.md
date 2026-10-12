@@ -66,7 +66,7 @@ Where a Lead came from: Website, Referral, Event, Cold outreach, Partner, or Oth
 _Avoid_: Origin, channel, campaign
 
 **Estimated value**:
-What an open Opportunity is expected to be worth, in euros. It is replaced by the actual value when the Opportunity is Closed Won.
+What an open Opportunity is expected to be worth, in euros excluding VAT. While the Opportunity has Product lines it is their total and can't be typed over; without lines the Owner enters it. It is replaced by the actual value when the Opportunity is Closed Won.
 _Avoid_: Amount, revenue, deal size
 
 **Expected close date**:
@@ -88,6 +88,24 @@ _Avoid_: Disqualify reason
 **Pipeline**:
 All open Opportunities, viewed by stage.
 _Avoid_: Funnel
+
+### Products
+
+**Product**:
+Something the team sells, kept in the catalogue with a code, a Unit (Piece, Hour, Day, Month or Year), a List price and a VAT rate. A Product that is no longer sold is retired: it stays on existing Product lines but can't be added to new ones.
+_Avoid_: Item, article, SKU, service
+
+**List price**:
+The standard price in euros, excluding VAT, of one Unit of a Product. The team has one price list, so each Product has exactly one List price.
+_Avoid_: Catalogue price, base price
+
+**Product line**:
+One Product on an Opportunity, with a quantity, a unit price and a discount percentage. The unit price starts at the List price when the line is added and the Owner may change it; later changes to the List price don't touch existing lines.
+_Avoid_: Line item, opportunity product
+
+**Catalogue manager**:
+A person allowed to create, change and retire Products and their List prices. Everyone in sales can read the catalogue.
+_Avoid_: Product admin, Process builder
 
 ### Activities
 
