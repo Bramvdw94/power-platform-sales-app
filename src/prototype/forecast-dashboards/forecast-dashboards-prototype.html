@@ -199,12 +199,12 @@ ul.list .m { font-size: .84rem; color: var(--muted-fg); }
     <div class="grp"><span class="lbl">Theme</span><div class="seg" id="c-theme"></div></div>
   </div>
   <div class="rec">
-    <b>My recommendation: variant A, with the phone month picker from C</b>
+    <b>Variant D combines all three (Bram's pick, 12 Oct). A, B and C stay for comparison.</b>
     <ul>
-      <li>A Forecast page next to Pipeline, as in Dynamics 365 and Salesforce (both have a separate Forecasts area). Pipeline stays about deals, Forecast about money per month.</li>
-      <li>My numbers as a tile row on top of Home: it is what a salesperson checks daily, and Home is where they land.</li>
-      <li>Team and Quotas as tabs on the Forecast page, only for people with direct reports, so a salesperson sees one clean page.</li>
-      <li>On a phone the wide grid becomes one card per month, so nothing scrolls sideways; Forecast sits under Menu.</li>
+      <li>Pages from A: a Forecast page next to Pipeline (Forecast, Team and Quotas tabs) and My numbers tiles on top of Home.</li>
+      <li>Look from C and B: the bar chart with the Quota line on top, the spreadsheet grid below it.</li>
+      <li>Phone from C: one month at a time with arrows, so nothing scrolls sideways.</li>
+      <li>Left out on purpose: a second copy of the forecast on Pipeline (C) and a Numbers phone tab (B), so every figure has one home and v1's phone tabs stay as they are.</li>
     </ul>
   </div>
   <div class="vardesc" id="vardesc"></div>
@@ -279,10 +279,11 @@ const params = new URLSearchParams(location.search);
 const VARIANTS = {
   A: { name: "Forecast page", desc: ["New <b>Forecast</b> page in the sidebar, next to Pipeline. Tabs: Forecast, Team and Quotas (Team and Quotas only for people with direct reports).", "<b>My numbers</b> is a row of tiles at the top of Home, above My work.", "Forecast grid: one row per month or quarter, the eight figures as columns.", "Phone: Forecast under Menu; the grid turns into one card per month."] },
   B: { name: "Numbers hub", desc: ["One long <b>Numbers</b> page holds everything: summary tiles, the forecast, then the team section. A Me / My team switch at the top.", "Home stays as it is.", "Forecast grid is turned: figures as rows, months as columns, like a spreadsheet. Quota cells are edited right in the grid (Edit Quotas).", "Phone: Numbers gets its own bottom tab (Search moves to the header); the grid scrolls sideways with the figure names pinned."] },
+  D: { name: "Combined", desc: ["Bram's pick: the best of A, B and C in one layout.", "From A: a <b>Forecast</b> page next to Pipeline with tabs Forecast, Team and Quotas, and My numbers tiles on top of Home.", "From C: the bar chart with the Quota line on top of the forecast, and on a phone one month at a time with arrows.", "From B: the spreadsheet grid under the chart (figures as rows, months as columns, names pinned when it scrolls).", "Pipeline stays Board and Funnel, so the forecast has one home. On a phone, Forecast sits under Menu."] },
   C: { name: "Home and Pipeline", desc: ["No new page. Home gets tabs: My work, My numbers and Team.", "The forecast is a third view on Pipeline: Board, Funnel, Forecast, reusing the Pipeline owner filter.", "Forecast shown as a bar chart per month with the Quota line, and a compact table below.", "Quotas are set in a dialog from the Team tab. Phone: one month at a time with arrows."] },
 };
 const S = {
-  variant: VARIANTS[params.get("variant")] ? params.get("variant") : "A",
+  variant: VARIANTS[params.get("variant")] ? params.get("variant") : "D",
   device: params.get("device") === "phone" ? "phone" : "desktop",
   user: "megan", theme: "system", page: "home", tab: "forecast", hometab: "work", pview: "forecast",
   period: "month", scope: "me", pidx: 0, quotaEdit: false, dialog: false,
@@ -367,7 +368,7 @@ function forecastColsTable(ids) {
 // Forecast bar chart (C)
 function forecastChart(ids) {
   const ps = periods(), fs = ps.map((p) => figures(ids, p.idx));
-  const step = 20000, max = Math.ceil(Math.max(...fs.map((f) => Math.max(f.won + f.pipeline, f.quota))) * 1.05 / (step * 4)) * step * 4;
+  const top = Math.max(...fs.map((f) => Math.max(f.won + f.pipeline, f.quota))) * 1.05, step = [5000, 10000, 20000, 25000, 50000, 100000].find((x) => x * 4 >= top) || 250000, max = step * 4;
   const W = 640, H = 230, padL = 46, padB = 26, cw = (W - padL - 8) / ps.length, bw = Math.min(44, cw * 0.5);
   const y = (v) => H - padB - (v / max) * (H - padB - 10);
   let s = "";
@@ -482,6 +483,15 @@ function pageA(phone) {
   if (S.page === "menu") return menuPage([["forecast", "Forecast", true], ["leads", "Leads"], ["opportunities", "Opportunities"], ["accounts", "Accounts"], ["contacts", "Contacts"]]);
   return placeholder(cap(S.page));
 }
+// ---------- Variant D: combined (A's pages, C's chart and phone stepper, B's grid) ----------
+function pageD(phone) {
+  if (S.page !== "forecast" || (S.tab !== "forecast" && isMgr(S.user))) return pageA(phone);
+  const mgr = isMgr(S.user), ids = scopeIds();
+  const tabs = mgr ? `<div class="tabs" role="tablist">${[["forecast", "Forecast"], ["team", "Team"], ["quotas", "Quotas"]].map(([v, l]) => `<button role="tab" data-act="tab" data-v="${v}" aria-selected="${S.tab === v}">${l}</button>`).join("")}</div>` : "";
+  const body = phone ? forecastStepper(ids) : `<div class="card">${forecastChart(ids)}</div>${forecastColsTable(ids)}`;
+  return `${heading("Forecast", mgr ? "Your numbers and your team's, by close month." : "Your numbers by close month.")}${tabs}
+    <div class="hrow"><div class="tools">${scopePicker()}${periodToggle()}</div><span class="note">Open deals by Expected close date; won deals by close date.</span></div>${body}`;
+}
 // ---------- Variant B: Numbers hub ----------
 function pageB(phone) {
   if (S.page === "home") return `${heading("My work", `Welcome, ${firstName()}. Here is what needs your attention.`)}${myWorkCards()}<p class="note">Home is unchanged in this variant; all figures live on Numbers.</p>`;
@@ -533,7 +543,7 @@ function menuPage(items) {
 const ICON = { home: "⌂", pipeline: "▥", forecast: "↗", numbers: "↗", leads: "+", opportunities: "◆", accounts: "▤", contacts: "◎", search: "⌕", menu: "≡" };
 function sideNav() {
   const top = [["home", "Home"], ["pipeline", "Pipeline"]];
-  if (S.variant === "A") top.push(["forecast", "Forecast", true]);
+  if (S.variant === "A" || S.variant === "D") top.push(["forecast", "Forecast", true]);
   if (S.variant === "B") top.push(["numbers", "Numbers", true]);
   const lists = [["leads", "Leads"], ["opportunities", "Opportunities"], ["accounts", "Accounts"], ["contacts", "Contacts"]];
   const b = ([v, l, n]) => `<button class="navbtn" data-act="go" data-v="${v}" ${S.page === v ? 'aria-current="page"' : ""}><span class="ic">${ICON[v]}</span><span class="lbl">${l}</span>${n ? '<span class="new">NEW</span>' : ""}</button>`;
@@ -546,7 +556,7 @@ function phoneTabs() {
 }
 function pageBody(phone) {
   if (S.page === "search") return `${heading("Search")}${placeholder("Search")}`;
-  return S.variant === "A" ? pageA(phone) : S.variant === "B" ? pageB(phone) : pageC(phone);
+  return S.variant === "A" ? pageA(phone) : S.variant === "B" ? pageB(phone) : S.variant === "C" ? pageC(phone) : pageD(phone);
 }
 function dialog(phone) {
   if (!S.dialog) return "";
@@ -599,8 +609,8 @@ document.addEventListener("change", (e) => {
   if (t.dataset.act === "q") { const n = Number(String(t.value).replace(/[^\d]/g, "")); if (!isNaN(n)) quotas[t.dataset.p][Number(t.dataset.i)] = n; render(); }
 });
 function cycle(d) {
-  const keys = Object.keys(VARIANTS); S.variant = keys[(keys.indexOf(S.variant) + d + keys.length) % keys.length];
-  resetNav(); if (S.variant === "C") { S.page = "pipeline"; S.scope = isMgr(S.user) ? "team" : "me"; } else S.page = S.variant === "A" ? "forecast" : "numbers";
+  const keys = ["A", "B", "C", "D"]; S.variant = keys[(keys.indexOf(S.variant) + d + keys.length) % keys.length];
+  resetNav(); if (S.variant === "C") { S.page = "pipeline"; S.scope = isMgr(S.user) ? "team" : "me"; } else S.page = S.variant === "B" ? "numbers" : "forecast";
   render();
 }
 document.getElementById("prev").onclick = () => cycle(-1);
@@ -609,7 +619,7 @@ document.addEventListener("keydown", (e) => {
   if (e.target.closest("input, textarea, select, [contenteditable]")) return;
   if (e.key === "ArrowLeft") cycle(-1); if (e.key === "ArrowRight") cycle(1);
 });
-S.page = S.variant === "A" ? "forecast" : S.variant === "B" ? "numbers" : "pipeline";
+S.page = S.variant === "B" ? "numbers" : S.variant === "C" ? "pipeline" : "forecast";
 if (S.variant === "C") S.scope = "team";
 render();
 </script>
