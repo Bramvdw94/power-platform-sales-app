@@ -7,6 +7,9 @@
   <EntityRelationship Name="lk_vibe_lead_modifiedby" />
   <EntityRelationship Name="lk_vibe_opportunity_createdby" />
   <EntityRelationship Name="lk_vibe_opportunity_modifiedby" />
+  <EntityRelationship Name="lk_vibe_processversion_createdby" />
+  <EntityRelationship Name="lk_vibe_processversion_modifiedby" />
+  <EntityRelationship Name="organization_vibe_processversion" />
   <EntityRelationship Name="owner_vibe_lead" />
   <EntityRelationship Name="owner_vibe_opportunity" />
   <EntityRelationship Name="team_vibe_lead" />
@@ -37,6 +40,8 @@
   <EntityRelationship Name="vibe_opportunity_RecurringAppointmentMasters" unmodified="1" />
   <EntityRelationship Name="vibe_opportunity_SocialActivities" unmodified="1" />
   <EntityRelationship Name="vibe_opportunity_Tasks" unmodified="1" />
+  <EntityRelationship Name="vibe_processversion_lead" />
+  <EntityRelationship Name="vibe_processversion_opportunity" />
   <EntityRelationship Name="vibe_systemuser_vibe_lead_disqualifiedby" />
   <EntityRelationship Name="vibe_systemuser_vibe_opportunity_closedby" />
 </EntityRelationships>
