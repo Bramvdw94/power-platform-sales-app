@@ -107,6 +107,32 @@ _Avoid_: Line item, opportunity product
 A person allowed to create, change and retire Products and their List prices. Everyone in sales can read the catalogue.
 _Avoid_: Product admin, Process builder
 
+### Quotes
+
+**Quote**:
+A priced offer sent to the customer for one Opportunity. Its Quote lines are copied from the Opportunity's Product lines when it is made and are then changed on the Quote alone; nothing flows back to the Opportunity, and a Quote never changes the Estimated value. An Opportunity may have several Quotes, and a closed Opportunity gets no new ones.
+_Avoid_: Offer, proposal, estimate
+
+**Quote line**:
+One Product on a Quote, with a quantity, a unit price, a discount percentage and the Product's VAT rate. Amounts on a line exclude VAT; VAT is worked out per rate on the Quote's total.
+_Avoid_: Line item, quote product
+
+**Quote status**:
+Where a Quote stands: Draft (being prepared, the only status in which it can be changed or deleted), Sent, Accepted, Rejected, or Revised (replaced by a newer revision). A Sent Quote past its Valid until date shows as expired but keeps its status.
+_Avoid_: Quote stage, Expired, Won
+
+**Valid until**:
+The last day the customer can accept a Quote at its prices.
+_Avoid_: Expiry date, due date
+
+**Revise**:
+Replacing a Sent Quote with a new Draft that keeps its Quote number with the next revision number; the old one becomes Revised.
+_Avoid_: Copy, new version, amend
+
+**Accept**:
+Recording that the customer agreed to a Quote. The Opportunity's other Sent Quotes become Rejected and the user is offered to Close the Opportunity as won at the Quote's net total.
+_Avoid_: Win, sign, approve
+
 ### Activities
 
 **Activity**:
