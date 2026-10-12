@@ -132,6 +132,31 @@ table.app td.r, table.app th.r { text-align: right; }
 .switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); background: var(--bar-bg); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 6px 22px rgba(0,0,0,.3); z-index: 10; max-width: calc(100vw - 32px); }
 .switcher button { font: inherit; font-size: 1.1rem; width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--bar-fg); cursor: pointer; }
 .switcher span { font-weight: 600; font-size: .9rem; padding-inline: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Template builder */
+.builder { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; align-items: start; }
+@media (max-width: 860px) { .builder { grid-template-columns: 1fr; } }
+.blocks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.blocks li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.blocks li.sel { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.blocks li.off .bname { color: var(--muted); text-decoration: line-through; }
+.blocks input[type="checkbox"] { width: auto; flex: none; margin: 0 4px; }
+.blocks .bname { flex: 1; min-width: 0; font: inherit; font-weight: 600; text-align: left; background: none; border: 0; color: var(--fg); cursor: pointer; padding: 4px; }
+.blocks .mv { font: inherit; width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--fg); cursor: pointer; }
+.swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.swatch[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--surface) inset; }
+.vt { padding: 44px 56px 32px; gap: 18px; }
+.vt .blk { display: grid; gap: 6px; }
+.vt h3 { margin: 0; font-size: 20px; }
+.vt .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 16px; padding-block: 10px; border-top: 1px solid #c9ced8; border-bottom: 1px solid #c9ced8; }
+.vt .meta b, .vt .lbl { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: #5a6274; font-weight: 600; }
+.vt .lines th { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #5a6274; text-align: left; padding: 6px 4px; font-weight: 600; }
+.vt .lines td { padding: 7px 4px; border-bottom: 1px solid #e3e6ec; vertical-align: top; }
+.vt .totals { margin-left: auto; width: 290px; }
+.vt .totals td { padding: 4px; }
+.vt .totals tr.g td { font-weight: 700; font-size: 14px; padding-top: 8px; }
+.vt .sign .lns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; padding-top: 24px; }
+.vt .sign .lns div { border-top: 1px solid #1d2230; padding-top: 3px; font-size: 10px; color: #4a5263; }
+.vt footer { border-top: 1px solid #c9ced8; padding-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 20px; }
 @media (max-width: 560px) { .va .meta { grid-template-columns: repeat(2, 1fr); } }
 @media (prefers-reduced-motion: no-preference) { .tabs button { transition: color .15s, border-color .15s; } }
 </style>
@@ -148,6 +173,7 @@ table.app td.r, table.app th.r { text-align: right; }
     <button role="tab" id="tab-send" aria-selected="false" data-tab="send">2. Send</button>
     <button role="tab" id="tab-after" aria-selected="false" data-tab="after">3. After sending</button>
     <button role="tab" id="tab-settings" aria-selected="false" data-tab="settings">4. Quote settings</button>
+    <button role="tab" id="tab-builder" aria-selected="false" data-tab="builder">5. Template builder</button>
   </div>
 
   <!-- 1. PDF -->
@@ -177,6 +203,7 @@ table.app td.r, table.app th.r { text-align: right; }
     </div>
     <div class="panel" role="dialog" aria-labelledby="send-h">
       <h2 id="send-h">Send quote Q-00012 rev. 1</h2>
+      <div class="field" style="max-width:320px"><label for="send-tpl">Template (chosen while the Quote is a Draft)</label><select id="send-tpl" disabled><option>Standard (default)</option></select></div>
       <div class="choice">
         <label for="m-email"><input type="radio" name="mode" id="m-email" value="email" checked><span><strong>Email it from my Outlook</strong><br><span class="muted">Sent as adele.vance@northwind-solutions.nl with the PDF attached.</span></span></label>
         <label for="m-dl"><input type="radio" name="mode" id="m-dl" value="dl"><span><strong>Download the PDF, I'll send it myself</strong><br><span class="muted">The Quote is marked as Sent when you confirm.</span></span></label>
@@ -289,6 +316,39 @@ Hierbij ontvang je onze offerte {Quote number}. De offerte is geldig tot en met 
 Met vriendelijke groet,
 {Owner name}</textarea></div>
       </div>
+    </div>
+  </section>
+
+  <!-- 5. Template builder -->
+  <section id="pane-builder" class="pane" hidden style="display:grid; gap:14px">
+    <div class="rec">
+      <strong>Proposed: a block-based template builder, like the Process builder's outline</strong>
+      <ul>
+        <li>A template is an ordered list of fixed blocks. The manager turns blocks on or off, moves them, and edits each block's options and texts. A live preview shows the result on A4.</li>
+        <li>Page style per template: accent colour, typeface, logo position. Company details, logo and default terms still come from Quote settings.</li>
+        <li>Several named templates, one marked Default. A Quote uses the Default unless the user picks another while it is a Draft.</li>
+        <li>Templates are edited by the SalesApp Catalogue Manager (a separate role is an option). Sent Quotes keep their stored PDF, so editing a template never changes what a customer received.</li>
+        <li>Saved as JSON in a Dataverse row, the same way Process definitions are stored, so the browser renderer can draw it.</li>
+      </ul>
+    </div>
+    <div class="builder">
+      <div class="panel bctl">
+        <div class="grid2">
+          <div class="field"><label for="b-tpl">Template</label><select id="b-tpl"></select></div>
+          <div class="field"><label for="b-name">Name</label><input id="b-name"></div>
+        </div>
+        <label class="chip" for="b-default" style="justify-self:start"><input type="checkbox" id="b-default"> Default template</label>
+        <div class="grid2">
+          <div class="field"><label>Accent colour</label><div class="row" id="b-accent"></div></div>
+          <div class="field"><label for="b-font">Typeface</label><select id="b-font"><option value="sans">Sans (IBM Plex Sans)</option><option value="serif">Serif (Georgia)</option></select></div>
+          <div class="field"><label for="b-logo">Logo position</label><select id="b-logo"><option value="right">Right</option><option value="left">Left</option></select></div>
+          <div class="field"><label for="b-lang">Language</label><select id="b-lang"><option value="nl">Dutch</option><option value="en">English</option></select></div>
+        </div>
+        <div class="field"><label>Blocks (top to bottom)</label><ol class="blocks" id="b-blocks"></ol></div>
+        <div id="b-opts" class="panel" style="background:var(--bg)"></div>
+        <div class="row" style="justify-content:flex-end"><button class="btn" type="button">Discard changes</button><button class="btn primary" type="button">Save template</button></div>
+      </div>
+      <div class="stage" id="b-stage"><div class="sheet-holder" id="b-holder"></div></div>
     </div>
   </section>
 </div>
@@ -445,6 +505,7 @@ Met vriendelijke groet,
     document.querySelectorAll(".pane").forEach(function (p) { p.hidden = p.id !== "pane-" + name; });
     document.getElementById("switcher").hidden = name !== "pdf";
     if (name === "pdf") fit();
+    if (name === "builder" && window.__showBuilder) window.__showBuilder();
     window.scrollTo(0, 0);
   }
   document.querySelectorAll(".tabs button").forEach(function (b) { b.onclick = function () { showTab(b.dataset.tab); }; });
@@ -462,7 +523,130 @@ Met vriendelijke groet,
     lines.map(function (l) { return '<tr><td>' + l.en + '</td><td class="r">' + l.qty + ' ' + l.unitEn + '</td><td class="r">' + m(l.price) + '</td><td class="r">' + (l.disc ? l.disc + '%' : '–') + '</td><td class="r">' + l.vat + '%</td><td class="r">' + m(l.net) + '</td></tr>'; }).join("") + '</tbody>';
   document.getElementById("opp-net").textContent = m(net);
 
+  /* ---------- Template builder ---------- */
+  var BLOCKS = {
+    header: { name: "Header: logo and sender", locked: false },
+    address: { name: "Customer address (window envelope)", locked: false },
+    reference: { name: "Reference strip", locked: false },
+    title: { name: "Title and intro text", locked: false },
+    lines: { name: "Product lines", locked: true },
+    totals: { name: "Totals and VAT per rate", locked: true },
+    terms: { name: "Terms", locked: false },
+    contact: { name: "Your contact person", locked: false },
+    signature: { name: "Acceptance and signature", locked: false },
+    footer: { name: "Footer: KvK, btw-id, IBAN", locked: true }
+  };
+  function blk(id, on, opts) { return { id: id, on: on, opts: opts || {} }; }
+  var templates = [
+    { name: "Standard", isDefault: true, accent: "#14213d", font: "sans", logo: "right", lang: "nl", blocks: [
+      blk("header", true, { sender: true }), blk("address", true), blk("reference", true, { revision: true }),
+      blk("title", true, { intro: "Naar aanleiding van ons gesprek bieden wij u het volgende aan." }),
+      blk("lines", true, { code: true, unit: true, discount: true, vat: true }), blk("totals", true),
+      blk("terms", true, { useSettings: true, text: "" }), blk("contact", true, { phone: true }),
+      blk("signature", false, { heading: "Akkoord voor opdracht" }), blk("footer", true)] },
+    { name: "Proposal", isDefault: false, accent: "#0f6b5c", font: "serif", logo: "left", lang: "nl", blocks: [
+      blk("header", true, { sender: false }), blk("title", true, { intro: "Graag doen wij u dit voorstel voor de inrichting van uw verkoopproces." }),
+      blk("address", true), blk("reference", true, { revision: false }),
+      blk("lines", true, { code: false, unit: true, discount: true, vat: false }), blk("totals", true),
+      blk("terms", true, { useSettings: true, text: "" }), blk("contact", false, { phone: true }),
+      blk("signature", true, { heading: "Akkoord voor opdracht" }), blk("footer", true)] }
+  ];
+  var ACCENTS = ["#14213d", "#0f6b5c", "#7a1f3d", "#3b3f46"];
+  var cur = 0, sel = "lines";
+  var settingsTerms = T.nl.terms;
+
+  function tplHtml(tp) {
+    var lang = tp.lang, t = T[lang], d = D[lang], a = tp.accent;
+    var lg = logo.replace('fill="#14213d"', 'fill="' + a + '"');
+    var parts = tp.blocks.filter(function (b) { return b.on; }).map(function (b) {
+      var o = b.opts;
+      switch (b.id) {
+        case "header":
+          var sender = o.sender ? '<div class="small">' + seller + '</div>' : '<div></div>';
+          return '<div class="blk" style="display:flex; justify-content:space-between; align-items:flex-start; flex-direction:' + (tp.logo === "left" ? "row-reverse" : "row") + '">' + sender + lg + '</div>';
+        case "address": return '<div class="blk" style="min-height:30mm"><span class="lbl">' + t.prepared + '</span><div>' + customer + '</div></div>';
+        case "reference": return '<div class="meta"><div><b>' + t.number + '</b>Q-00012' + (o.revision ? '' : '-1') + '</div>' + (o.revision ? '<div><b>' + t.rev + '</b>1</div>' : '') + '<div><b>' + t.date + '</b>' + d.date + '</div><div><b>' + t.valid + '</b>' + d.valid + '</div></div>';
+        case "title": return '<div class="blk"><h3 style="color:' + a + '">' + t.quote + ': ' + d.subj + '</h3>' + (o.intro ? '<p>' + esc(o.intro) + '</p>' : '') + '</div>';
+        case "lines":
+          var h = '<th>' + t.desc + '</th><th class="n">' + t.qty + '</th>' + (o.unit ? '<th>' + t.unit + '</th>' : '') + '<th class="n">' + t.price + '</th>' + (o.discount ? '<th class="n">' + t.disc + '</th>' : '') + (o.vat ? '<th class="n">' + t.vatc + '</th>' : '') + '<th class="n">' + t.amount + '</th>';
+          return '<table class="lines"><thead><tr style="border-bottom:1.5px solid ' + a + '">' + h + '</tr></thead><tbody>' +
+            lineRows(t, lang, function (l, ds, u) { return '<tr><td>' + ds + (o.code ? '<div class="small">' + l.code + '</div>' : '') + '</td><td class="n">' + q(l.qty) + '</td>' + (o.unit ? '<td>' + u + '</td>' : '') + '<td class="n">' + m(l.price) + '</td>' + (o.discount ? '<td class="n">' + (l.disc ? l.disc + '%' : '') + '</td>' : '') + (o.vat ? '<td class="n">' + l.vat + '%</td>' : '') + '<td class="n">' + m(l.net) + '</td></tr>'; }) + '</tbody></table>';
+        case "totals": return '<table class="totals"><tr><td>' + t.sub + '</td><td class="n">' + m(net) + '</td></tr>' + vatRows(t) + '<tr class="g"><td style="border-top:1.5px solid ' + a + '; color:' + a + '">' + t.gross + '</td><td class="n" style="border-top:1.5px solid ' + a + '; color:' + a + '">' + m(gross) + '</td></tr></table>';
+        case "terms": return '<div class="blk small"><p>' + esc(o.useSettings ? (lang === "nl" ? settingsTerms : T.en.terms) : (o.text || "")) + '</p></div>';
+        case "contact": return '<div class="blk small"><p>' + t.yourRep + ': Adele Vance · adele.vance@northwind-solutions.nl' + (o.phone ? ' · 06 12 34 56 78' : '') + '</p></div>';
+        case "signature": return '<div class="blk sign" style="border:1px solid #b9c0cc; padding:12px 14px"><b style="color:' + a + '">' + esc(o.heading || t.accept) + ' · Fabrikam Logistiek B.V.</b><div class="lns"><div>' + t.name + '</div><div>' + t.signDate + '</div><div>' + t.sign + '</div></div></div>';
+        case "footer": return '<footer class="small"><span>Northwind Solutions B.V.</span><span>' + t.kvk + ' 87654321</span><span>' + t.btw + ' NL864512398B01</span><span>' + t.iban + ' NL91 ABNA 0417 1643 00</span></footer>';
+      }
+      return "";
+    });
+    var fam = tp.font === "serif" ? "Georgia, 'Times New Roman', serif" : "";
+    return '<div class="sheet vt" style="' + (fam ? "font-family:" + fam : "") + '">' + parts.join("") + '</div>';
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  var bHolder = document.getElementById("b-holder"), bStage = document.getElementById("b-stage");
+  function bFit() {
+    var w = bStage.clientWidth, s = Math.min(1, w / 794);
+    bHolder.style.transform = "scale(" + s + ")";
+    var h = bHolder.firstChild ? bHolder.firstChild.offsetHeight : 1123;
+    bStage.style.height = Math.ceil(h * s + 16) + "px";
+  }
+  function bPreview() { bHolder.innerHTML = tplHtml(templates[cur]); bFit(); }
+  function bControls() {
+    var tp = templates[cur];
+    document.getElementById("b-tpl").innerHTML = templates.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? " selected" : "") + '>' + esc(x.name) + (x.isDefault ? " (default)" : "") + '</option>'; }).join("");
+    document.getElementById("b-name").value = tp.name;
+    document.getElementById("b-default").checked = tp.isDefault;
+    document.getElementById("b-font").value = tp.font;
+    document.getElementById("b-logo").value = tp.logo;
+    document.getElementById("b-lang").value = tp.lang;
+    document.getElementById("b-accent").innerHTML = ACCENTS.map(function (c) { return '<button type="button" class="swatch" style="background:' + c + '" aria-label="Accent ' + c + '" aria-pressed="' + (c === tp.accent) + '" data-c="' + c + '"></button>'; }).join("");
+    document.querySelectorAll("#b-accent .swatch").forEach(function (s) { s.onclick = function () { tp.accent = s.dataset.c; bAll(); }; });
+    var ol = document.getElementById("b-blocks");
+    ol.innerHTML = tp.blocks.map(function (b, i) {
+      var meta = BLOCKS[b.id];
+      return '<li class="' + (b.id === sel ? "sel " : "") + (b.on ? "" : "off") + '">' +
+        '<input type="checkbox" id="on-' + b.id + '" aria-label="Show ' + meta.name + '"' + (b.on ? " checked" : "") + (meta.locked ? " disabled" : "") + '>' +
+        '<button type="button" class="bname" data-sel="' + b.id + '">' + meta.name + (meta.locked ? ' <span class="muted" style="font-weight:400">(always on)</span>' : '') + '</button>' +
+        '<button type="button" class="mv" data-mv="-1" data-i="' + i + '" aria-label="Move up">↑</button><button type="button" class="mv" data-mv="1" data-i="' + i + '" aria-label="Move down">↓</button></li>';
+    }).join("");
+    tp.blocks.forEach(function (b) { var c = document.getElementById("on-" + b.id); c.onchange = function () { b.on = c.checked; bAll(); }; });
+    ol.querySelectorAll("[data-sel]").forEach(function (x) { x.onclick = function () { sel = x.dataset.sel; bAll(); }; });
+    ol.querySelectorAll("[data-mv]").forEach(function (x) { x.onclick = function () {
+      var i = +x.dataset.i, j = i + +x.dataset.mv; if (j < 0 || j >= tp.blocks.length) return;
+      var tmp = tp.blocks[i]; tp.blocks[i] = tp.blocks[j]; tp.blocks[j] = tmp; bAll(); }; });
+    bOpts();
+  }
+  function bOpts() {
+    var tp = templates[cur], b = tp.blocks.filter(function (x) { return x.id === sel; })[0], o = b.opts, box = document.getElementById("b-opts");
+    var h = '<strong>' + BLOCKS[b.id].name + '</strong>';
+    function cb(k, label) { return '<label class="chip" for="o-' + k + '" style="justify-self:start"><input type="checkbox" id="o-' + k + '" data-k="' + k + '"' + (o[k] ? " checked" : "") + '> ' + label + '</label>'; }
+    if (b.id === "header") h += cb("sender", "Show sender address");
+    else if (b.id === "reference") h += cb("revision", "Show revision as its own field");
+    else if (b.id === "title") h += '<div class="field"><label for="o-intro">Intro text</label><textarea id="o-intro" data-t="intro">' + esc(o.intro || "") + '</textarea></div>';
+    else if (b.id === "lines") h += '<div class="row">' + cb("code", "Product code") + cb("unit", "Unit") + cb("discount", "Discount") + cb("vat", "VAT rate") + '</div><p class="muted" style="font-size:.85rem">Description, quantity, price and amount are always shown.</p>';
+    else if (b.id === "terms") h += cb("useSettings", "Use the terms from Quote settings") + (o.useSettings ? "" : '<div class="field"><label for="o-text">Terms for this template</label><textarea id="o-text" data-t="text">' + esc(o.text || "") + '</textarea></div>');
+    else if (b.id === "contact") h += cb("phone", "Show the owner's phone number");
+    else if (b.id === "signature") h += '<div class="field"><label for="o-heading">Heading</label><input id="o-heading" data-t="heading" value="' + esc(o.heading || "") + '"></div>';
+    else if (b.id === "totals") h += '<p class="muted" style="font-size:.85rem">Net total, VAT per rate and gross total. Required, so every Quote shows VAT the same way.</p>';
+    else if (b.id === "footer") h += '<p class="muted" style="font-size:.85rem">KvK number must be on business documents, so this block is always on. Values come from Quote settings.</p>';
+    else if (b.id === "address") h += '<p class="muted" style="font-size:.85rem">Account name, Contact and the Account address. Placed for a left window envelope when it comes right after the header.</p>';
+    box.innerHTML = h;
+    box.style.display = "grid"; box.style.gap = "10px";
+    box.querySelectorAll("[data-k]").forEach(function (x) { x.onchange = function () { o[x.dataset.k] = x.checked; if (x.dataset.k === "useSettings") bOpts(); bPreview(); }; });
+    box.querySelectorAll("[data-t]").forEach(function (x) { x.oninput = function () { o[x.dataset.t] = x.value; bPreview(); }; });
+  }
+  function bAll() { bControls(); bPreview(); }
+  document.getElementById("b-tpl").onchange = function (e) { cur = +e.target.value; bAll(); };
+  document.getElementById("b-name").oninput = function (e) { templates[cur].name = e.target.value; bPreview(); };
+  document.getElementById("b-default").onchange = function (e) { if (e.target.checked) templates.forEach(function (x, i) { x.isDefault = i === cur; }); else e.target.checked = true; bControls(); };
+  document.getElementById("b-font").onchange = function (e) { templates[cur].font = e.target.value; bPreview(); };
+  document.getElementById("b-logo").onchange = function (e) { templates[cur].logo = e.target.value; bPreview(); };
+  document.getElementById("b-lang").onchange = function (e) { templates[cur].lang = e.target.value; bPreview(); };
+  window.addEventListener("resize", bFit);
+  window.__showBuilder = function () { bAll(); };
+
   render();
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fit(); bFit(); });
 })();
 </script>
