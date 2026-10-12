@@ -133,6 +133,21 @@ table.app td.r, table.app th.r { text-align: right; }
 .switcher button { font: inherit; font-size: 1.1rem; width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--bar-fg); cursor: pointer; }
 .switcher span { font-weight: 600; font-size: .9rem; padding-inline: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Template builder */
+.tray { display: flex; flex-wrap: wrap; gap: 8px; min-height: 52px; padding: 10px; border: 2px dashed var(--line); border-radius: 8px; background: var(--bg); align-items: center; }
+.tray.drop-remove { border-color: var(--accent); background: var(--accent-soft); }
+.tray .empty { color: var(--muted); font-size: .88rem; }
+.tile { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-weight: 600; font-size: .88rem; cursor: grab; touch-action: none; user-select: none; }
+.tile .grip, .dz .grip { color: var(--muted); letter-spacing: -2px; }
+.dz { position: relative; border-radius: 3px; outline: 1px dashed transparent; outline-offset: 4px; cursor: grab; touch-action: none; user-select: none; }
+.dz:hover { outline-color: #8a94a8; }
+.dz.sel { outline: 2px solid #2f5bd3; }
+.dz.dragging { opacity: .35; }
+.dz .handle { position: absolute; left: -40px; top: -2px; width: 26px; height: 26px; border-radius: 5px; background: #2f5bd3; color: #ffffff; display: none; align-items: center; justify-content: center; font-size: 13px; }
+.dz:hover .handle, .dz.sel .handle { display: flex; }
+.dz.foot { margin-top: auto; }
+.drop-line { position: fixed; height: 3px; background: var(--accent); border-radius: 2px; pointer-events: none; z-index: 20; box-shadow: 0 0 0 2px var(--surface); }
+.drag-ghost { position: fixed; pointer-events: none; z-index: 30; padding: 7px 12px; border-radius: 6px; background: var(--bar-bg); color: var(--bar-fg); font-weight: 600; font-size: .88rem; box-shadow: 0 6px 18px rgba(0,0,0,.3); transform: translate(10px, 10px); }
+@media (min-width: 861px) { .builder .stage { position: sticky; top: calc(8px + env(safe-area-inset-top, 0px)); } }
 .builder { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; align-items: start; }
 @media (max-width: 860px) { .builder { grid-template-columns: 1fr; } }
 .blocks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -324,7 +339,7 @@ Met vriendelijke groet,
     <div class="rec">
       <strong>Proposed: a block-based template builder, like the Process builder's outline</strong>
       <ul>
-        <li>A template is an ordered list of fixed blocks. The manager turns blocks on or off, moves them, and edits each block's options and texts. A live preview shows the result on A4.</li>
+        <li>A template is an ordered list of fixed blocks, built by drag and drop on the A4 page itself: drag a block from the tray onto the page, drag blocks up and down on the page, drag one back to the tray to remove it. Click a block to edit its options and texts. Move up, Move down and Remove buttons do the same from the keyboard.</li>
         <li>Page style per template: accent colour, typeface, logo position. Company details, logo and default terms still come from Quote settings.</li>
         <li>Several named templates, one marked Default. A Quote uses the Default unless the user picks another while it is a Draft.</li>
         <li>Templates are edited by the SalesApp Catalogue Manager (a separate role is an option). Sent Quotes keep their stored PDF, so editing a template never changes what a customer received.</li>
@@ -344,7 +359,9 @@ Met vriendelijke groet,
           <div class="field"><label for="b-logo">Logo position</label><select id="b-logo"><option value="right">Right</option><option value="left">Left</option></select></div>
           <div class="field"><label for="b-lang">Language</label><select id="b-lang"><option value="nl">Dutch</option><option value="en">English</option></select></div>
         </div>
-        <div class="field"><label>Blocks (top to bottom)</label><ol class="blocks" id="b-blocks"></ol></div>
+        <div class="field"><label>Blocks you can add</label>
+          <div class="tray" id="b-tray" aria-label="Blocks not on the page"></div>
+          <p class="muted" style="font-size:.85rem">Drag a block onto the page to add it. Drag blocks on the page to move them; drag one back here to remove it. Click a block to edit it.</p></div>
         <div id="b-opts" class="panel" style="background:var(--bg)"></div>
         <div class="row" style="justify-content:flex-end"><button class="btn" type="button">Discard changes</button><button class="btn primary" type="button">Save template</button></div>
       </div>
@@ -558,7 +575,8 @@ Met vriendelijke groet,
   function tplHtml(tp) {
     var lang = tp.lang, t = T[lang], d = D[lang], a = tp.accent;
     var lg = logo.replace('fill="#14213d"', 'fill="' + a + '"');
-    var parts = tp.blocks.filter(function (b) { return b.on; }).map(function (b) {
+    var onBlocks = tp.blocks.filter(function (b) { return b.on; });
+    var parts = onBlocks.map(function (b) {
       var o = b.opts;
       switch (b.id) {
         case "header":
@@ -580,6 +598,7 @@ Met vriendelijke groet,
       return "";
     });
     var fam = tp.font === "serif" ? "Georgia, 'Times New Roman', serif" : "";
+    parts = parts.map(function (h, i) { var id = onBlocks[i].id; return '<div class="dz' + (id === sel ? ' sel' : '') + (id === "footer" ? ' foot' : '') + '" data-id="' + id + '" title="' + BLOCKS[id].name + '"><span class="handle" aria-hidden="true">⠿</span>' + h + '</div>'; });
     return '<div class="sheet vt" style="' + (fam ? "font-family:" + fam : "") + '">' + parts.join("") + '</div>';
   }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -602,19 +621,8 @@ Met vriendelijke groet,
     document.getElementById("b-lang").value = tp.lang;
     document.getElementById("b-accent").innerHTML = ACCENTS.map(function (c) { return '<button type="button" class="swatch" style="background:' + c + '" aria-label="Accent ' + c + '" aria-pressed="' + (c === tp.accent) + '" data-c="' + c + '"></button>'; }).join("");
     document.querySelectorAll("#b-accent .swatch").forEach(function (s) { s.onclick = function () { tp.accent = s.dataset.c; bAll(); }; });
-    var ol = document.getElementById("b-blocks");
-    ol.innerHTML = tp.blocks.map(function (b, i) {
-      var meta = BLOCKS[b.id];
-      return '<li class="' + (b.id === sel ? "sel " : "") + (b.on ? "" : "off") + '">' +
-        '<input type="checkbox" id="on-' + b.id + '" aria-label="Show ' + meta.name + '"' + (b.on ? " checked" : "") + (meta.locked ? " disabled" : "") + '>' +
-        '<button type="button" class="bname" data-sel="' + b.id + '">' + meta.name + (meta.locked ? ' <span class="muted" style="font-weight:400">(always on)</span>' : '') + '</button>' +
-        '<button type="button" class="mv" data-mv="-1" data-i="' + i + '" aria-label="Move up">↑</button><button type="button" class="mv" data-mv="1" data-i="' + i + '" aria-label="Move down">↓</button></li>';
-    }).join("");
-    tp.blocks.forEach(function (b) { var c = document.getElementById("on-" + b.id); c.onchange = function () { b.on = c.checked; bAll(); }; });
-    ol.querySelectorAll("[data-sel]").forEach(function (x) { x.onclick = function () { sel = x.dataset.sel; bAll(); }; });
-    ol.querySelectorAll("[data-mv]").forEach(function (x) { x.onclick = function () {
-      var i = +x.dataset.i, j = i + +x.dataset.mv; if (j < 0 || j >= tp.blocks.length) return;
-      var tmp = tp.blocks[i]; tp.blocks[i] = tp.blocks[j]; tp.blocks[j] = tmp; bAll(); }; });
+    var off = tp.blocks.filter(function (b) { return !b.on; });
+    document.getElementById("b-tray").innerHTML = off.length ? off.map(function (b) { return '<span class="tile" data-add="' + b.id + '"><span class="grip">⠿</span>' + BLOCKS[b.id].name + '</span>'; }).join("") : '<span class="empty">Every block is on the page.</span>';
     bOpts();
   }
   function bOpts() {
@@ -631,12 +639,87 @@ Met vriendelijke groet,
     else if (b.id === "totals") h += '<p class="muted" style="font-size:.85rem">Net total, VAT per rate and gross total. Required, so every Quote shows VAT the same way.</p>';
     else if (b.id === "footer") h += '<p class="muted" style="font-size:.85rem">KvK number must be on business documents, so this block is always on. Values come from Quote settings.</p>';
     else if (b.id === "address") h += '<p class="muted" style="font-size:.85rem">Account name, Contact and the Account address. Placed for a left window envelope when it comes right after the header.</p>';
+    var locked = BLOCKS[b.id].locked;
+    h += '<div class="row"><button type="button" class="btn" data-mv="-1">Move up</button><button type="button" class="btn" data-mv="1">Move down</button>' + (locked ? '<span class="muted" style="font-size:.85rem">Always on the page</span>' : '<button type="button" class="btn" data-rm="1">Remove from page</button>') + '</div>';
     box.innerHTML = h;
+    box.querySelectorAll("[data-mv]").forEach(function (x) { x.onclick = function () { moveBy(b.id, +x.dataset.mv); }; });
+    box.querySelectorAll("[data-rm]").forEach(function (x) { x.onclick = function () { b.on = false; sel = "lines"; bAll(); }; });
     box.style.display = "grid"; box.style.gap = "10px";
     box.querySelectorAll("[data-k]").forEach(function (x) { x.onchange = function () { o[x.dataset.k] = x.checked; if (x.dataset.k === "useSettings") bOpts(); bPreview(); }; });
     box.querySelectorAll("[data-t]").forEach(function (x) { x.oninput = function () { o[x.dataset.t] = x.value; bPreview(); }; });
   }
   function bAll() { bControls(); bPreview(); }
+  function onList() { return templates[cur].blocks.filter(function (b) { return b.on; }); }
+  function moveBy(id, step) {
+    var vis = onList(), i = vis.findIndex(function (b) { return b.id === id; }), j = i + step;
+    if (j < 0 || j >= vis.length) return;
+    placeAt(id, j);
+  }
+  // Put block `id` on the page before the visible block at `pos` (pos === count means at the end).
+  function placeAt(id, pos) {
+    var bl = templates[cur].blocks, vis = onList().filter(function (b) { return b.id !== id; });
+    var item = bl.splice(bl.findIndex(function (b) { return b.id === id; }), 1)[0];
+    item.on = true;
+    var target = vis[pos] ? bl.indexOf(vis[pos]) : -1;
+    if (target === -1) {
+      var lastVis = vis[vis.length - 1];
+      bl.splice(lastVis ? bl.indexOf(lastVis) + 1 : bl.length, 0, item);
+    } else bl.splice(target, 0, item);
+    sel = id; bAll();
+  }
+
+  // Pointer-based drag and drop: works for mouse, pen and touch.
+  var drag = null, line = null, ghost = null;
+  function startDrag(e, id, fromTray) {
+    drag = { id: id, fromTray: fromTray, x: e.clientX, y: e.clientY, moved: false, pos: null, remove: false };
+  }
+  bHolder.addEventListener("pointerdown", function (e) {
+    var dz = e.target.closest(".dz"); if (!dz) return;
+    e.preventDefault(); startDrag(e, dz.dataset.id, false);
+  });
+  document.getElementById("b-tray").addEventListener("pointerdown", function (e) {
+    var t = e.target.closest("[data-add]"); if (!t) return;
+    e.preventDefault(); startDrag(e, t.dataset.add, true);
+  });
+  document.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    if (!drag.moved) {
+      if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) < 5) return;
+      drag.moved = true;
+      ghost = document.createElement("div"); ghost.className = "drag-ghost"; ghost.textContent = BLOCKS[drag.id].name; document.body.appendChild(ghost);
+      line = document.createElement("div"); line.className = "drop-line"; line.hidden = true; document.body.appendChild(line);
+      var el = bHolder.querySelector('.dz[data-id="' + drag.id + '"]'); if (el) el.classList.add("dragging");
+    }
+    ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
+    var tray = document.getElementById("b-tray"), tr = tray.getBoundingClientRect();
+    var overTray = e.clientX >= tr.left && e.clientX <= tr.right && e.clientY >= tr.top && e.clientY <= tr.bottom;
+    drag.remove = overTray && !drag.fromTray && !BLOCKS[drag.id].locked;
+    tray.classList.toggle("drop-remove", drag.remove);
+    var sheet = bHolder.firstChild, sr = sheet.getBoundingClientRect();
+    var overSheet = e.clientX >= sr.left - 40 && e.clientX <= sr.right + 40 && e.clientY >= sr.top && e.clientY <= sr.bottom;
+    if (!overSheet || overTray) { drag.pos = null; line.hidden = true; return; }
+    var zones = Array.prototype.slice.call(bHolder.querySelectorAll(".dz")), pos = zones.length, y;
+    for (var i = 0; i < zones.length; i++) {
+      var r = zones[i].getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { pos = i; y = r.top - 6; break; }
+    }
+    if (pos === zones.length) { var lr = zones[zones.length - 1].getBoundingClientRect(); y = lr.bottom + 4; }
+    drag.pos = pos;
+    line.hidden = false; line.style.left = (sr.left + 20) + "px"; line.style.width = (sr.width - 40) + "px"; line.style.top = y + "px";
+  });
+  document.addEventListener("pointerup", function () {
+    if (!drag) return;
+    var d = drag; drag = null;
+    if (ghost) { ghost.remove(); ghost = null; } if (line) { line.remove(); line = null; }
+    document.getElementById("b-tray").classList.remove("drop-remove");
+    if (!d.moved) { if (!d.fromTray) { sel = d.id; bAll(); } return; }
+    if (d.remove) { templates[cur].blocks.filter(function (b) { return b.id === d.id; })[0].on = false; if (sel === d.id) sel = "lines"; bAll(); return; }
+    if (d.pos === null) { bAll(); return; }
+    // the drop position counts the dragged block itself when it is already on the page
+    var vis = onList(), oldIdx = vis.findIndex(function (b) { return b.id === d.id; }), pos = d.pos;
+    if (oldIdx !== -1 && oldIdx < pos) pos -= 1;
+    placeAt(d.id, pos);
+  });
   document.getElementById("b-tpl").onchange = function (e) { cur = +e.target.value; bAll(); };
   document.getElementById("b-name").oninput = function (e) { templates[cur].name = e.target.value; bPreview(); };
   document.getElementById("b-default").onchange = function (e) { if (e.target.checked) templates.forEach(function (x, i) { x.isDefault = i === cur; }); else e.target.checked = true; bControls(); };
