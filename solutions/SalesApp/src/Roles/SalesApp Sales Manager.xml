@@ -3,13 +3,17 @@
   <IsCustomizable>1</IsCustomizable>
   <IsAutoAssigned>0</IsAutoAssigned>
   <RolePrivileges>
+    <RolePrivilege name="prvAppendTovibe_Quota" level="Basic" />
+    <RolePrivilege name="prvAppendvibe_Quota" level="Basic" />
     <RolePrivilege name="prvAssignAccount" level="Local" />
     <RolePrivilege name="prvAssignContact" level="Local" />
     <RolePrivilege name="prvAssignvibe_Lead" level="Local" />
     <RolePrivilege name="prvAssignvibe_Opportunity" level="Local" />
     <RolePrivilege name="prvCreateSharePointData" level="Global" />
+    <RolePrivilege name="prvCreatevibe_Quota" level="Local" />
     <RolePrivilege name="prvReadSharePointData" level="Global" />
     <RolePrivilege name="prvReadSharePointDocument" level="Global" />
     <RolePrivilege name="prvWriteSharePointData" level="Global" />
+    <RolePrivilege name="prvWritevibe_Quota" level="Basic" />
   </RolePrivileges>
 </Role>
