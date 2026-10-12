@@ -103,6 +103,7 @@
       <RootComponent type="9" schemaName="vibe_leadstatus" behavior="0" />
       <RootComponent type="9" schemaName="vibe_lostreason" behavior="0" />
       <RootComponent type="9" schemaName="vibe_stage" behavior="0" />
+      <RootComponent type="91" id="{a986065a-7fc6-f111-b377-7c1e5253a39d}" schemaName="SalesApp.Plugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" behavior="0" />
     </RootComponents>
     <MissingDependencies>
       <MissingDependency>

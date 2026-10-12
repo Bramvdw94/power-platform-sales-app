@@ -18,3 +18,13 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build plugins/SalesApp.Plugins --configuration Release
+      - run: dotnet test plugins/SalesApp.Plugins.Tests --configuration Release
