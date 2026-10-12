@@ -1,0 +1,468 @@
+<title>Quote PDF Prototype</title>
+<!--
+  PROTOTYPE (wayfinder #83), throwaway. Never merge.
+  Question: what does the Quote PDF look like, and what happens when the user presses Send?
+  Three structurally different PDF layouts, switchable with the bottom bar or the arrow keys,
+  plus mockups of the Send dialog, the Quote after sending, and Quote settings.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: app chrome around an A4 sheet; the sheet is paper, so it stays light in both themes. */
+:root {
+  --bg: #f3f4f7; --surface: #ffffff; --fg: #1b1f2a; --muted: #586074; --line: #d9dde6;
+  --accent: #2f5bd3; --accent-fg: #ffffff; --accent-soft: #e6ecfb;
+  --ok: #1d7a46; --ok-soft: #e3f3ea; --warn: #8a5a00; --warn-soft: #fbf0d9;
+  --bar-bg: #1b1f2a; --bar-fg: #ffffff;
+  --ui: "Public Sans", system-ui, sans-serif;
+  --doc: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12151c; --surface: #1b1f2a; --fg: #e8ebf2; --muted: #a3abbd; --line: #333a4a;
+  --accent: #8aa8ff; --accent-fg: #0e1426; --accent-soft: #24304f;
+  --ok: #7fd6a3; --ok-soft: #173326; --warn: #f2c46b; --warn-soft: #3a2e14;
+  --bar-bg: #e8ebf2; --bar-fg: #12151c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12151c; --surface: #1b1f2a; --fg: #e8ebf2; --muted: #a3abbd; --line: #333a4a;
+  --accent: #8aa8ff; --accent-fg: #0e1426; --accent-soft: #24304f;
+  --ok: #7fd6a3; --ok-soft: #173326; --warn: #f2c46b; --warn-soft: #3a2e14;
+  --bar-bg: #e8ebf2; --bar-fg: #12151c; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--ui); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 110px; display: grid; gap: 20px; }
+h1 { font-size: 1.45rem; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.1rem; margin: 0; }
+p { margin: 0; line-height: 1.5; max-width: 70ch; }
+.muted { color: var(--muted); }
+.tag { display: inline-block; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: var(--warn-soft); color: var(--warn); }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); }
+.tabs button { font: inherit; font-weight: 600; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); padding: 10px 12px; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.tabs button:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rec { background: var(--accent-soft); color: var(--fg); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; }
+.rec ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; line-height: 1.45; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font: inherit; font-weight: 600; border-radius: 6px; padding: 8px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.field input, .field textarea, .field select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; box-sizing: border-box; }
+.field textarea { min-height: 96px; resize: vertical; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.chip { display: inline-flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); font-size: .88rem; }
+.pill { display: inline-block; font-size: .78rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.pill.sent { background: var(--accent-soft); color: var(--accent); }
+.pill.draft { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.choice { display: grid; gap: 8px; }
+.choice label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; line-height: 1.4; }
+.choice input { margin-top: 3px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: .92rem; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.num { font-variant-numeric: tabular-nums; }
+table.app { width: 100%; border-collapse: collapse; font-size: .9rem; }
+table.app th, table.app td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+table.app td.r, table.app th.r { text-align: right; }
+.scroll { overflow-x: auto; }
+
+/* The sheet: fixed paper colours, it is a printed document */
+.stage { overflow: hidden; }
+.sheet-holder { transform-origin: top left; width: 794px; }
+.sheet { width: 794px; min-height: 1123px; background: #ffffff; color: #1d2230; font-family: var(--doc); font-size: 12.5px; line-height: 1.45; box-shadow: 0 2px 14px rgba(10, 20, 40, .18); box-sizing: border-box; position: relative; display: flex; flex-direction: column; }
+.sheet .n { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.sheet table { width: 100%; border-collapse: collapse; }
+.sheet .lines th.n { text-align: right; }
+.sheet .small { font-size: 10.5px; color: #4a5263; }
+.sheet .logo { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; color: #14213d; }
+.sheet .logo svg { width: 30px; height: 30px; }
+.sheet .draftmark { position: absolute; top: 420px; left: 0; right: 0; text-align: center; font-size: 120px; font-weight: 700; color: rgba(200, 30, 30, .09); transform: rotate(-24deg); pointer-events: none; letter-spacing: .1em; }
+.sheet footer { margin-top: auto; }
+
+/* Variant A: Dutch business letter, window envelope */
+.va { padding: 48px 60px 36px; gap: 0; }
+.va .top { display: flex; justify-content: space-between; align-items: flex-start; }
+.va .addr { margin-top: 70px; width: 85mm; min-height: 32mm; }
+.va .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 16px; margin-top: 26px; padding-block: 10px; border-top: 1px solid #c9ced8; border-bottom: 1px solid #c9ced8; }
+.va .meta b { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: #5a6274; font-weight: 600; }
+.va h3 { font-size: 20px; margin: 26px 0 6px; color: #14213d; }
+.va .lines th { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #5a6274; text-align: left; border-bottom: 1.5px solid #14213d; padding: 6px 4px; font-weight: 600; }
+.va .lines td { padding: 7px 4px; border-bottom: 1px solid #e3e6ec; vertical-align: top; }
+.va .totals { margin-left: auto; width: 290px; margin-top: 12px; }
+.va .totals td { padding: 4px 4px; }
+.va .totals tr.g td { border-top: 1.5px solid #14213d; font-weight: 700; font-size: 14px; padding-top: 8px; }
+.va .terms { margin-top: 26px; display: grid; gap: 4px; }
+.va footer { border-top: 1px solid #c9ced8; padding-top: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+
+/* Variant B: summary-first proposal with colour band */
+.vb .band { background: #14213d; color: #ffffff; padding: 30px 48px 26px; display: flex; justify-content: space-between; gap: 20px; }
+.vb .band .logo { color: #ffffff; }
+.vb .band .small { color: #c9d3ea; }
+.vb .body { padding: 26px 48px 30px; display: flex; flex-direction: column; gap: 22px; flex: 1; }
+.vb .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; }
+.vb .hero .big { font-size: 30px; font-weight: 700; color: #14213d; }
+.vb .card { border: 1px solid #d7dce6; border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; }
+.vb .card b { font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: #5a6274; }
+.vb .lines td { padding: 9px 0; border-bottom: 1px solid #e3e6ec; vertical-align: top; }
+.vb .lines .desc { font-weight: 600; color: #14213d; }
+.vb .split { display: grid; grid-template-columns: 1fr 260px; gap: 24px; align-items: start; }
+.vb .tot td { padding: 4px 0; }
+.vb .tot tr.g td { font-weight: 700; font-size: 15px; color: #14213d; border-top: 2px solid #14213d; padding-top: 8px; }
+.vb footer { background: #eef1f6; padding: 12px 48px; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+
+/* Variant C: compact form with acceptance block */
+.vc { padding: 40px 52px 30px; gap: 16px; }
+.vc .hdr { display: grid; grid-template-columns: 1fr auto; gap: 16px; border-bottom: 3px solid #14213d; padding-bottom: 12px; }
+.vc .hdr .t { font-size: 26px; font-weight: 700; letter-spacing: .02em; color: #14213d; text-align: right; }
+.vc .boxes { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #b9c0cc; }
+.vc .boxes > div { padding: 10px 12px; border-right: 1px solid #b9c0cc; }
+.vc .boxes > div:last-child { border-right: 0; }
+.vc .boxes b { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: #5a6274; margin-bottom: 4px; }
+.vc .lines { border: 1px solid #b9c0cc; }
+.vc .lines th { background: #eef1f6; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #3d4556; padding: 6px 6px; text-align: left; border-bottom: 1px solid #b9c0cc; }
+.vc .lines td { padding: 6px 6px; border-bottom: 1px solid #e3e6ec; }
+.vc .lower { display: grid; grid-template-columns: 1fr 270px; gap: 20px; }
+.vc .tot { border: 1px solid #b9c0cc; }
+.vc .tot td { padding: 5px 8px; }
+.vc .tot tr.g td { background: #14213d; color: #ffffff; font-weight: 700; }
+.vc .sign { border: 1px solid #b9c0cc; padding: 12px 14px; display: grid; gap: 10px; }
+.vc .sign .lns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; padding-top: 22px; }
+.vc .sign .lns div { border-top: 1px solid #1d2230; padding-top: 3px; font-size: 10px; color: #4a5263; }
+.vc footer { border-top: 1px solid #c9ced8; padding-top: 8px; text-align: center; }
+
+/* Floating variant switcher (prototype only) */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); background: var(--bar-bg); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 6px 22px rgba(0,0,0,.3); z-index: 10; max-width: calc(100vw - 32px); }
+.switcher button { font: inherit; font-size: 1.1rem; width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--bar-fg); cursor: pointer; }
+.switcher span { font-weight: 600; font-size: .9rem; padding-inline: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 560px) { .va .meta { grid-template-columns: repeat(2, 1fr); } }
+@media (prefers-reduced-motion: no-preference) { .tabs button { transition: color .15s, border-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header style="display:grid; gap:8px">
+    <span class="tag">Prototype · throwaway</span>
+    <h1>How the Quote PDF looks and how a Sent Quote reaches the customer</h1>
+    <p class="muted">Example Quote Q-00012, revision 1, for Fabrikam Logistiek B.V. Every name and amount is sample data. The sheet stays white in dark mode because it is the printed document.</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-pdf" aria-selected="true" data-tab="pdf">1. The PDF</button>
+    <button role="tab" id="tab-send" aria-selected="false" data-tab="send">2. Send</button>
+    <button role="tab" id="tab-after" aria-selected="false" data-tab="after">3. After sending</button>
+    <button role="tab" id="tab-settings" aria-selected="false" data-tab="settings">4. Quote settings</button>
+  </div>
+
+  <!-- 1. PDF -->
+  <section id="pane-pdf" class="pane" style="display:grid; gap:14px">
+    <div class="rec">
+      <strong id="variant-title">Layout</strong>
+      <p id="variant-blurb"></p>
+    </div>
+    <div class="row">
+      <div class="field" style="width:auto"><label for="lang">PDF language</label>
+        <select id="lang"><option value="nl">Dutch</option><option value="en">English</option></select></div>
+      <label class="chip" for="draft"><input type="checkbox" id="draft"> Show as Draft preview (watermark)</label>
+    </div>
+    <div class="stage" id="stage"><div class="sheet-holder" id="holder"></div></div>
+  </section>
+
+  <!-- 2. Send -->
+  <section id="pane-send" class="pane" hidden style="display:grid; gap:14px">
+    <div class="rec">
+      <strong>Recommended: Send opens one dialog with two ways to deliver</strong>
+      <ul>
+        <li>Default: email the PDF from the user's own mailbox through the Office 365 Outlook connector. It lands in their Sent Items, so replies come back to them.</li>
+        <li>Alternative: download the PDF and send it yourself (another mail client, a portal, a printed copy).</li>
+        <li>Both lock the Quote, set it to Sent, record the sent date and store the exact PDF on the Quote.</li>
+        <li>This is a one-off send, not Outlook integration: no email activity is tracked, so the "no Outlook" scope line still holds.</li>
+      </ul>
+    </div>
+    <div class="panel" role="dialog" aria-labelledby="send-h">
+      <h2 id="send-h">Send quote Q-00012 rev. 1</h2>
+      <div class="choice">
+        <label for="m-email"><input type="radio" name="mode" id="m-email" value="email" checked><span><strong>Email it from my Outlook</strong><br><span class="muted">Sent as adele.vance@northwind-solutions.nl with the PDF attached.</span></span></label>
+        <label for="m-dl"><input type="radio" name="mode" id="m-dl" value="dl"><span><strong>Download the PDF, I'll send it myself</strong><br><span class="muted">The Quote is marked as Sent when you confirm.</span></span></label>
+      </div>
+      <div id="email-fields" style="display:grid; gap:12px">
+        <div class="grid2">
+          <div class="field"><label for="to">To</label><input id="to" value="sanne.devries@fabrikam.nl"></div>
+          <div class="field"><label for="cc">Cc</label><input id="cc" value="" placeholder="Optional"></div>
+        </div>
+        <div class="field"><label for="subj">Subject</label><input id="subj" value="Offerte Q-00012 – CRM-implementatie Fabrikam"></div>
+        <div class="field"><label for="body">Message</label><textarea id="body">Beste Sanne,
+
+Hierbij ontvang je onze offerte Q-00012 voor de CRM-implementatie. De offerte is geldig tot en met 11 november 2026.
+
+Met vriendelijke groet,
+Adele Vance
+Northwind Solutions B.V.</textarea></div>
+        <div class="row"><span class="chip">📄 Offerte Q-00012-1 Fabrikam Logistiek.pdf · 84 KB</span><button class="btn" type="button" data-goto="pdf">Preview PDF</button></div>
+        <p class="muted" style="font-size:.85rem">Subject and message come from the template in Quote settings; the user can change them before sending. To is the Quote's Contact; the dialog stops with a message if that Contact has no email address.</p>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn" type="button">Cancel</button>
+        <button class="btn primary" type="button" id="send-btn" data-goto="after">Send quote</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. After -->
+  <section id="pane-after" class="pane" hidden style="display:grid; gap:14px">
+    <div class="rec">
+      <strong>Recommended: the Quote page shows what was sent, to whom, and the exact PDF</strong>
+      <ul>
+        <li>A copy of the sent PDF is stored on the Quote, so it never changes later, even when prices or company details do.</li>
+        <li>"Sent" line: date, who sent it, how (Outlook or download) and to which address.</li>
+        <li>Actions on a Sent Quote: Accept, Reject, Revise. Download PDF always returns the stored copy.</li>
+        <li>A Draft has "Preview PDF" only, with a DRAFT watermark and no stored copy.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <div style="display:grid; gap:4px">
+          <span class="muted" style="font-size:.85rem">Quote · CRM rollout Fabrikam</span>
+          <h2>Q-00012 · Revision 1 <span class="pill sent">Sent</span></h2>
+        </div>
+        <div class="row">
+          <button class="btn" type="button">Download PDF</button>
+          <button class="btn" type="button">Revise</button>
+          <button class="btn" type="button">Reject</button>
+          <button class="btn primary" type="button">Accept</button>
+        </div>
+      </div>
+      <div class="chip" style="justify-self:start; background:var(--ok-soft); color:var(--ok); border-color:transparent">Sent on 12 Oct 2026 by Adele Vance via Outlook to sanne.devries@fabrikam.nl</div>
+      <div class="grid2">
+        <dl class="kv">
+          <dt>Account</dt><dd>Fabrikam Logistiek B.V.</dd>
+          <dt>Contact</dt><dd>Sanne de Vries</dd>
+          <dt>Valid until</dt><dd>11 Nov 2026</dd>
+        </dl>
+        <dl class="kv num" id="after-totals"></dl>
+      </div>
+      <div class="field"><label>Sent PDF</label><span class="chip" style="justify-self:start">📄 Offerte Q-00012-1 Fabrikam Logistiek.pdf · 84 KB · stored 12 Oct 2026 14:32</span></div>
+      <div class="scroll"><table class="app num" id="after-lines"></table></div>
+    </div>
+    <div class="panel">
+      <h2>On the Opportunity: Quotes panel</h2>
+      <div class="scroll"><table class="app num">
+        <thead><tr><th>Quote</th><th>Status</th><th>Sent</th><th>Valid until</th><th class="r">Net total</th></tr></thead>
+        <tbody>
+          <tr><td>Q-00012 rev. 1</td><td><span class="pill sent">Sent</span></td><td>12 Oct 2026</td><td>11 Nov 2026</td><td class="r" id="opp-net"></td></tr>
+          <tr><td>Q-00013 rev. 0</td><td><span class="pill draft">Draft</span></td><td>–</td><td>11 Nov 2026</td><td class="r">€ 6.250,00</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- 4. Settings -->
+  <section id="pane-settings" class="pane" hidden style="display:grid; gap:14px">
+    <div class="rec">
+      <strong>Recommended: one Quote settings record, edited in the app by the Catalogue Manager</strong>
+      <ul>
+        <li>Kept in a one-row Dataverse table, shown as a "Quote settings" tab on the Products page. SalesApp Catalogue Manager edits it (Megan in the demo); everyone in sales reads it.</li>
+        <li>Not environment variables: those need a maker in the Power Platform portal, and managers should change terms or the logo without one.</li>
+        <li>The PDF reads these settings at the moment it is made, and the stored copy freezes them.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h2>Quote settings</h2>
+      <div class="grid2">
+        <div class="field"><label for="s-name">Company name</label><input id="s-name" value="Northwind Solutions B.V."></div>
+        <div class="field"><label for="s-logo">Logo (PNG or SVG, up to 1 MB)</label><span class="chip" id="s-logo">northwind-logo.svg · Replace</span></div>
+        <div class="field"><label for="s-addr">Address</label><textarea id="s-addr" style="min-height:64px">Stationsplein 12
+3511 ED Utrecht</textarea></div>
+        <div class="field"><label for="s-contact">Phone, email, website</label><textarea id="s-contact" style="min-height:64px">030 123 45 67
+sales@northwind-solutions.nl
+northwind-solutions.nl</textarea></div>
+        <div class="field"><label for="s-kvk">KvK number</label><input id="s-kvk" value="87654321"></div>
+        <div class="field"><label for="s-btw">VAT number (btw-id)</label><input id="s-btw" value="NL864512398B01"></div>
+        <div class="field"><label for="s-iban">IBAN</label><input id="s-iban" value="NL91 ABNA 0417 1643 00"></div>
+        <div class="field"><label for="s-valid">Default validity (days)</label><input id="s-valid" value="30"></div>
+        <div class="field"><label for="s-lang">PDF and email language</label><select id="s-lang"><option>Dutch</option><option>English</option></select></div>
+        <div class="field"><label for="s-gt">General terms (link printed on the PDF)</label><input id="s-gt" value="northwind-solutions.nl/voorwaarden"></div>
+      </div>
+      <div class="field"><label for="s-terms">Terms text on the PDF</label><textarea id="s-terms">Op deze offerte zijn onze algemene voorwaarden van toepassing. Prijzen zijn in euro en exclusief btw, tenzij anders vermeld. Facturatie van uren maandelijks achteraf; licenties jaarlijks vooraf.</textarea></div>
+      <div class="grid2">
+        <div class="field"><label for="s-subj">Email subject template</label><input id="s-subj" value="Offerte {Quote number} – {Opportunity name}"></div>
+        <div class="field"><label for="s-body">Email message template</label><textarea id="s-body">Beste {Contact first name},
+
+Hierbij ontvang je onze offerte {Quote number}. De offerte is geldig tot en met {Valid until}.
+
+Met vriendelijke groet,
+{Owner name}</textarea></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="switcher" id="switcher" aria-label="Layout switcher">
+  <button type="button" id="prev" aria-label="Previous layout">←</button>
+  <span id="vlabel">A</span>
+  <button type="button" id="next" aria-label="Next layout">→</button>
+</div>
+
+<script>
+(function () {
+  var lines = [
+    { code: "CONS-IMP", nl: "Implementatieconsultancy", en: "Implementation consultancy", unitNl: "uur", unitEn: "hour", qty: 40, price: 110, disc: 10, vat: 21 },
+    { code: "LIC-USR", nl: "SalesApp-licentie per gebruiker per maand", en: "SalesApp licence per user per month", unitNl: "maand", unitEn: "month", qty: 60, price: 45, disc: 0, vat: 21 },
+    { code: "TRN-DAY", nl: "Training op locatie", en: "On-site training", unitNl: "dag", unitEn: "day", qty: 2, price: 950, disc: 0, vat: 21 },
+    { code: "DOC-MAN", nl: "Gedrukte gebruikershandleiding", en: "Printed user manual", unitNl: "stuk", unitEn: "piece", qty: 5, price: 24.5, disc: 0, vat: 9 }
+  ];
+  function cents(x) { return Math.round(x * 100); }
+  lines.forEach(function (l) { l.net = cents(l.qty * l.price * (1 - l.disc / 100)) / 100; });
+  var byRate = {};
+  lines.forEach(function (l) { byRate[l.vat] = (byRate[l.vat] || 0) + l.net; });
+  var rates = Object.keys(byRate).map(Number).sort(function (a, b) { return b - a; });
+  var vat = rates.map(function (r) { return { rate: r, base: byRate[r], amount: cents(byRate[r] * r / 100) / 100 }; });
+  var net = lines.reduce(function (s, l) { return s + l.net; }, 0);
+  var vatTotal = vat.reduce(function (s, v) { return s + v.amount; }, 0);
+  var gross = cents(net + vatTotal) / 100;
+
+  var eur = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
+  function m(x) { return eur.format(x); }
+  function q(x) { return new Intl.NumberFormat("nl-NL").format(x); }
+
+  var T = {
+    nl: { quote: "Offerte", number: "Offertenummer", rev: "Revisie", date: "Datum", valid: "Geldig tot en met", contact: "Contactpersoon", ref: "Betreft",
+      desc: "Omschrijving", qty: "Aantal", unit: "Eenheid", price: "Prijs", disc: "Korting", vatc: "Btw", amount: "Bedrag",
+      sub: "Totaal excl. btw", vatOn: function (r, b) { return "Btw " + r + "% over " + m(b); }, gross: "Totaal incl. btw",
+      intro: "Naar aanleiding van ons gesprek bieden wij u het volgende aan.",
+      terms: "Op deze offerte zijn onze algemene voorwaarden van toepassing (northwind-solutions.nl/voorwaarden). Prijzen zijn in euro en exclusief btw, tenzij anders vermeld. Facturatie van uren maandelijks achteraf; licenties jaarlijks vooraf.",
+      yourRep: "Uw contactpersoon", accept: "Akkoord voor opdracht", name: "Naam", signDate: "Datum", sign: "Handtekening", page: "Pagina 1 van 1",
+      summary: "Investering", until: "Geldig tot", prepared: "Opgesteld voor", from: "Opgesteld door", kvk: "KvK", btw: "Btw-id", iban: "IBAN" },
+    en: { quote: "Quote", number: "Quote number", rev: "Revision", date: "Date", valid: "Valid until", contact: "Contact", ref: "Subject",
+      desc: "Description", qty: "Qty", unit: "Unit", price: "Price", disc: "Discount", vatc: "VAT", amount: "Amount",
+      sub: "Total excl. VAT", vatOn: function (r, b) { return "VAT " + r + "% on " + m(b); }, gross: "Total incl. VAT",
+      intro: "Following our conversation, we are pleased to offer the following.",
+      terms: "Our general terms and conditions apply to this quote (northwind-solutions.nl/voorwaarden). Prices are in euro and exclude VAT unless stated otherwise. Hours are invoiced monthly in arrears; licences yearly in advance.",
+      yourRep: "Your contact", accept: "Accepted for order", name: "Name", signDate: "Date", sign: "Signature", page: "Page 1 of 1",
+      summary: "Investment", until: "Valid until", prepared: "Prepared for", from: "Prepared by", kvk: "Chamber of Commerce", btw: "VAT number", iban: "IBAN" }
+  };
+  var D = { nl: { date: "12 oktober 2026", valid: "11 november 2026", subj: "CRM-implementatie Fabrikam" }, en: { date: "12 October 2026", valid: "11 November 2026", subj: "CRM rollout Fabrikam" } };
+  var logo = '<span class="logo"><svg viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="6" fill="#14213d"/><path d="M8 22V8l14 14V8" stroke="#f2b134" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Northwind Solutions</span>';
+  var logoLight = logo.replace('fill="#14213d"', 'fill="#ffffff"').replace('stroke="#f2b134"', 'stroke="#14213d"');
+  var seller = "Northwind Solutions B.V.<br>Stationsplein 12<br>3511 ED Utrecht<br>030 123 45 67<br>sales@northwind-solutions.nl";
+  var customer = "Fabrikam Logistiek B.V.<br>t.a.v. Sanne de Vries<br>Havenweg 48<br>3044 AV Rotterdam";
+
+  function lineRows(t, lang, cols) {
+    return lines.map(function (l) {
+      var d = lang === "nl" ? l.nl : l.en, u = lang === "nl" ? l.unitNl : l.unitEn;
+      return cols(l, d, u);
+    }).join("");
+  }
+  function vatRows(t) { return vat.map(function (v) { return '<tr><td>' + t.vatOn(v.rate, v.base) + '</td><td class="n">' + m(v.amount) + '</td></tr>'; }).join(""); }
+
+  var variants = [
+    { key: "A", name: "Business letter",
+      blurb: "Classic Dutch business letter: logo and sender top right, customer address placed for a window envelope, a reference strip, a full line table, totals with VAT per rate, terms, and a footer with KvK, btw-id and IBAN. Closest to what Dynamics and most Dutch quoting tools produce.",
+      render: function (t, lang, d) {
+        return '<div class="sheet va">' +
+          '<div class="top"><div class="small">' + seller + '</div>' + logo + '</div>' +
+          '<div class="addr">' + customer + '</div>' +
+          '<div class="meta"><div><b>' + t.number + '</b>Q-00012</div><div><b>' + t.rev + '</b>1</div><div><b>' + t.date + '</b>' + d.date + '</div><div><b>' + t.valid + '</b>' + d.valid + '</div></div>' +
+          '<h3>' + t.quote + ': ' + d.subj + '</h3><p>' + t.intro + '</p>' +
+          '<table class="lines" style="margin-top:14px"><thead><tr><th>' + t.desc + '</th><th class="n">' + t.qty + '</th><th>' + t.unit + '</th><th class="n">' + t.price + '</th><th class="n">' + t.disc + '</th><th class="n">' + t.vatc + '</th><th class="n">' + t.amount + '</th></tr></thead><tbody>' +
+          lineRows(t, lang, function (l, ds, u) { return '<tr><td>' + ds + '<div class="small">' + l.code + '</div></td><td class="n">' + q(l.qty) + '</td><td>' + u + '</td><td class="n">' + m(l.price) + '</td><td class="n">' + (l.disc ? l.disc + '%' : '') + '</td><td class="n">' + l.vat + '%</td><td class="n">' + m(l.net) + '</td></tr>'; }) +
+          '</tbody></table>' +
+          '<table class="totals"><tr><td>' + t.sub + '</td><td class="n">' + m(net) + '</td></tr>' + vatRows(t) + '<tr class="g"><td>' + t.gross + '</td><td class="n">' + m(gross) + '</td></tr></table>' +
+          '<div class="terms small"><p>' + t.terms + '</p><p>' + t.yourRep + ': Adele Vance · adele.vance@northwind-solutions.nl · 06 12 34 56 78</p></div>' +
+          '<footer class="small"><div>Northwind Solutions B.V.</div><div>' + t.kvk + ' 87654321</div><div>' + t.btw + ' NL864512398B01</div><div>' + t.iban + ' NL91 ABNA 0417 1643 00</div></footer>' +
+          '</div>';
+      } },
+    { key: "B", name: "Proposal, summary first",
+      blurb: "Sales proposal style: a dark brand band, then the headline numbers (total, valid until, who it is for) before any detail, lines as a readable list rather than a grid, totals beside the terms. Reads well on a phone screen, uses more colour, less like an invoice.",
+      render: function (t, lang, d) {
+        return '<div class="sheet vb">' +
+          '<div class="band"><div style="display:grid; gap:10px">' + logoLight + '<div class="small">Stationsplein 12, 3511 ED Utrecht · sales@northwind-solutions.nl</div></div><div style="text-align:right"><div style="font-size:22px; font-weight:700">' + t.quote + ' Q-00012</div><div class="small">' + t.rev + ' 1 · ' + d.date + '</div></div></div>' +
+          '<div class="body">' +
+          '<div class="hero"><div class="card"><b>' + t.summary + ' · ' + d.subj + '</b><div class="big n" style="text-align:left">' + m(net) + '</div><div class="small">' + t.sub + ' · ' + m(gross) + ' ' + t.gross.toLowerCase() + '</div></div>' +
+          '<div class="card"><b>' + t.prepared + '</b><div>' + customer + '</div><b style="margin-top:6px">' + t.until + '</b><div>' + d.valid + '</div></div></div>' +
+          '<table class="lines"><tbody>' +
+          lineRows(t, lang, function (l, ds, u) { return '<tr><td><div class="desc">' + ds + '</div><div class="small">' + q(l.qty) + ' ' + u + ' × ' + m(l.price) + (l.disc ? ' · ' + l.disc + '% ' + t.disc.toLowerCase() : '') + ' · ' + t.vatc + ' ' + l.vat + '%</div></td><td class="n" style="font-weight:600">' + m(l.net) + '</td></tr>'; }) +
+          '</tbody></table>' +
+          '<div class="split"><div class="small" style="display:grid; gap:8px"><p>' + t.terms + '</p><p><b>' + t.from + '</b>: Adele Vance · adele.vance@northwind-solutions.nl · 06 12 34 56 78</p></div>' +
+          '<table class="tot"><tr><td>' + t.sub + '</td><td class="n">' + m(net) + '</td></tr>' + vatRows(t) + '<tr class="g"><td>' + t.gross + '</td><td class="n">' + m(gross) + '</td></tr></table></div>' +
+          '</div>' +
+          '<footer class="small"><span>Northwind Solutions B.V.</span><span>' + t.kvk + ' 87654321</span><span>' + t.btw + ' NL864512398B01</span><span>' + t.iban + ' NL91 ABNA 0417 1643 00</span></footer>' +
+          '</div>';
+      } },
+    { key: "C", name: "Order form with signature",
+      blurb: "Compact form: boxed header fields, a ruled line table, and an acceptance block the customer signs and returns. Turns the Quote into the order confirmation. Most formal; suits customers who sign on paper or as a scanned PDF.",
+      render: function (t, lang, d) {
+        return '<div class="sheet vc">' +
+          '<div class="hdr"><div style="display:grid; gap:8px">' + logo + '<div class="small">' + seller.replace(/<br>/g, ' · ') + '</div></div><div class="t">' + t.quote.toUpperCase() + '</div></div>' +
+          '<div class="boxes"><div><b>' + t.prepared + '</b>' + customer + '</div><div><b>' + t.number + '</b>Q-00012 · ' + t.rev.toLowerCase() + ' 1<b style="margin-top:8px">' + t.ref + '</b>' + d.subj + '</div><div><b>' + t.date + '</b>' + d.date + '<b style="margin-top:8px">' + t.valid + '</b>' + d.valid + '<b style="margin-top:8px">' + t.yourRep + '</b>Adele Vance</div></div>' +
+          '<table class="lines"><thead><tr><th>#</th><th>' + t.desc + '</th><th class="n">' + t.qty + '</th><th class="n">' + t.price + '</th><th class="n">' + t.disc + '</th><th class="n">' + t.vatc + '</th><th class="n">' + t.amount + '</th></tr></thead><tbody>' +
+          lineRows(t, lang, function (l, ds, u) { return '<tr><td>' + (lines.indexOf(l) + 1) + '</td><td>' + ds + ' <span class="small">(' + u + ')</span></td><td class="n">' + q(l.qty) + '</td><td class="n">' + m(l.price) + '</td><td class="n">' + (l.disc ? l.disc + '%' : '–') + '</td><td class="n">' + l.vat + '%</td><td class="n">' + m(l.net) + '</td></tr>'; }) +
+          '</tbody></table>' +
+          '<div class="lower"><div class="small"><p>' + t.terms + '</p></div><table class="tot"><tr><td>' + t.sub + '</td><td class="n">' + m(net) + '</td></tr>' + vatRows(t) + '<tr class="g"><td>' + t.gross + '</td><td class="n">' + m(gross) + '</td></tr></table></div>' +
+          '<div class="sign"><b>' + t.accept + ' · Fabrikam Logistiek B.V.</b><div class="lns"><div>' + t.name + '</div><div>' + t.signDate + '</div><div>' + t.sign + '</div></div></div>' +
+          '<footer class="small">Northwind Solutions B.V. · ' + t.kvk + ' 87654321 · ' + t.btw + ' NL864512398B01 · ' + t.iban + ' NL91 ABNA 0417 1643 00 · ' + t.page + '</footer>' +
+          '</div>';
+      } }
+  ];
+
+  var hashKey = (location.hash || "").replace("#", "").toUpperCase();
+  var idx = Math.max(0, variants.findIndex(function (v) { return v.key === hashKey; }));
+  var holder = document.getElementById("holder"), stage = document.getElementById("stage");
+
+  function render() {
+    var v = variants[idx], lang = document.getElementById("lang").value, t = T[lang], d = D[lang];
+    holder.innerHTML = v.render(t, lang, d);
+    if (document.getElementById("draft").checked) {
+      var mark = document.createElement("div"); mark.className = "draftmark"; mark.textContent = lang === "nl" ? "CONCEPT" : "DRAFT";
+      holder.firstChild.appendChild(mark);
+    }
+    document.getElementById("vlabel").textContent = v.key + " (" + v.name + ")";
+    document.getElementById("variant-title").textContent = "Layout " + v.key + ": " + v.name;
+    document.getElementById("variant-blurb").textContent = v.blurb;
+    fit();
+  }
+  function fit() {
+    var w = stage.clientWidth, s = Math.min(1, w / 794);
+    holder.style.transform = "scale(" + s + ")";
+    var h = holder.firstChild ? holder.firstChild.offsetHeight : 1123;
+    stage.style.height = Math.ceil(h * s + 16) + "px";
+  }
+  function go(step) {
+    idx = (idx + step + variants.length) % variants.length;
+    try { history.replaceState(null, "", "#" + variants[idx].key.toLowerCase()); } catch (e) {}
+    render();
+  }
+  document.getElementById("prev").onclick = function () { go(-1); };
+  document.getElementById("next").onclick = function () { go(1); };
+  document.addEventListener("keydown", function (e) {
+    var el = document.activeElement;
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+    if (e.key === "ArrowLeft") go(-1);
+    if (e.key === "ArrowRight") go(1);
+  });
+  document.getElementById("lang").onchange = render;
+  document.getElementById("draft").onchange = render;
+  window.addEventListener("resize", fit);
+
+  function showTab(name) {
+    document.querySelectorAll(".tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === name)); });
+    document.querySelectorAll(".pane").forEach(function (p) { p.hidden = p.id !== "pane-" + name; });
+    document.getElementById("switcher").hidden = name !== "pdf";
+    if (name === "pdf") fit();
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll(".tabs button").forEach(function (b) { b.onclick = function () { showTab(b.dataset.tab); }; });
+  document.querySelectorAll("[data-goto]").forEach(function (b) { b.onclick = function () { showTab(b.dataset.goto); }; });
+  document.querySelectorAll('input[name="mode"]').forEach(function (r) {
+    r.onchange = function () {
+      var email = document.getElementById("m-email").checked;
+      document.getElementById("email-fields").hidden = !email;
+      document.getElementById("send-btn").textContent = email ? "Send quote" : "Download and mark as sent";
+    };
+  });
+
+  document.getElementById("after-totals").innerHTML = '<dt>Net total</dt><dd>' + m(net) + '</dd>' + vat.map(function (v) { return '<dt>VAT ' + v.rate + '%</dt><dd>' + m(v.amount) + '</dd>'; }).join("") + '<dt>Gross total</dt><dd><strong>' + m(gross) + '</strong></dd>';
+  document.getElementById("after-lines").innerHTML = '<thead><tr><th>Product</th><th class="r">Qty</th><th class="r">Unit price</th><th class="r">Discount</th><th class="r">VAT</th><th class="r">Amount</th></tr></thead><tbody>' +
+    lines.map(function (l) { return '<tr><td>' + l.en + '</td><td class="r">' + l.qty + ' ' + l.unitEn + '</td><td class="r">' + m(l.price) + '</td><td class="r">' + (l.disc ? l.disc + '%' : '–') + '</td><td class="r">' + l.vat + '%</td><td class="r">' + m(l.net) + '</td></tr>'; }).join("") + '</tbody>';
+  document.getElementById("opp-net").textContent = m(net);
+
+  render();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
+</script>
