@@ -18,7 +18,8 @@ import { opportunitySummary } from "@/lib/format"
 import { fullName, type Account } from "@/sales"
 import { NewContactDialog } from "@/pages/contacts/contact-form"
 import { NewOpportunityDialog } from "@/pages/opportunities/opportunity-form"
-import { EditAccountForm } from "./account-form"
+// PROTOTYPE (wayfinder #87)
+import { RuledDetails, RulesSide, RulesTop } from "@/prototype/rules/record-rules"
 
 export default function AccountRecordPage() {
   const { id = "" } = useParams()
@@ -54,14 +55,21 @@ export default function AccountRecordPage() {
           </>
         )
       }
-      activity={<ActivityTimeline record={{ type: "account", id: account.id }} canAdd={canEdit} />}
+      activity={
+        <div className="space-y-4">
+          <RulesSide r={{ table: "account", record: account }} />
+          <ActivityTimeline record={{ type: "account", id: account.id }} canAdd={canEdit} />
+        </div>
+      }
     >
+      <RulesTop r={{ table: "account", record: account }} />
       <RecordSection title="Details">
-        {editing ? (
-          <EditAccountForm account={account} onDone={() => setEditing(false)} />
-        ) : (
-          <AccountDetails account={account} />
-        )}
+        <RuledDetails
+          r={{ table: "account", record: account }}
+          editing={editing}
+          onDone={() => setEditing(false)}
+          readView={<AccountDetails account={account} />}
+        />
       </RecordSection>
 
       <RecordSection

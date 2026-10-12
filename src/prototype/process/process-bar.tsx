@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useIsDesktop } from "@/hooks/use-is-desktop"
 import { describeError } from "@/lib/errors"
 import { cn } from "@/lib/utils"
-import { PrototypeSwitcher, useVariant, type VariantOption } from "../prototype-switcher"
+import type { VariantOption } from "../prototype-switcher"
 import { MAP_LABELS, describeAction, describeCheck, type AnyRecord, type CheckResult } from "./model"
 import { KeyField, useRecordProcess, type RecordProcess } from "./runtime"
 
@@ -25,12 +25,12 @@ type BarProps = { r: AnyRecord; canEdit: boolean; onFinish: () => void; fallback
 
 /** Rendered at the top of the record's main column. */
 export function ProcessBarMain(props: BarProps) {
-  const variant = useVariant(BAR_VARIANTS)
+  // Decided in wayfinder #67: variant A. Pinned so ?variant= drives the Business rules prototype (#87).
+  const variant: string = "A"
   const isDesktop = useIsDesktop()
   const p = useRecordProcess(props.r)
   return (
     <>
-      <PrototypeSwitcher variants={BAR_VARIANTS} label="Process bar" />
       {!p.def ? (
         (props.fallback ?? <NoProcess r={props.r} />)
       ) : variant === "A" ? (
@@ -46,7 +46,8 @@ export function ProcessBarMain(props: BarProps) {
 
 /** Rendered above the activity timeline on a desktop (variant B only). */
 export function ProcessBarSide(props: BarProps) {
-  const variant = useVariant(BAR_VARIANTS)
+  // Decided in wayfinder #67: variant A. Pinned so ?variant= drives the Business rules prototype (#87).
+  const variant: string = "A"
   const isDesktop = useIsDesktop()
   const p = useRecordProcess(props.r)
   if (variant !== "B" || !isDesktop || !p.def) return null

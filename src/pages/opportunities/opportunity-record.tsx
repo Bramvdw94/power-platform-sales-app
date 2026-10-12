@@ -21,8 +21,9 @@ import {
 import type { OpportunityDetails } from "@/data/gateway"
 import { ExpectedCloseDate } from "./expected-close-date"
 import { CloseOpportunityDialog, ReopenOpportunityDialog } from "./close-dialogs"
-import { EditOpportunityForm } from "./opportunity-form"
 import { ProcessBarMain, ProcessBarSide } from "@/prototype/process/process-bar"
+// PROTOTYPE (wayfinder #87)
+import { RuledDetails, RulesSide, RulesTop } from "@/prototype/rules/record-rules"
 
 export default function OpportunityRecordPage() {
   const { id = "" } = useParams()
@@ -86,11 +87,13 @@ export default function OpportunityRecordPage() {
       actions={actions || undefined}
       activity={
         <div className="space-y-4">
+          <RulesSide r={{ table: "opportunity", record: opportunity }} />
           <ProcessBarSide r={{ table: "opportunity", record: opportunity }} canEdit={canEdit} onFinish={() => setClosing(true)} />
           <ActivityTimeline record={{ type: "opportunity", id: opportunity.id }} canAdd={canEdit} />
         </div>
       }
     >
+      <RulesTop r={{ table: "opportunity", record: opportunity }} />
       <ProcessBarMain
         r={{ table: "opportunity", record: opportunity }}
         canEdit={canEdit && !editing}
@@ -105,11 +108,12 @@ export default function OpportunityRecordPage() {
       )}
 
       <RecordSection title="Details">
-        {editing ? (
-          <EditOpportunityForm opportunity={opportunity} onDone={() => setEditing(false)} />
-        ) : (
-          <OpportunityDetailList details={data} accountLink={accountLink} />
-        )}
+        <RuledDetails
+          r={{ table: "opportunity", record: opportunity }}
+          editing={editing}
+          onDone={() => setEditing(false)}
+          readView={<OpportunityDetailList details={data} accountLink={accountLink} />}
+        />
       </RecordSection>
 
       {isOpen ? (

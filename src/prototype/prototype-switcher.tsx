@@ -11,7 +11,23 @@ export type VariantOption = { key: string; name: string }
 export function useVariant(variants: VariantOption[]): string {
   const [params] = useSearchParams()
   const key = params.get("variant")
-  return variants.some((v) => v.key === key) ? key! : variants[0].key
+  // PROTOTYPE (wayfinder #87): remember the last variant per set, so moving between pages keeps it.
+  const memoryKey = `prototype-variant:${variants.map((v) => v.name).join("|")}`
+  if (variants.some((v) => v.key === key)) {
+    try {
+      sessionStorage.setItem(memoryKey, key!)
+    } catch {
+      /* storage unavailable */
+    }
+    return key!
+  }
+  let remembered: string | null = null
+  try {
+    remembered = sessionStorage.getItem(memoryKey)
+  } catch {
+    /* storage unavailable */
+  }
+  return variants.some((v) => v.key === remembered) ? remembered! : variants[0].key
 }
 
 export function PrototypeSwitcher({ variants, label }: { variants: VariantOption[]; label: string }) {

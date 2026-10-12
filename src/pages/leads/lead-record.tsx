@@ -13,10 +13,11 @@ import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
 import { DISQUALIFY_REASON_LABELS, LEAD_SOURCE_LABELS, formatDate, opportunitySummary } from "@/lib/format"
 import { allowedLeadActions, fullName, isLeadReadOnly, type Lead } from "@/sales"
 import { DisqualifyDialog } from "./disqualify-dialog"
-import { EditLeadForm } from "./lead-form"
 import { QualifyDialog } from "./qualify-dialog"
 import { LeadStatusBadge } from "./lead-list"
 import { ProcessBarMain, ProcessBarSide } from "@/prototype/process/process-bar"
+// PROTOTYPE (wayfinder #87)
+import { RuledDetails, RulesSide, RulesTop } from "@/prototype/rules/record-rules"
 
 export default function LeadRecordPage() {
   const { id = "" } = useParams()
@@ -42,11 +43,13 @@ export default function LeadRecordPage() {
       actions={canEdit && !editing && <LeadActions lead={lead} onEdit={() => setEditing(true)} />}
       activity={
         <div className="space-y-4">
+          <RulesSide r={{ table: "lead", record: lead }} />
           <ProcessBarSide r={{ table: "lead", record: lead }} canEdit={canEdit} onFinish={() => setQualifying(true)} />
           <ActivityTimeline record={{ type: "lead", id: lead.id }} canAdd={canEdit} />
         </div>
       }
     >
+      <RulesTop r={{ table: "lead", record: lead }} />
       {(lead.status === "notContacted" || lead.status === "working") && (
         <ProcessBarMain r={{ table: "lead", record: lead }} canEdit={canEdit && !editing} onFinish={() => setQualifying(true)} />
       )}
@@ -54,7 +57,7 @@ export default function LeadRecordPage() {
       {lead.status === "disqualified" && <DisqualifiedNotice lead={lead} />}
 
       <RecordSection title="Details">
-        {editing ? <EditLeadForm lead={lead} onDone={() => setEditing(false)} /> : <LeadDetailList lead={lead} />}
+        <RuledDetails r={{ table: "lead", record: lead }} editing={editing} onDone={() => setEditing(false)} readView={<LeadDetailList lead={lead} />} />
       </RecordSection>
 
       {lead.status === "qualified" && <QualifiedSection opportunity={opportunity} />}

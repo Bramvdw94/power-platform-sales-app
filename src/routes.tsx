@@ -15,6 +15,8 @@ import PipelinePage from "@/pages/pipeline/pipeline-page"
 import SearchPage from "@/pages/search"
 import ProcessListPage from "@/prototype/process/process-list"
 import ProcessBuilderPage from "@/prototype/process/process-builder"
+// PROTOTYPE (wayfinder #87)
+import BusinessRulesPage from "@/prototype/rules/rules-builder"
 
 /** Every page in the spec (#23). Placeholders are replaced by the ticket they name. */
 export const routes: RouteObject[] = [
@@ -37,6 +39,7 @@ export const routes: RouteObject[] = [
       // PROTOTYPE (wayfinder #67)
       { path: "processes", element: <ProcessListPage /> },
       { path: "processes/:id", element: <ProcessBuilderPage /> },
+      { path: "rules", element: <BusinessRulesPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

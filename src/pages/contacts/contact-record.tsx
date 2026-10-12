@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button"
 import { useGateway } from "@/hooks/use-gateway"
 import { opportunitySummary } from "@/lib/format"
 import { fullName, type Contact } from "@/sales"
-import { EditContactForm } from "./contact-form"
+// PROTOTYPE (wayfinder #87)
+import { RuledDetails, RulesSide, RulesTop } from "@/prototype/rules/record-rules"
 
 export default function ContactRecordPage() {
   const { id = "" } = useParams()
@@ -56,14 +57,21 @@ export default function ContactRecordPage() {
           </>
         )
       }
-      activity={<ActivityTimeline record={{ type: "contact", id: contact.id }} canAdd={canEdit} />}
+      activity={
+        <div className="space-y-4">
+          <RulesSide r={{ table: "contact", record: contact }} />
+          <ActivityTimeline record={{ type: "contact", id: contact.id }} canAdd={canEdit} />
+        </div>
+      }
     >
+      <RulesTop r={{ table: "contact", record: contact }} />
       <RecordSection title="Details">
-        {editing ? (
-          <EditContactForm contact={contact} onDone={() => setEditing(false)} />
-        ) : (
-          <ContactDetails contact={contact} accountLink={accountLink} />
-        )}
+        <RuledDetails
+          r={{ table: "contact", record: contact }}
+          editing={editing}
+          onDone={() => setEditing(false)}
+          readView={<ContactDetails contact={contact} accountLink={accountLink} />}
+        />
       </RecordSection>
 
       <RecordSection title={`Opportunities (${opportunities.length})`}>

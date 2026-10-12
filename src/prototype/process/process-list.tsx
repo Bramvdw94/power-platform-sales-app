@@ -9,6 +9,7 @@ import { ArrowDown, ArrowUp, Plus, Workflow } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { AutomationTabs } from "../rules/rules-builder"
 import { createProcess, describeCheck, movePriority, useProcessState, type ProcessRecord, type ProcessTable } from "./model"
 
 export function statusBadge(p: ProcessRecord) {
@@ -31,6 +32,7 @@ export default function ProcessListPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4 p-4 md:p-6">
+      <AutomationTabs current="processes" />
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1">
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">

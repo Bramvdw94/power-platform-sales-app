@@ -12,7 +12,7 @@ export const RECORD_LISTS: NavItem[] = [
   { to: "/accounts", label: "Accounts", icon: Building2 },
   { to: "/contacts", label: "Contacts", icon: Users },
   // PROTOTYPE (wayfinder #67)
-  { to: "/processes", label: "Processes", icon: Workflow },
+  { to: "/processes", label: "Automation", icon: Workflow },
 ]
 
 /** "+ New" menu entries: the list page opens its New dialog for `?new=1`. */

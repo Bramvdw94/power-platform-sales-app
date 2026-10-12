@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useIsDesktop } from "@/hooks/use-is-desktop"
 import { cn } from "@/lib/utils"
-import { PrototypeSwitcher, useVariant, type VariantOption } from "../prototype-switcher"
+import type { VariantOption } from "../prototype-switcher"
 import {
   ActionsEditor,
   AddButton,
@@ -65,7 +65,8 @@ function moveStep(def: ProcessDef, i: number, d: -1 | 1): ProcessDef {
 export default function ProcessBuilderPage() {
   const { id = "" } = useParams()
   const { processes } = useProcessState()
-  const variant = useVariant(BUILDER_VARIANTS)
+  // Decided in wayfinder #67: variant B. Pinned (#87).
+  const variant: string = "B"
   const record = processes.find((p) => p.draft.id === id)
   if (!record) return <p className="p-6">No such Process.</p>
   const def = record.draft
@@ -75,7 +76,6 @@ export default function ProcessBuilderPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 p-4 pb-24 md:p-6">
-      <PrototypeSwitcher variants={BUILDER_VARIANTS} label="Builder" />
       <Link to="/processes" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
         <ArrowLeft className="size-4" aria-hidden />
         Processes
