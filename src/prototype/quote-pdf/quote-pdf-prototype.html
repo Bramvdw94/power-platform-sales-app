@@ -218,7 +218,7 @@ table.app td.r, table.app th.r { text-align: right; }
     </div>
     <div class="panel" role="dialog" aria-labelledby="send-h">
       <h2 id="send-h">Send quote Q-00012 rev. 1</h2>
-      <div class="field" style="max-width:320px"><label for="send-tpl">Template (chosen while the Quote is a Draft)</label><select id="send-tpl" disabled><option>Standard (default)</option></select></div>
+      <div class="field" style="max-width:320px"><label for="send-tpl">Template (chosen while the Quote is a Draft)</label><select id="send-tpl" disabled><option>Business letter (default)</option></select></div>
       <div class="choice">
         <label for="m-email"><input type="radio" name="mode" id="m-email" value="email" checked><span><strong>Email it from my Outlook</strong><br><span class="muted">Sent as adele.vance@northwind-solutions.nl with the PDF attached.</span></span></label>
         <label for="m-dl"><input type="radio" name="mode" id="m-dl" value="dl"><span><strong>Download the PDF, I'll send it myself</strong><br><span class="muted">The Quote is marked as Sent when you confirm.</span></span></label>
@@ -341,7 +341,7 @@ Met vriendelijke groet,
       <ul>
         <li>A template is an ordered list of fixed blocks, built by drag and drop on the A4 page itself: drag a block from the tray onto the page, drag blocks up and down on the page, drag one back to the tray to remove it. Click a block to edit its options and texts. Move up, Move down and Remove buttons do the same from the keyboard.</li>
         <li>Page style per template: accent colour, typeface, logo position. Company details, logo and default terms still come from Quote settings.</li>
-        <li>Several named templates, one marked Default. A Quote uses the Default unless the user picks another while it is a Draft.</li>
+        <li>Three starter templates: Business letter (Default), Proposal and Order form; managers can copy, change or add more. A Quote uses the Default unless the user picks another while it is a Draft.</li>
         <li>Templates are edited by the SalesApp Catalogue Manager (a separate role is an option). Sent Quotes keep their stored PDF, so editing a template never changes what a customer received.</li>
         <li>Saved as JSON in a Dataverse row, the same way Process definitions are stored, so the browser renderer can draw it.</li>
       </ul>
@@ -555,18 +555,24 @@ Met vriendelijke groet,
   };
   function blk(id, on, opts) { return { id: id, on: on, opts: opts || {} }; }
   var templates = [
-    { name: "Standard", isDefault: true, accent: "#14213d", font: "sans", logo: "right", lang: "nl", blocks: [
-      blk("header", true, { sender: true }), blk("address", true), blk("reference", true, { revision: true }),
+    { name: "Business letter", isDefault: true, accent: "#14213d", font: "sans", logo: "right", lang: "nl", blocks: [
+      blk("header", true, { sender: true, band: false }), blk("address", true), blk("reference", true, { revision: true }),
       blk("title", true, { intro: "Naar aanleiding van ons gesprek bieden wij u het volgende aan." }),
       blk("lines", true, { code: true, unit: true, discount: true, vat: true }), blk("totals", true),
       blk("terms", true, { useSettings: true, text: "" }), blk("contact", true, { phone: true }),
       blk("signature", false, { heading: "Akkoord voor opdracht" }), blk("footer", true)] },
-    { name: "Proposal", isDefault: false, accent: "#0f6b5c", font: "serif", logo: "left", lang: "nl", blocks: [
-      blk("header", true, { sender: false }), blk("title", true, { intro: "Graag doen wij u dit voorstel voor de inrichting van uw verkoopproces." }),
+    { name: "Proposal", isDefault: false, accent: "#0f6b5c", font: "sans", logo: "left", lang: "nl", blocks: [
+      blk("header", true, { sender: false, band: true }), blk("title", true, { intro: "Graag doen wij u dit voorstel voor de inrichting van uw verkoopproces." }),
       blk("address", true), blk("reference", true, { revision: false }),
       blk("lines", true, { code: false, unit: true, discount: true, vat: false }), blk("totals", true),
-      blk("terms", true, { useSettings: true, text: "" }), blk("contact", false, { phone: true }),
-      blk("signature", true, { heading: "Akkoord voor opdracht" }), blk("footer", true)] }
+      blk("terms", true, { useSettings: true, text: "" }), blk("contact", true, { phone: true }),
+      blk("signature", false, { heading: "Akkoord voor opdracht" }), blk("footer", true)] },
+    { name: "Order form", isDefault: false, accent: "#3b3f46", font: "sans", logo: "left", lang: "nl", blocks: [
+      blk("header", true, { sender: true, band: false }), blk("reference", true, { revision: true }), blk("address", true),
+      blk("title", false, { intro: "" }),
+      blk("lines", true, { code: false, unit: true, discount: true, vat: true }), blk("totals", true),
+      blk("terms", true, { useSettings: true, text: "" }), blk("signature", true, { heading: "Akkoord voor opdracht" }),
+      blk("contact", false, { phone: true }), blk("footer", true)] }
   ];
   var ACCENTS = ["#14213d", "#0f6b5c", "#7a1f3d", "#3b3f46"];
   var cur = 0, sel = "lines";
@@ -581,6 +587,7 @@ Met vriendelijke groet,
       switch (b.id) {
         case "header":
           var sender = o.sender ? '<div class="small">' + seller + '</div>' : '<div></div>';
+          if (o.band) return '<div class="blk" style="margin:-44px -56px 0; padding:28px 56px; background:' + a + '; color:#ffffff; display:flex; justify-content:space-between; align-items:center; flex-direction:' + (tp.logo === "left" ? "row" : "row-reverse") + '">' + logoLight.replace('stroke="#14213d"', 'stroke="' + a + '"').replace('class="logo"', 'class="logo" style="color:#ffffff"') + '<div style="text-align:' + (tp.logo === "left" ? "right" : "left") + '"><div style="font-size:22px; font-weight:700">' + t.quote + ' Q-00012</div><div style="font-size:10.5px; color:#e4e9f2">' + d.date + '</div></div></div>';
           return '<div class="blk" style="display:flex; justify-content:space-between; align-items:flex-start; flex-direction:' + (tp.logo === "left" ? "row-reverse" : "row") + '">' + sender + lg + '</div>';
         case "address": return '<div class="blk" style="min-height:30mm"><span class="lbl">' + t.prepared + '</span><div>' + customer + '</div></div>';
         case "reference": return '<div class="meta"><div><b>' + t.number + '</b>Q-00012' + (o.revision ? '' : '-1') + '</div>' + (o.revision ? '<div><b>' + t.rev + '</b>1</div>' : '') + '<div><b>' + t.date + '</b>' + d.date + '</div><div><b>' + t.valid + '</b>' + d.valid + '</div></div>';
@@ -629,7 +636,7 @@ Met vriendelijke groet,
     var tp = templates[cur], b = tp.blocks.filter(function (x) { return x.id === sel; })[0], o = b.opts, box = document.getElementById("b-opts");
     var h = '<strong>' + BLOCKS[b.id].name + '</strong>';
     function cb(k, label) { return '<label class="chip" for="o-' + k + '" style="justify-self:start"><input type="checkbox" id="o-' + k + '" data-k="' + k + '"' + (o[k] ? " checked" : "") + '> ' + label + '</label>'; }
-    if (b.id === "header") h += cb("sender", "Show sender address");
+    if (b.id === "header") h += cb("band", "Colour band in the accent colour") + cb("sender", "Show sender address (plain header only)");
     else if (b.id === "reference") h += cb("revision", "Show revision as its own field");
     else if (b.id === "title") h += '<div class="field"><label for="o-intro">Intro text</label><textarea id="o-intro" data-t="intro">' + esc(o.intro || "") + '</textarea></div>';
     else if (b.id === "lines") h += '<div class="row">' + cb("code", "Product code") + cb("unit", "Unit") + cb("discount", "Discount") + cb("vat", "VAT rate") + '</div><p class="muted" style="font-size:.85rem">Description, quantity, price and amount are always shown.</p>';
