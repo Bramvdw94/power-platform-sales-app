@@ -8,11 +8,16 @@ reaches a real company. Decided in #20, built in #35.
 
 | Data | Amount |
 |---|---|
+| Products (#99) | 16: hourly consulting, day rates, fixed-price packages, monthly licences and bundles, a yearly support contract, a generic "Services" Product, 9 % and 0 % VAT examples, and one Retired (`SUP-OLD`) |
 | Accounts | 25 |
 | Contacts | 50 (two per Account) |
 | Leads | 30: 8 Not Contacted, 12 Working, 6 Qualified, 4 Disqualified (with reason) |
 | Opportunities | 30: 20 open (5 Qualification, 5 Needs Analysis, 6 Proposal, 4 Negotiation), 6 Closed Won, 4 Closed Lost (with Lost reason) |
 | Notes, Tasks, Phone Calls | 40, 30 (8 overdue, 6 due today, 5 completed), 20 (16 logged, 4 planned) |
+
+Products are organisation-owned, so they have no Owner and every user reads
+them; only Megan (Catalogue Manager) changes them. The loader writes them
+first; re-running it updates the same Products.
 
 Records are spread over **Megan Bowen** (manager), **Adele Vance** and
 **Alex Wilber** (her reports) and **Diego Siciliani** (outside her team).
@@ -35,7 +40,7 @@ Some records exist for demos of specific features:
 ## Files
 
 - `data/sample-data.json`: the data. Records refer to each other by key
-  (`acc-…`, `con-…`, `lead-…`, `opp-…`, `note-…`, `task-…`, `call-…`).
+  (`prod-…`, `acc-…`, `con-…`, `lead-…`, `opp-…`, `note-…`, `task-…`, `call-…`).
   Dates are day offsets from the load day: `createdDaysAgo`,
   `expectedCloseInDays`, `closedDaysAgo`, `disqualifiedDaysAgo`, `dueInDays`.
   Activities belong to the Owner of the record they are about.

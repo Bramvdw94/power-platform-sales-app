@@ -19,6 +19,8 @@ import {
   type NoteInput,
   type Page,
   type PhoneCallInput,
+  type ProductListQuery,
+  type ProductUpdate,
   QualifyError,
   type QualifyInput,
   type QualifyResult,
@@ -37,6 +39,9 @@ import {
   LOST_REASONS,
   STAGES,
   OPEN_STAGES,
+  PRODUCT_UNITS,
+  VAT_RATES,
+  productErrors,
   SalesRuleError,
   STAGE_DEFAULT_PROBABILITY,
   accountErrors,
@@ -90,6 +95,8 @@ import {
   type Opportunity,
   type OpportunityInput,
   type PhoneCall,
+  type Product,
+  type ProductInput,
   type RecordRef,
   type RecordType,
   type Task,
@@ -115,6 +122,7 @@ import {
   type NoteRow,
   type OpportunityRow,
   type PhoneCallRow,
+  type ProductRow,
   type RowPage,
   type SystemUserRow,
   type TableClient,
@@ -145,6 +153,8 @@ const ACTIVE = "statecode eq 0"
 
 /** The security role whose holders a record can be Reassigned to. */
 export const SALESPERSON_ROLE = "SalesApp Salesperson"
+/** The security role that creates, edits and retires Products. */
+export const CATALOGUE_MANAGER_ROLE = "SalesApp Catalogue Manager"
 
 const PIPELINE_VIEW: Record<PipelineOwnerFilter, ListView> = { mine: "my", myTeam: "myTeam", everyone: "all" }
 
@@ -406,14 +416,59 @@ const OPPORTUNITY_SORT: Partial<Record<keyof Opportunity, string>> = {
   createdOn: "createdon",
 }
 
+const PRODUCT_SORT: Partial<Record<keyof Product, string>> = {
+  name: "vibe_name",
+  code: "vibe_productcode",
+  unit: "vibe_unit",
+  listPrice: "vibe_listprice",
+  vatRate: "vibe_vatrate",
+  createdOn: "createdon",
+}
+
+/** The Unit and VAT rate choices hold the publisher's option prefix plus the option's position. */
+export function toProduct(row: ProductRow): Product {
+  const vat = row.vibe_vatrate === null || row.vibe_vatrate === undefined ? undefined : VAT_RATES[row.vibe_vatrate - CHOICE_BASE]
+  return {
+    id: row.vibe_productid,
+    name: row.vibe_name ?? "",
+    code: row.vibe_productcode ?? "",
+    description: optional(row.vibe_description),
+    unit: fromChoice(PRODUCT_UNITS, row.vibe_unit) ?? "piece",
+    listPrice: row.vibe_listprice ?? 0,
+    vatRate: vat ?? 21,
+    retired: row.statecode === 1,
+    createdOn: row.createdon ?? "",
+  }
+}
+
+function productFields(input: Partial<ProductInput>) {
+  return {
+    vibe_name: input.name?.trim(),
+    vibe_productcode: input.code?.trim(),
+    vibe_description: column(input.description),
+    vibe_unit: input.unit === undefined ? undefined : toChoice(PRODUCT_UNITS, input.unit),
+    vibe_listprice: input.listPrice,
+    vibe_vatrate: input.vatRate === undefined ? undefined : CHOICE_BASE + VAT_RATES.indexOf(input.vatRate),
+  }
+}
+
+/** Dataverse refuses a second Product with the same code through the alternate key. */
+function duplicateCode(error: unknown): unknown {
+  if (error instanceof Error && /0x80060892|already exists|duplicate/i.test(error.message)) {
+    return new GatewayError("invalid", "The Product cannot be saved.", { code: "This Product code is already used." })
+  }
+  return error
+}
+
 export function toUser(row: SystemUserRow): User {
   return {
     id: row.systemuserid,
     fullName: row.fullname ?? "",
     email: row.internalemailaddress ?? "",
     managerId: row._parentsystemuserid_value ?? null,
-    // Role membership is read only by listSalespeople; users read elsewhere are not checked.
+    // Role membership is read only by listSalespeople and for the current user; users read elsewhere are not checked.
     isSalesperson: false,
+    isCatalogueManager: false,
   }
 }
 
@@ -440,12 +495,15 @@ export class DataverseSalesGateway implements SalesGateway {
 
   private async loadCurrentUser(): Promise<CurrentUser> {
     const userId = await this.client.whoAmI()
-    const [user, reports] = await Promise.all([
+    const [user, reports, catalogueManager] = await Promise.all([
       this.client.getSystemUser(userId),
       this.client.listSystemUsers(`_parentsystemuserid_value eq ${guid(userId)} and isdisabled eq false`),
+      this.client.listSystemUsers(
+        `systemuserid eq ${guid(userId)} and systemuserroles_association/any(r:r/name eq ${text(CATALOGUE_MANAGER_ROLE)})`,
+      ),
     ])
     return {
-      user: toUser(user),
+      user: { ...toUser(user), isCatalogueManager: catalogueManager.length > 0 },
       directReports: reports.map(toUser).sort((a, b) => a.fullName.localeCompare(b.fullName)),
     }
   }
@@ -643,6 +701,55 @@ export class DataverseSalesGateway implements SalesGateway {
       originatingLead: lead && toLead(lead),
       canEdit,
     }
+  }
+
+  // ---- Products -----------------------------------------------------------------
+  // Organisation-owned: Dataverse lets everyone read and only the Catalogue Manager role write.
+
+  async listProducts(query: ProductListQuery): Promise<Page<Product>> {
+    const search = query.search?.trim()
+    const filter = [
+      query.status && `statecode eq ${query.status === "retired" ? 1 : 0}`,
+      search && `(contains(vibe_name,${text(search)}) or contains(vibe_productcode,${text(search)}))`,
+    ]
+      .filter(Boolean)
+      .join(" and ")
+    const orderBy = this.orderBy({ ...query, view: "all" }, PRODUCT_SORT, "vibe_name", "vibe_productid")
+    const page = await this.page("products", this.client.products, filter || undefined, orderBy, query)
+    return { items: page.rows.map(toProduct), totalCount: page.totalCount }
+  }
+
+  async getProduct(id: Id): Promise<Product> {
+    return toProduct(await this.call(() => this.client.products.get(guid(id))))
+  }
+
+  async createProduct(input: ProductInput): Promise<Product> {
+    invalid("The Product cannot be saved.", productErrors(input))
+    const created = await this.call(() =>
+      this.client.products.create(fields(productFields(input))).catch((e: unknown) => {
+        throw duplicateCode(e)
+      }),
+    )
+    return this.getProduct(created.vibe_productid)
+  }
+
+  async updateProduct(id: Id, update: ProductUpdate): Promise<Product> {
+    const current = await this.getProduct(id)
+    const merged: ProductInput = { ...current, ...update }
+    invalid("The Product cannot be saved.", productErrors(merged))
+    const key = guid(id)
+    await this.call(() =>
+      this.client.products.update(key, fields(productFields(update))).catch((e: unknown) => {
+        throw duplicateCode(e)
+      }),
+    )
+    return this.getProduct(key)
+  }
+
+  async retireProduct(id: Id): Promise<Product> {
+    const key = guid(id)
+    await this.call(() => this.client.products.update(key, { ...DEACTIVATED }))
+    return this.getProduct(key)
   }
 
   // ---- Accounts and Contacts ------------------------------------------------

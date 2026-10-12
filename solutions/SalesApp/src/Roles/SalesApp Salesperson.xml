@@ -38,6 +38,8 @@
     <RolePrivilege name="prvReadUser" level="Global" />
     <RolePrivilege name="prvReadvibe_Lead" level="Global" />
     <RolePrivilege name="prvReadvibe_Opportunity" level="Global" />
+    <RolePrivilege name="prvReadvibe_Product" level="Global" />
+    <RolePrivilege name="prvReadvibe_Quota" level="Basic" />
     <RolePrivilege name="prvWriteAccount" level="Basic" />
     <RolePrivilege name="prvWriteActivity" level="Basic" />
     <RolePrivilege name="prvWriteContact" level="Basic" />

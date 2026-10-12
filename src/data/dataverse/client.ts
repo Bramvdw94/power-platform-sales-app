@@ -175,6 +175,32 @@ export const OPPORTUNITY_COLUMNS = [
   "createdon",
 ] as const
 
+/** The vibe_product columns the app reads. */
+export type ProductRow = Row & {
+  vibe_productid: Id
+  vibe_name?: string | null
+  vibe_productcode?: string | null
+  vibe_description?: string | null
+  vibe_unit?: number | null
+  vibe_listprice?: number | null
+  vibe_vatrate?: number | null
+  /** 0 active, 1 retired. */
+  statecode?: number | null
+  createdon?: string | null
+}
+
+export const PRODUCT_COLUMNS = [
+  "vibe_productid",
+  "vibe_name",
+  "vibe_productcode",
+  "vibe_description",
+  "vibe_unit",
+  "vibe_listprice",
+  "vibe_vatrate",
+  "statecode",
+  "createdon",
+] as const
+
 /** The annotation (Note) columns the app reads. */
 export type NoteRow = Row & {
   annotationid: Id
@@ -264,6 +290,7 @@ export interface DataverseClient {
   contacts: TableClient<ContactRow>
   leads: TableClient<LeadRow>
   opportunities: TableClient<OpportunityRow>
+  products: TableClient<ProductRow>
   notes: TableClient<NoteRow>
   tasks: TableClient<ActivityRow>
   phoneCalls: TableClient<PhoneCallRow>

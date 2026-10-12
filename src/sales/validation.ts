@@ -4,10 +4,13 @@ import { isOpenStage, isValidProbability } from "./stages"
 import {
   DISQUALIFY_REASONS,
   LEAD_SOURCES,
+  PRODUCT_UNITS,
+  VAT_RATES,
   type ContactInput,
   type DisqualifyReason,
   type LeadInput,
   type OpportunityInput,
+  type ProductInput,
 } from "./types"
 
 function isBlank(value: string | undefined): boolean {
@@ -41,6 +44,19 @@ export function opportunityErrors(opportunity: Partial<OpportunityInput>): Field
   if (opportunity.probability !== undefined && !isValidProbability(opportunity.probability)) {
     errors.probability = "Probability is a whole number from 0 to 100."
   }
+  return errors
+}
+
+export function productErrors(product: Partial<ProductInput>): FieldErrors {
+  const errors: FieldErrors = {}
+  if (isBlank(product.name)) errors.name = "Name is required."
+  if (isBlank(product.code)) errors.code = "Product code is required."
+  if (!product.unit || !PRODUCT_UNITS.includes(product.unit)) errors.unit = "Pick a Unit."
+  if (!isMoney(product.listPrice)) errors.listPrice = "List price is required (0 or more)."
+  else if (Math.abs(product.listPrice! * 100 - Math.round(product.listPrice! * 100)) > 1e-6) {
+    errors.listPrice = "List price has at most 2 decimals."
+  }
+  if (product.vatRate === undefined || !VAT_RATES.includes(product.vatRate)) errors.vatRate = "Pick a VAT rate."
   return errors
 }
 

@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Role id="{366b2f26-93c6-f111-b377-7c1e5253a39d}" name="SalesApp Catalogue Manager" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <IsCustomizable>1</IsCustomizable>
+  <IsAutoAssigned>0</IsAutoAssigned>
+  <RolePrivileges>
+    <RolePrivilege name="prvCreateSharePointData" level="Global" />
+    <RolePrivilege name="prvCreatevibe_Product" level="Global" />
+    <RolePrivilege name="prvReadSharePointData" level="Global" />
+    <RolePrivilege name="prvReadSharePointDocument" level="Global" />
+    <RolePrivilege name="prvReadvibe_Product" level="Global" />
+    <RolePrivilege name="prvWriteSharePointData" level="Global" />
+    <RolePrivilege name="prvWritevibe_Product" level="Global" />
+  </RolePrivileges>
+</Role>

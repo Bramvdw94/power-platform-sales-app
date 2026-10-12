@@ -14,6 +14,39 @@ export type User = {
   managerId: Id | null
   /** Holds the SalesApp Salesperson role, so records can be Reassigned to them. */
   isSalesperson: boolean
+  /** Holds the SalesApp Catalogue Manager role: creates, edits and retires Products. */
+  isCatalogueManager: boolean
+}
+
+export const PRODUCT_UNITS = ["piece", "hour", "day", "month", "year"] as const
+export type ProductUnit = (typeof PRODUCT_UNITS)[number]
+
+/** VAT rates in percent, in the order of the Dataverse choice. */
+export const VAT_RATES = [21, 9, 0] as const
+export type VatRate = (typeof VAT_RATES)[number]
+
+/** Something we sell, with one euro List price excluding VAT. Organisation-owned: no Owner. */
+export type Product = {
+  id: Id
+  name: string
+  /** Unique across Products, compared without regard to case. */
+  code: string
+  description?: string
+  unit: ProductUnit
+  listPrice: number
+  vatRate: VatRate
+  /** Retired Products can't be added to new lines; existing lines keep them. */
+  retired: boolean
+  createdOn: Timestamp
+}
+
+export type ProductInput = {
+  name: string
+  code: string
+  description?: string
+  unit: ProductUnit
+  listPrice: number
+  vatRate: VatRate
 }
 
 export const ACCOUNT_TYPES = ["prospect", "customer", "partner", "reseller", "supplier", "competitor", "other"] as const

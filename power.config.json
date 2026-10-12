@@ -58,6 +58,11 @@
           "entitySetName": "phonecalls",
           "logicalName": "phonecall",
           "isHidden": false
+        },
+        "products": {
+          "entitySetName": "vibe_products",
+          "logicalName": "vibe_product",
+          "isHidden": false
         }
       },
       "environmentVariableName": ""

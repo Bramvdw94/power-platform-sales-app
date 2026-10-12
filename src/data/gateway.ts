@@ -29,6 +29,8 @@ import type {
   PhoneCall,
   PhoneCallDirection,
   PipelineFilter,
+  Product,
+  ProductInput,
   QualifyOpportunityDetails,
   RecordRef,
   Stage,
@@ -57,6 +59,9 @@ export type ListQuery<TRecord> = {
 export type LeadListQuery = ListQuery<Lead> & { status?: Lead["status"] }
 /** "open": any open Stage. */
 export type OpportunityListQuery = ListQuery<Opportunity> & { stage?: Stage | "open" }
+
+/** Products have no Owner, so no My | My team | All views. */
+export type ProductListQuery = Omit<ListQuery<Product>, "view"> & { status?: "active" | "retired" }
 
 export type Page<T> = { items: T[]; totalCount: number }
 
@@ -114,6 +119,9 @@ export type AccountUpdate = Partial<Omit<AccountInput, "accountType" | "industry
   industry?: Industry | ""
 }
 export type ContactUpdate = Partial<ContactInput>
+
+/** A blank description clears it. */
+export type ProductUpdate = Partial<ProductInput>
 
 export type DisqualifyInput = { reason?: DisqualifyReason; comment?: string }
 
@@ -202,6 +210,16 @@ export interface SalesGateway {
   changeStage(id: Id, stage: OpenStage): Promise<Opportunity>
   closeOpportunity(id: Id, input: CloseInput): Promise<Opportunity>
   reopenOpportunity(id: Id, stage: OpenStage): Promise<Opportunity>
+
+  // Products: everyone reads; only a Catalogue Manager creates, edits and retires. No delete.
+  listProducts(query: ProductListQuery): Promise<Page<Product>>
+  getProduct(id: Id): Promise<Product>
+  /** A duplicate Product code is refused with a fieldError on `code`. */
+  createProduct(input: ProductInput): Promise<Product>
+  /** Changes the Product only: existing Product lines keep the price they started from. */
+  updateProduct(id: Id, update: ProductUpdate): Promise<Product>
+  /** The Product can't be added to new lines; existing lines keep it. */
+  retireProduct(id: Id): Promise<Product>
 
   // Ownership
   /** Makes another salesperson the Owner; open Tasks and Phone Calls on the record move along. */

@@ -46,6 +46,8 @@ STAGE_DEFAULT_PROBABILITY = {
 
 # Same names as scripts/security_check.py; Bram (System Administrator) owns nothing.
 USER_KEYS = ["megan", "adele", "alex", "diego"]
+PRODUCT_UNITS = ["piece", "hour", "day", "month", "year"]
+VAT_RATES = [21, 9, 0]
 
 
 @dataclass(frozen=True)
@@ -57,9 +59,12 @@ class Table:
     id_attribute: str
     # statecode/statuscode while open, or None for tables without state (Notes)
     open_state: tuple | None
+    # False for organisation-owned tables such as Products: no Owner to bind
+    owned: bool = True
 
 
 TABLES = [
+    Table("products", "prod-", "vibe_product", "vibe_products", "vibe_productid", (0, 1), owned=False),
     Table("accounts", "acc-", "account", "accounts", "accountid", (0, 1)),
     Table("contacts", "con-", "contact", "contacts", "contactid", (0, 1)),
     Table("leads", "lead-", "vibe_lead", "vibe_leads", "vibe_leadid", (0, 1)),
@@ -128,6 +133,21 @@ def validate(data):
         for attr in attrs:
             if rec.get(attr) in (None, ""):
                 err(f"{rec['key']}: {attr} is required")
+
+    codes = set()
+    for prod in data.get("products", []):
+        required(prod, "name", "code", "unit", "listPrice", "vatRate")
+        if prod.get("unit") not in PRODUCT_UNITS:
+            err(f"{prod['key']}: unknown unit {prod.get('unit')!r}")
+        if prod.get("vatRate") not in VAT_RATES:
+            err(f"{prod['key']}: vatRate must be one of {VAT_RATES}")
+        price = prod.get("listPrice")
+        if not isinstance(price, (int, float)) or price < 0 or abs(price * 100 - round(price * 100)) > 1e-6:
+            err(f"{prod['key']}: listPrice must be 0 or more, in whole cents")
+        code = str(prod.get("code", "")).lower()
+        if code in codes:
+            err(f"{prod['key']}: duplicate Product code {prod['code']!r}")
+        codes.add(code)
 
     for acc in data.get("accounts", []):
         required(acc, "name", "owner")
@@ -301,10 +321,20 @@ def build_records(data, users, nav, clock):
 
     def add(section, rec, body, final_state=None):
         table = TABLE_BY_SECTION[section]
-        owner = users[rec.get("owner") or owner_of(data, rec)]
-        body = {**body, **user_bind("ownerid", owner)}
+        if table.owned:
+            body = {**body, **user_bind("ownerid", users[rec.get("owner") or owner_of(data, rec)])}
         out.append(Record(table, rec["key"], record_id(rec["key"]), body,
                           clock.created(rec["createdDaysAgo"]), final_state))
+
+    for prod in data["products"]:
+        add("products", prod, {
+            "vibe_name": prod["name"],
+            "vibe_productcode": prod["code"],
+            "vibe_description": prod.get("description"),
+            "vibe_unit": choice(PRODUCT_UNITS, prod["unit"]),
+            "vibe_listprice": prod["listPrice"],
+            "vibe_vatrate": choice(VAT_RATES, prod["vatRate"]),
+        }, (1, 2) if prod.get("retired") else None)  # Retired Products are deactivated
 
     for acc in data["accounts"]:
         add("accounts", acc, {
@@ -474,6 +504,7 @@ def summary(data):
         f"{len(data['accounts'])} Accounts, {len(data['contacts'])} Contacts",
         f"{len(leads)} Leads: {by(leads, 'status', LEAD_STATUSES)}",
         f"{len(opps)} Opportunities: {by(opps, 'stage', STAGES)}",
+        f"{len(data['products'])} Products ({sum(bool(p.get('retired')) for p in data['products'])} retired)",
         f"{len(data['notes'])} Notes, {len(data['tasks'])} Tasks, {len(data['phoneCalls'])} Phone Calls",
     ]
 
