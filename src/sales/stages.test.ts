@@ -7,7 +7,8 @@ import {
   reopenOpportunity,
 } from "./stages"
 import { SalesRuleError } from "./errors"
-import type { Stage } from "./types"
+import { defaultForecastCategory } from "./forecast"
+import type { OpenStage, Stage } from "./types"
 
 const context = { today: "2026-10-09", userId: "u-adele" }
 
@@ -52,7 +53,7 @@ describe("changeStage", () => {
     if (expected === "refused") {
       expect(() => changeStage({ stage: from }, to)).toThrow(SalesRuleError)
     } else {
-      expect(changeStage({ stage: from }, to)).toEqual({ stage: to, probability: expected })
+      expect(changeStage({ stage: from }, to)).toEqual({ stage: to, probability: expected, forecastCategory: defaultForecastCategory(to as OpenStage) })
     }
   })
 })
@@ -115,6 +116,7 @@ describe("reopenOpportunity", () => {
     expect(reopenOpportunity({ stage: from }, to)).toEqual({
       stage: to,
       probability,
+      forecastCategory: defaultForecastCategory(to),
       actualValue: undefined,
       closeDate: undefined,
       lostReason: undefined,

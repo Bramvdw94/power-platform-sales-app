@@ -108,6 +108,18 @@ describe("Pipeline flow", () => {
     expect(store.opportunities.get(opportunities.qualification)).toMatchObject({ stage: "proposal", probability: 50 })
   })
 
+  it("shows each card's Forecast category and resets it when the card moves", async () => {
+    const { store } = renderPipeline(adele.id)
+    const tailwind = await screen.findByRole("article", { name: "Tailwind Traders - Managed workplace" })
+    expect(within(tailwind).getByTestId("forecast-category")).toHaveTextContent("Pipeline")
+
+    drag(tailwind, column("Negotiation"))
+
+    const moved = await within(column("Negotiation")).findByRole("article", { name: "Tailwind Traders - Managed workplace" })
+    expect(within(moved).getByTestId("forecast-category")).toHaveTextContent("Commit")
+    expect(store.opportunities.get(opportunities.qualification)?.forecastCategory).toBe("commit")
+  })
+
   it("asks for a Lost reason when a card is dropped on Closed Lost", async () => {
     const user = userEvent.setup()
     const { store } = renderPipeline(adele.id)

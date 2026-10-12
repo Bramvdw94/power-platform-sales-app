@@ -60,6 +60,12 @@ for t in ["Note", "Activity"]:
 PRODUCT_READ = {"prvReadvibe_Product": GLOBAL}
 PRODUCT_MANAGE = {"prvCreatevibe_Product": GLOBAL, "prvWritevibe_Product": GLOBAL}
 
+# Quota (#104) is owned by the salesperson it is for. Everyone reads their own
+# row (a manager reads and writes direct reports' rows through the hierarchy);
+# only the Sales Manager role writes them. Who may write which row is decided by
+# QuotaGuardPlugin, not by these depths.
+QUOTA = "prvReadvibe_Quota"
+
 # Privileges beyond the spec, each proven necessary by security_check.py or a
 # real call. name -> (depth, why).
 EXTRAS = {
@@ -90,7 +96,7 @@ PLATFORM = {
 
 ROLES = {
     "SalesApp Salesperson": {
-        "privileges": {**SPEC, **PRODUCT_READ, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}},
+        "privileges": {**SPEC, **PRODUCT_READ, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
         "users": ["Megan Bowen", "Adele Vance", "Alex Wilber", "Diego Siciliani"],
     },
     # Fallback from #21: Manager hierarchy gives a manager Write on a direct
@@ -100,7 +106,12 @@ ROLES = {
     # reaches only records the manager can already write: their own and their
     # direct reports' (through hierarchy). Verified by security_check.py.
     "SalesApp Sales Manager": {
-        "privileges": {**{f"prvAssign{t}": LOCAL for t in SALES_TABLES}, **PLATFORM},
+        "privileges": {
+            **{f"prvAssign{t}": LOCAL for t in SALES_TABLES},
+            **PLATFORM,
+            "prvCreatevibe_Quota": LOCAL, "prvWritevibe_Quota": BASIC,
+            "prvAppendvibe_Quota": BASIC, "prvAppendTovibe_Quota": BASIC,
+        },
         "users": ["Megan Bowen"],
     },
     # Megan in the demo (#99). The role holds only what Salesperson lacks; she

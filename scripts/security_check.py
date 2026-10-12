@@ -56,9 +56,9 @@ class Dataverse:
             "OData-Version": "4.0",
         })
 
-    def call(self, method, path, body=None, as_user=None):
+    def call(self, method, path, body=None, as_user=None, headers=None):
         """Return (status, json_or_none, error_code_or_none, entity_id_or_none)."""
-        headers = dict(self.headers)
+        headers = {**self.headers, **(headers or {})}
         if as_user:
             headers["MSCRMCallerID"] = as_user
         data = json.dumps(body).encode() if body is not None else None
@@ -89,8 +89,8 @@ class Dataverse:
             raise RuntimeError(f"GET {path} failed: {status} {code}")
         return body
 
-    def create(self, entity_set, body, as_user=None):
-        status, err, code, entity_id = self.call("POST", entity_set, body, as_user=as_user)
+    def create(self, entity_set, body, as_user=None, headers=None):
+        status, err, code, entity_id = self.call("POST", entity_set, body, as_user=as_user, headers=headers)
         if status not in (201, 204) or not entity_id:
             raise RuntimeError(f"create {entity_set} failed: {status} {code} {err}")
         return entity_id
@@ -306,6 +306,7 @@ def run(dv, report, created):
         "PATCH", f"vibe_leads({diego_lead})", {"ownerid@odata.bind": f"/systemusers({megan})"}, as_user=megan), 403)
 
     products(dv, report, users, track)
+    run_quota(dv, report, track, users)
 
 
 def products(dv, report, users, track):
@@ -346,6 +347,82 @@ def products(dv, report, users, track):
         "PATCH", f"vibe_products({product})", {"statecode": 0, "statuscode": 1}, as_user=megan), 204)
     report.expect_status("Megan deletes the Product (nobody may)", dv.call(
         "DELETE", f"vibe_products({product})", as_user=megan), 403)
+
+
+
+
+QUOTA_MONTH = "2099-01-01"
+
+
+def run_quota(dv, report, track, users):
+    """Quota (#104): owned by the salesperson, set by their manager, QuotaGuardPlugin backs it up."""
+    megan, adele, alex, diego = (users[k] for k in ("megan", "adele", "alex", "diego"))
+    print("Quota: owned by the salesperson, set by the manager, never by oneself", flush=True)
+
+    def body(person, month=QUOTA_MONTH, amount=1000):
+        return {"vibe_name": f"{TAG} Quota", "vibe_month": month, "vibe_amount": amount,
+                "vibe_SalespersonId@odata.bind": f"/systemusers({person})"}
+
+    adele_quota = None
+    result = dv.call("POST", "vibe_quotas", body(adele), as_user=megan)
+    report.expect_status("Megan sets Adele's Quota", result, 204)
+    if result[3]:
+        adele_quota = track("vibe_quotas", result[3])
+    result = dv.call("POST", "vibe_quotas", body(alex), as_user=megan)
+    report.expect_status("Megan sets Alex's Quota", result, 204)
+    if result[3]:
+        track("vibe_quotas", result[3])
+    report.expect_status("Megan sets Megan's own Quota", dv.call("POST", "vibe_quotas", body(megan), as_user=megan), 400)
+    report.expect_status("Megan sets Diego's Quota (not her report)", dv.call("POST", "vibe_quotas", body(diego), as_user=megan), 400)
+    report.expect_status("Megan sets Adele's Quota for a month that is not the first", dv.call(
+        "POST", "vibe_quotas", body(adele, "2099-02-15"), as_user=megan), 400)
+    report.expect_status("Megan adds a second Quota for Adele and the same month", dv.call(
+        "POST", "vibe_quotas", body(adele), as_user=megan), 412)
+    report.expect_status("Adele sets her own Quota", dv.call("POST", "vibe_quotas", body(adele, "2099-03-01"), as_user=adele), 403)
+    report.expect_status("A system administrator sets Adele's Quota (she has a manager)", dv.call(
+        "POST", "vibe_quotas", body(adele, "2099-03-01")), 400)
+    result = dv.call("POST", "vibe_quotas", body(megan))
+    report.expect_status("A system administrator sets Megan's Quota (she has no manager)", result, 204)
+    megan_quota = track("vibe_quotas", result[3]) if result[3] else None
+
+    if adele_quota:
+        print("Quota: who reads and writes which row", flush=True)
+        report.expect_status("Adele reads her Quota", dv.call(
+            "GET", f"vibe_quotas({adele_quota})?$select=vibe_amount", as_user=adele), 200)
+        report.expect_status("Alex reads Adele's Quota", dv.call(
+            "GET", f"vibe_quotas({adele_quota})?$select=vibe_amount", as_user=alex), 403)
+        report.expect_status("Diego reads Adele's Quota", dv.call(
+            "GET", f"vibe_quotas({adele_quota})?$select=vibe_amount", as_user=diego), 403)
+        report.expect_status("Megan reads Adele's Quota", dv.call(
+            "GET", f"vibe_quotas({adele_quota})?$select=vibe_amount", as_user=megan), 200)
+        report.expect_status("Megan changes Adele's Quota", dv.call(
+            "PATCH", f"vibe_quotas({adele_quota})", {"vibe_amount": 2000}, as_user=megan), 204)
+        report.expect_status("Adele changes her own Quota", dv.call(
+            "PATCH", f"vibe_quotas({adele_quota})", {"vibe_amount": 9999}, as_user=adele), 403)
+        report.expect_status("Alex changes Adele's Quota", dv.call(
+            "PATCH", f"vibe_quotas({adele_quota})", {"vibe_amount": 9999}, as_user=alex), 403)
+        report.expect_status("Megan makes Adele's Quota negative", dv.call(
+            "PATCH", f"vibe_quotas({adele_quota})", {"vibe_amount": -1}, as_user=megan), 400)
+        report.expect_status("Megan moves Adele's Quota to another month", dv.call(
+            "PATCH", f"vibe_quotas({adele_quota})", {"vibe_month": "2099-04-01"}, as_user=megan), 400)
+        report.expect_status("Megan hands Adele's Quota to herself", dv.call(
+            "PATCH", f"vibe_quotas({adele_quota})", {"ownerid@odata.bind": f"/systemusers({megan})"}, as_user=megan), 400)
+    if megan_quota:
+        report.expect_status("Megan reads her own Quota", dv.call(
+            "GET", f"vibe_quotas({megan_quota})?$select=vibe_amount", as_user=megan), 200)
+        report.expect_status("Megan changes her own Quota", dv.call(
+            "PATCH", f"vibe_quotas({megan_quota})", {"vibe_amount": 9999}, as_user=megan), 400)
+        report.expect_status("Adele reads Megan's Quota", dv.call(
+            "GET", f"vibe_quotas({megan_quota})?$select=vibe_amount", as_user=adele), 403)
+
+    def months(user):
+        rows = dv.get(f"vibe_quotas?$select=_vibe_salespersonid_value&$filter=vibe_month eq {QUOTA_MONTH}", as_user=user)["value"]
+        return sorted(r["_vibe_salespersonid_value"] for r in rows)
+
+    report.check("Adele sees only her own row that month", months(adele) == [adele])
+    report.check("Alex sees only his own row that month", months(alex) == [alex])
+    report.check("Megan sees hers, Adele's and Alex's rows that month", months(megan) == sorted([megan, adele, alex]))
+    report.check("Diego sees neither Adele's nor Alex's", months(diego) == [])
 
 
 def cleanup(dv, created):

@@ -12,6 +12,7 @@ import type {
   OpportunityRow,
   PhoneCallRow,
   ProductRow,
+  QuotaRow,
   SystemUserRow,
   TableClient,
 } from "./client"
@@ -167,13 +168,14 @@ const productRows: ProductRow[] = [
 ]
 
 /** A fake Dataverse that understands the one filter the gateway sends for direct reports. */
-function fakeClient(signedIn: string) {
+function fakeClient(signedIn: string, quotaRows: QuotaRow[] = []) {
   return {
     accounts: fakeTable("accountid", accountRows),
     contacts: fakeTable("contactid", contactRows),
     leads: fakeTable("vibe_leadid", leadRows),
     opportunities: fakeTable("vibe_opportunityid", opportunityRows),
     products: fakeTable("vibe_productid", productRows),
+    quotas: fakeTable("vibe_quotaid", quotaRows),
     notes: fakeTable("annotationid", noteRows),
     tasks: fakeTable("activityid", taskRows),
     phoneCalls: fakeTable("activityid", phoneCallRows),
@@ -795,6 +797,7 @@ describe("DataverseSalesGateway, Opportunities", () => {
       "vibe_PrimaryContactId@odata.bind": `/contacts(${LOTTE})`,
       vibe_stage: 841200001,
       vibe_probability: 25,
+      vibe_forecastcategory: 841200000,
     })
   })
 
@@ -812,7 +815,7 @@ describe("DataverseSalesGateway, Opportunities", () => {
   it("resets the Probability on a Stage change", async () => {
     const client = fakeClient(ADELE)
     const updated = await new DataverseSalesGateway(client).changeStage(OPP, "negotiation")
-    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, { vibe_stage: 841200003, vibe_probability: 75 })
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, { vibe_stage: 841200003, vibe_probability: 75, vibe_forecastcategory: 841200002 })
     expect(updated).toMatchObject({ stage: "negotiation", probability: 75 })
   })
 
@@ -827,6 +830,7 @@ describe("DataverseSalesGateway, Opportunities", () => {
     expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, {
       vibe_stage: 841200005,
       vibe_probability: 0,
+      vibe_forecastcategory: null,
       vibe_actualvalue: null,
       vibe_closedate: "2026-10-01",
       vibe_lostreason: 841200000,
@@ -850,6 +854,7 @@ describe("DataverseSalesGateway, Opportunities", () => {
     expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, {
       vibe_stage: 841200002,
       vibe_probability: 50,
+      vibe_forecastcategory: 841200001,
       vibe_actualvalue: null,
       vibe_closedate: null,
       vibe_lostreason: null,
@@ -922,6 +927,7 @@ describe("DataverseSalesGateway, Qualify", () => {
       "vibe_PrimaryContactId@odata.bind": `/contacts(${result.contactId})`,
       vibe_stage: 841200000,
       vibe_probability: 10,
+      vibe_forecastcategory: 841200000,
       "vibe_OriginatingLeadId@odata.bind": `/vibe_leads(${SANNE})`,
     })
     expect(client.leads.update).toHaveBeenCalledWith(SANNE, { vibe_leadstatus: 841200002, statecode: 1, statuscode: 2 })
@@ -1121,5 +1127,73 @@ describe("DataverseSalesGateway Products", () => {
     const product = await new DataverseSalesGateway(client).retireProduct(PRODUCT)
     expect(client.products.update).toHaveBeenCalledWith(PRODUCT, { statecode: 1, statuscode: 2 })
     expect(product.retired).toBe(true)
+  })
+})
+
+describe("DataverseSalesGateway, Forecast category", () => {
+  it("reads the stored category, falls back to the Stage default, and has none when closed", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    expect((await gateway.getOpportunity(OPP)).opportunity.forecastCategory).toBe("bestCase")
+    await client.opportunities.update(OPP, { vibe_forecastcategory: 841200003 })
+    expect((await gateway.getOpportunity(OPP)).opportunity.forecastCategory).toBe("omitted")
+    await client.opportunities.update(OPP, { vibe_stage: 841200004 })
+    expect((await gateway.getOpportunity(OPP)).opportunity.forecastCategory).toBeUndefined()
+  })
+
+  it("writes an override, and refuses one on a closed Opportunity", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.updateOpportunity(OPP, { forecastCategory: "commit" })
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, { vibe_forecastcategory: 841200002 })
+    await client.opportunities.update(OPP, { vibe_stage: 841200005 })
+    await expect(gateway.updateOpportunity(OPP, { forecastCategory: "commit" })).rejects.toMatchObject({ code: "invalid" })
+  })
+})
+
+describe("DataverseSalesGateway, Quotas", () => {
+  const ADELE_Q = "99999999-1111-0000-0000-000000000001"
+  const quotaRows: QuotaRow[] = [
+    { vibe_quotaid: ADELE_Q, _vibe_salespersonid_value: ADELE, "_vibe_salespersonid_value@OData.Community.Display.V1.FormattedValue": "Adele Vance", vibe_month: "2026-10-01", vibe_amount: 40000 },
+  ]
+
+  it("reads Quotas for me, or for me and my team, from a month on", async () => {
+    const client = fakeClient(MEGAN, quotaRows)
+    const gateway = new DataverseSalesGateway(client)
+    const team = await gateway.listQuotas({ scope: "myTeam", from: "2026-10-01", months: 6 })
+    expect(team).toEqual([{ id: ADELE_Q, salespersonId: ADELE, salespersonName: "Adele Vance", month: "2026-10-01", amount: 40000 }])
+    const filter = client.quotas.list.mock.calls[0][0].filter
+    expect(filter).toContain(`_vibe_salespersonid_value eq ${MEGAN}`)
+    expect(filter).toContain(`_vibe_salespersonid_value eq ${ADELE}`)
+    expect(filter).toContain("vibe_month ge 2026-10-01 and vibe_month le 2027-03-01")
+    await gateway.listQuotas({ scope: "me", from: "2026-10-01", months: 6 })
+    expect(client.quotas.list.mock.calls[1][0].filter).not.toContain(ADELE)
+  })
+
+  it("creates a direct report's Quota, binding the Salesperson", async () => {
+    const client = fakeClient(MEGAN)
+    const saved = await new DataverseSalesGateway(client).setQuota(ADELE, "2026-11-01", 45000)
+    expect(client.quotas.create).toHaveBeenCalledWith({
+      "vibe_SalespersonId@odata.bind": `/systemusers(${ADELE})`,
+      vibe_month: "2026-11-01",
+      vibe_amount: 45000,
+    })
+    expect(saved).toMatchObject({ salespersonId: ADELE, month: "2026-11-01", amount: 45000 })
+  })
+
+  it("changes the amount of an existing row instead of adding another", async () => {
+    const client = fakeClient(MEGAN, quotaRows)
+    await new DataverseSalesGateway(client).setQuota(ADELE, "2026-10-01", 41000)
+    expect(client.quotas.create).not.toHaveBeenCalled()
+    expect(client.quotas.update).toHaveBeenCalledWith(ADELE_Q, { vibe_amount: 41000 })
+  })
+
+  it("refuses your own Quota and someone outside your team before calling Dataverse", async () => {
+    const client = fakeClient(MEGAN)
+    const gateway = new DataverseSalesGateway(client)
+    await expect(gateway.setQuota(MEGAN, "2026-10-01", 1)).rejects.toMatchObject({ code: "forbidden" })
+    await expect(gateway.setQuota(DIEGO, "2026-10-01", 1)).rejects.toMatchObject({ code: "forbidden" })
+    await expect(new DataverseSalesGateway(fakeClient(ADELE)).setQuota(ADELE, "2026-10-01", 1)).rejects.toMatchObject({ code: "forbidden" })
+    expect(client.quotas.create).not.toHaveBeenCalled()
   })
 })

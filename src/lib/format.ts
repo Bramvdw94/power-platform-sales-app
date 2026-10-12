@@ -1,4 +1,4 @@
-import type { AccountType, DisqualifyReason, Industry, LeadSource, LeadStatus, LostReason, Opportunity, ProductUnit, RecordRef, RecordType, Stage, VatRate } from "@/sales"
+import type { AccountType, DisqualifyReason, ForecastCategory, Industry, LeadSource, LeadStatus, LostReason, Opportunity, ProductUnit, RecordRef, RecordType, Stage, VatRate } from "@/sales"
 
 // Display formatting shared by list and record pages. Terms follow GLOSSARY.md.
 
@@ -120,6 +120,13 @@ export function formatDate(value: string): string {
 /** One line about an Opportunity in a related list or search result: Stage, value and close date. */
 export function opportunitySummary(o: Pick<Opportunity, "stage" | "estimatedValue" | "expectedCloseDate">): string {
   return `${STAGE_LABELS[o.stage]} · ${formatEuro(o.estimatedValue)} · ${formatDate(o.expectedCloseDate)}`
+}
+
+export const FORECAST_CATEGORY_LABELS: Record<ForecastCategory, string> = {
+  pipeline: "Pipeline",
+  bestCase: "Best case",
+  commit: "Commit",
+  omitted: "Omitted",
 }
 
 export const LOST_REASON_LABELS: Record<LostReason, string> = {

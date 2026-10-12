@@ -1,3 +1,4 @@
+import { defaultForecastCategory } from "./forecast"
 import { STAGE_DEFAULT_PROBABILITY } from "./stages"
 import type { Account, AccountInput, Contact, ContactInput, DateOnly, Id, Lead, Opportunity } from "./types"
 
@@ -88,6 +89,7 @@ export type QualifiedOpportunityDraft = Pick<
   | "primaryContactId"
   | "stage"
   | "probability"
+  | "forecastCategory"
   | "estimatedValue"
   | "expectedCloseDate"
   | "ownerId"
@@ -111,6 +113,7 @@ export function newOpportunityFromLead(
     primaryContactId: links.primaryContactId,
     stage: "qualification",
     probability: STAGE_DEFAULT_PROBABILITY.qualification,
+    forecastCategory: defaultForecastCategory("qualification"),
     estimatedValue: details.estimatedValue,
     expectedCloseDate: details.expectedCloseDate,
     ownerId: lead.ownerId,

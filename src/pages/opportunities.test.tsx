@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { RouterProvider, createMemoryRouter } from "react-router-dom"
-import { fireEvent, screen, within } from "@testing-library/react"
+import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { SEED_IDS, SEED_USERS, type InMemorySalesStore } from "@/data/in-memory"
 import { routes } from "@/routes"
@@ -120,6 +120,43 @@ describe("Opportunities flow", () => {
     await user.click(within(path).getByRole("button", { name: "Negotiation" }))
     await within(path).findByRole("button", { name: "Negotiation", current: "step" })
     expect(store.opportunities.get(opportunities.qualification)?.probability).toBe(75)
+  })
+
+  it("shows the Forecast category from the Stage, and resets an override when the Stage changes", async () => {
+    const user = userEvent.setup()
+    const { store } = renderApp(`/opportunities/${opportunities.qualification}`)
+    await screen.findByRole("button", { name: "Edit" })
+    expect(highlight("Forecast category")).toBe("Pipeline")
+
+    await user.click(screen.getByRole("button", { name: "Edit" }))
+    const form = screen.getByRole("form", { name: "Edit Opportunity" })
+    await user.selectOptions(within(form).getByLabelText("Forecast category"), "Commit")
+    await user.click(within(form).getByRole("button", { name: "Save" }))
+    await screen.findByRole("button", { name: "Edit" })
+    expect(store.opportunities.get(opportunities.qualification)?.forecastCategory).toBe("commit")
+    expect(highlight("Forecast category")).toBe("Commit")
+
+    await user.click(within(screen.getByRole("navigation", { name: "Stage" })).getByRole("button", { name: "Proposal" }))
+    await waitFor(() => expect(highlight("Forecast category")).toBe("Best case"))
+    expect(store.opportunities.get(opportunities.qualification)?.forecastCategory).toBe("bestCase")
+  })
+
+  it("lets the Owner pick a Forecast category when creating, defaulting from the Stage", async () => {
+    const user = userEvent.setup()
+    const { router, store } = renderApp("/opportunities?new=1")
+    const dialog = await screen.findByRole("dialog", { name: "New Opportunity" })
+    await user.type(within(dialog).getByLabelText(/Name/), "Northwind BV - Omitted")
+    await user.type(within(dialog).getByRole("combobox", { name: /Account/ }), "north")
+    await user.click(await within(dialog).findByRole("option", { name: /Northwind BV/ }))
+    await user.selectOptions(within(dialog).getByLabelText(/Stage/), "Proposal")
+    expect(within(dialog).getByLabelText("Forecast category")).toHaveValue("bestCase")
+    await user.selectOptions(within(dialog).getByLabelText("Forecast category"), "Omitted")
+    await user.type(within(dialog).getByLabelText(/Estimated value/), "1000")
+    fireEvent.change(within(dialog).getByLabelText(/Expected close date/), { target: { value: "2026-12-15" } })
+    await user.click(within(dialog).getByRole("button", { name: "Save" }))
+    await screen.findByRole("heading", { name: "Northwind BV - Omitted" })
+    const id = router.state.location.pathname.split("/").pop()!
+    expect(store.opportunities.get(id)?.forecastCategory).toBe("omitted")
   })
 
   it("refuses a Probability above 100", async () => {

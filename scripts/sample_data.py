@@ -38,6 +38,8 @@ LEAD_STATUSES = ["notContacted", "working", "qualified", "disqualified"]
 DISQUALIFY_REASONS = ["noBudget", "noNeed", "cantReachThem", "choseCompetitor", "duplicate", "other"]
 STAGES = ["qualification", "needsAnalysis", "proposal", "negotiation", "closedWon", "closedLost"]
 OPEN_STAGES = STAGES[:4]
+FORECAST_CATEGORIES = ["pipeline", "bestCase", "commit", "omitted"]
+STAGE_DEFAULT_FORECAST = {"qualification": "pipeline", "needsAnalysis": "pipeline", "proposal": "bestCase", "negotiation": "commit"}
 LOST_REASONS = ["price", "choseCompetitor", "noBudget", "noDecision", "other"]
 STAGE_DEFAULT_PROBABILITY = {
     "qualification": 10, "needsAnalysis": 25, "proposal": 50,
@@ -72,6 +74,9 @@ TABLES = [
     Table("notes", "note-", "annotation", "annotations", "annotationid", None),
     Table("tasks", "task-", "task", "tasks", "activityid", (0, 2)),
     Table("phoneCalls", "call-", "phonecall", "phonecalls", "activityid", (0, 1)),
+    # Last, so a reset deletes Quotas first. Owned by the salesperson; written with the
+    # plug-in bypass because the loader is neither the salesperson nor their manager.
+    Table("quotas", "quota-", "vibe_quota", "vibe_quotas", "vibe_quotaid", (0, 1)),
 ]
 TABLE_BY_SECTION = {t.section: t for t in TABLES}
 # Things a record can be "regarding" (Notes, Tasks, Phone Calls).
@@ -194,6 +199,11 @@ def validate(data):
         if not 0 <= probability <= 100:
             err(f"{key}: probability must be 0-100")
         closed_attrs = ("actualValue", "closedDaysAgo", "lostReason", "lostComment")
+        if opp.get("forecastCategory") is not None:
+            if stage not in OPEN_STAGES:
+                err(f"{key}: a closed Opportunity has no Forecast category")
+            elif opp["forecastCategory"] not in FORECAST_CATEGORIES:
+                err(f"{key}: unknown forecastCategory {opp['forecastCategory']!r}")
         if stage in OPEN_STAGES:
             if any(attr in opp for attr in closed_attrs):
                 err(f"{key}: an open Opportunity has no close fields")
@@ -243,6 +253,20 @@ def validate(data):
             err(f"{call['key']}: an open Phone Call needs dueInDays")
     for note in data.get("notes", []):
         required(note, "text")
+
+    seen_quotas = set()
+    for quota in data.get("quotas", []):
+        required(quota, "salesperson", "monthOffset", "amount")
+        if quota.get("salesperson") not in USER_KEYS:
+            err(f"{quota['key']}: salesperson must be a demo user")
+        if not isinstance(quota.get("monthOffset"), int) or not 0 <= quota["monthOffset"] <= 11:
+            err(f"{quota['key']}: monthOffset must be a whole number from 0 (this month) to 11")
+        if not isinstance(quota.get("amount"), (int, float)) or quota["amount"] < 0:
+            err(f"{quota['key']}: amount must be 0 or more")
+        person_month = (quota.get("salesperson"), quota.get("monthOffset"))
+        if person_month in seen_quotas:
+            err(f"{quota['key']}: a second Quota for {person_month[0]} in month {person_month[1]}")
+        seen_quotas.add(person_month)
 
     return errors
 
@@ -395,6 +419,8 @@ def build_records(data, users, nav, clock):
             **bind(nav["opportunity.account"], "accounts", opp["account"]),
             "vibe_stage": choice(STAGES, stage),
             "vibe_probability": opp.get("probability", STAGE_DEFAULT_PROBABILITY[stage]),
+            "vibe_forecastcategory": choice(FORECAST_CATEGORIES, opp.get("forecastCategory") or STAGE_DEFAULT_FORECAST[stage])
+            if stage in OPEN_STAGES else None,
             "vibe_estimatedvalue": opp["estimatedValue"],
             "vibe_expectedclosedate": clock.date_only(opp["expectedCloseInDays"]),
             "vibe_nextstep": opp.get("nextStep"),
@@ -452,7 +478,23 @@ def build_records(data, users, nav, clock):
             body["scheduledend"] = clock.moment(call["dueInDays"], 11)
         add("phoneCalls", call, body, final)
 
+    for quota in data.get("quotas", []):
+        person = quota["salesperson"]
+        month = first_of_month(clock.today, quota["monthOffset"])
+        add("quotas", quota, {
+            "vibe_name": f"{data['users'][person]} {month[:7]}",
+            "vibe_month": month,
+            "vibe_amount": quota["amount"],
+            **user_bind(nav["quota.salesperson"], users[person]),
+        })
+
     return out
+
+
+def first_of_month(today, offset):
+    """The first day of the month `offset` months after today's, as YYYY-MM-DD."""
+    total = today.year * 12 + today.month - 1 + offset
+    return f"{total // 12}-{total % 12 + 1:02d}-01"
 
 
 def regarding_table(key):
@@ -468,7 +510,9 @@ def _find(data, key):
 
 
 def owner_of(data, rec):
-    """Activities without an owner belong to the owner of what they are regarding."""
+    """Activities without an owner belong to the owner of what they are regarding; a Quota to its salesperson."""
+    if "salesperson" in rec:
+        return rec["salesperson"]
     return _find(data, rec["regarding"])["owner"]
 
 
@@ -489,6 +533,7 @@ NAV_LOOKUPS = {
     "opportunity.primarycontact": ("vibe_opportunity", "vibe_primarycontactid", "contact"),
     "opportunity.originatinglead": ("vibe_opportunity", "vibe_originatingleadid", "vibe_lead"),
     "opportunity.closedby": ("vibe_opportunity", "vibe_closedby", "systemuser"),
+    "quota.salesperson": ("vibe_quota", "vibe_salespersonid", "systemuser"),
     **{f"note.{t}": ("annotation", "objectid", t) for t in ("account", "contact", "vibe_lead", "vibe_opportunity")},
     **{f"task.{t}": ("task", "regardingobjectid", t) for t in ("account", "contact", "vibe_lead", "vibe_opportunity")},
     **{f"phonecall.{t}": ("phonecall", "regardingobjectid", t) for t in ("account", "contact", "vibe_lead", "vibe_opportunity")},
@@ -506,6 +551,7 @@ def summary(data):
         f"{len(opps)} Opportunities: {by(opps, 'stage', STAGES)}",
         f"{len(data['products'])} Products ({sum(bool(p.get('retired')) for p in data['products'])} retired)",
         f"{len(data['notes'])} Notes, {len(data['tasks'])} Tasks, {len(data['phoneCalls'])} Phone Calls",
+        f"{len(data.get('quotas', []))} Quotas",
     ]
 
 

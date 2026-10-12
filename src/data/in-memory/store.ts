@@ -1,4 +1,4 @@
-import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, User } from "@/sales"
+import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, Quota, User } from "@/sales"
 
 // What the in-memory store keeps: records without the display names that
 // Dataverse returns as formatted values. The gateway adds those on read.
@@ -9,6 +9,7 @@ export type AccountRow = Omit<Account, "ownerName">
 export type ContactRow = Omit<Contact, "ownerName" | "accountName">
 export type LeadRow = Omit<Lead, "ownerName">
 export type OpportunityRow = Omit<Opportunity, "ownerName" | "accountName" | "primaryContactName" | "closedByName">
+export type QuotaRow = Omit<Quota, "salespersonName">
 export type ActivityRow = DistributiveOmit<Activity, "ownerName" | "regardingName">
 
 export type InMemoryData = {
@@ -19,6 +20,7 @@ export type InMemoryData = {
   opportunities: OpportunityRow[]
   activities: ActivityRow[]
   products: Product[]
+  quotas?: QuotaRow[]
 }
 
 /** Shared state behind one or more in-memory gateways (one per signed-in user). */
@@ -30,6 +32,7 @@ export class InMemorySalesStore {
   readonly opportunities = new Map<Id, OpportunityRow>()
   readonly activities = new Map<Id, ActivityRow>()
   readonly products = new Map<Id, Product>()
+  readonly quotas = new Map<Id, QuotaRow>()
   private sequence = 0
 
   constructor(data: InMemoryData) {
@@ -41,6 +44,7 @@ export class InMemorySalesStore {
     for (const row of copy.opportunities) this.opportunities.set(row.id, row)
     for (const row of copy.activities) this.activities.set(row.id, row)
     for (const row of copy.products) this.products.set(row.id, row)
+    for (const row of copy.quotas ?? []) this.quotas.set(row.id, row)
   }
 
   newId(prefix: string): Id {

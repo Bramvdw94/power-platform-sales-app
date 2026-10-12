@@ -48,6 +48,28 @@ The script creates its own records as Adele, all named `[security-check] …`:
 | Megan deletes a Product | 403 (nobody has Delete) |
 
 The Product checks (#99) use a Product named `[security-check] Product`.
+Quota (#104). A Quota row is owned by its salesperson, so Basic read shows a
+salesperson their own and the manager hierarchy shows a manager her reports'.
+Only SalesApp Sales Manager can create and write Quotas, and QuotaGuardPlugin
+(`plugins/`, pre-operation on create and update of `vibe_quota`) decides whose:
+the salesperson's manager, or a system administrator when there is no manager,
+and never the salesperson. The privileges alone cannot say that: with no
+plug-in, Megan could create and change her own row and one for Diego. The check
+uses a month in 2099 so it never collides with sample Quotas:
+
+| Check | Expected |
+|---|---|
+| Megan sets Adele's and Alex's Quota | 204 |
+| Megan sets her own, or Diego's, or a month that is not the first | 400 (plug-in) |
+| Megan adds a second Quota for Adele and the same month | 412 (alternate key) |
+| Adele sets her own Quota, changes it, Alex changes it | 403 (no Create or Write) |
+| A system administrator sets Adele's Quota (she has a manager) / Megan's (she has none) | 400 / 204 |
+| Adele reads her Quota; Megan reads Adele's and her own | 200 |
+| Alex or Diego reads Adele's; Adele reads Megan's | 403 |
+| Megan changes Adele's Quota; makes it negative, moves its month, or hands it to herself | 204 / 400 / 400 / 400 |
+| Megan changes her own Quota | 400 (plug-in) |
+| Listing that month: Adele and Alex see their own row, Megan her own and both reports', Diego none | yes |
+
 Cleanup deletes the records as the signed-in admin.
 
 ## Last run

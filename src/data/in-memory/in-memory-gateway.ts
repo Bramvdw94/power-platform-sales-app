@@ -7,7 +7,9 @@ import {
   changeStage,
   closeOpportunity,
   contactErrors,
+  defaultForecastCategory,
   defaultOpportunityName,
+  effectiveForecastCategory,
   directReportIds,
   disqualifyErrors,
   fullName,
@@ -24,6 +26,10 @@ import {
   newOpportunityFromLead,
   noteErrors,
   opportunityErrors,
+  overrideForecastCategory,
+  quotaErrors,
+  quotaMonths,
+  requireCanSetQuota,
   phoneCallErrors,
   taskErrors,
   orderTimeline,
@@ -40,6 +46,7 @@ import {
   type Contact,
   type ContactInput,
   type FieldErrors,
+  type DateOnly,
   type Id,
   type Lead,
   type LeadInput,
@@ -51,6 +58,7 @@ import {
   type Product,
   type ProductInput,
   type PipelineFilter,
+  type Quota,
   type RecordRef,
   type Task,
   type User,
@@ -81,6 +89,7 @@ import {
   type QualifyResult,
   type QualifyStep,
   type QualifySuggestions,
+  type QuotaQuery,
   type SalesGateway,
   type SearchResults,
   type TaskInput,
@@ -504,6 +513,7 @@ export class InMemorySalesGateway implements SalesGateway {
     const row: OpportunityRow = {
       ...clone(input),
       probability: input.probability ?? STAGE_DEFAULT_PROBABILITY[input.stage],
+      forecastCategory: input.forecastCategory ?? defaultForecastCategory(input.stage),
       ...this.newOwned("opp"),
     }
     this.store.opportunities.set(row.id, row)
@@ -519,6 +529,7 @@ export class InMemorySalesGateway implements SalesGateway {
     // A blank Lead source clears it: withoutBlanks drops "" values below.
     const patch = defined(clone(update)) as Partial<OpportunityRow>
     delete patch.stage // the Stage only changes through changeStage, close and reopen
+    if (patch.forecastCategory) patch.forecastCategory = rule(() => overrideForecastCategory(row, patch.forecastCategory!))
     const next: OpportunityRow = withoutBlanks({ ...row, ...patch })
     invalid("The Opportunity cannot be saved.", opportunityErrors(next as OpportunityInput))
     return this.saveOpportunity(next)
@@ -541,6 +552,36 @@ export class InMemorySalesGateway implements SalesGateway {
     const row = this.opportunityRow(id)
     this.requireEdit(row.ownerId)
     return this.saveOpportunity({ ...row, ...rule(() => reopenOpportunity(row, stage)) })
+  }
+
+  // ---- Quotas ------------------------------------------------------------------
+
+  async listQuotas(query: QuotaQuery): Promise<Quota[]> {
+    const reports = directReportIds(this.userId, this.store.users)
+    const people = query.scope === "me" ? [this.userId] : [this.userId, ...reports]
+    const last = quotaMonths(query.from, query.months).at(-1) ?? query.from
+    return [...this.store.quotas.values()]
+      .filter((q) => people.includes(q.salespersonId) && q.month >= query.from && q.month <= last)
+      .sort((a, b) => a.month.localeCompare(b.month) || this.ownerName(a.salespersonId).localeCompare(this.ownerName(b.salespersonId)))
+      .map((q) => clone({ ...q, salespersonName: this.ownerName(q.salespersonId) }))
+  }
+
+  async setQuota(salespersonId: Id, month: DateOnly, amount: number): Promise<Quota> {
+    const person = this.store.users.find((u) => u.id === salespersonId)
+    if (!person) throw new GatewayError("notFound", "That salesperson does not exist.")
+    try {
+      requireCanSetQuota(this.user(this.userId), person)
+    } catch (error) {
+      if (error instanceof SalesRuleError) throw new GatewayError("forbidden", error.message)
+      throw error
+    }
+    const errors = quotaErrors({ month, amount })
+    invalid("The Quota cannot be saved.", errors)
+    const existing = [...this.store.quotas.values()].find((q) => q.salespersonId === salespersonId && q.month === month)
+    const row = existing ?? { id: this.store.newId("quota"), salespersonId, month, amount }
+    row.amount = amount
+    this.store.quotas.set(row.id, row)
+    return clone({ ...row, salespersonName: person.fullName })
   }
 
   // ---- Ownership ---------------------------------------------------------------
@@ -782,6 +823,7 @@ export class InMemorySalesGateway implements SalesGateway {
     const contact = row.primaryContactId ? this.store.contacts.get(row.primaryContactId) : undefined
     return clone({
       ...row,
+      forecastCategory: effectiveForecastCategory(row),
       ownerName: this.ownerName(row.ownerId),
       accountName: this.store.accounts.get(row.accountId)?.name ?? "",
       primaryContactName: contact && fullName(contact),

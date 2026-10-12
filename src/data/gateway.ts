@@ -16,6 +16,7 @@ import type {
   DateOnly,
   DisqualifyReason,
   FieldErrors,
+  ForecastCategory,
   Id,
   Industry,
   Lead,
@@ -32,6 +33,7 @@ import type {
   Product,
   ProductInput,
   QualifyOpportunityDetails,
+  Quota,
   RecordRef,
   Stage,
   Task,
@@ -112,7 +114,11 @@ export type HomeData = {
 
 export type LeadUpdate = Partial<LeadInput>
 /** Blank strings clear a field; so does a blank Lead source. */
-export type OpportunityUpdate = Partial<Omit<OpportunityInput, "stage" | "leadSource">> & { leadSource?: LeadSource | "" }
+export type OpportunityUpdate = Partial<Omit<OpportunityInput, "stage" | "leadSource" | "forecastCategory">> & {
+  leadSource?: LeadSource | ""
+  /** The Owner overriding the Stage default; resets when the Stage changes. */
+  forecastCategory?: ForecastCategory
+}
 /** A blank Account type or Industry clears it. */
 export type AccountUpdate = Partial<Omit<AccountInput, "accountType" | "industry">> & {
   accountType?: AccountType | ""
@@ -158,6 +164,9 @@ export type PhoneCallInput = {
   /** Defaults to true: logging a call records one that happened. */
   completed?: boolean
 }
+
+/** "me": my own Quota rows. "myTeam": mine and my direct reports'. */
+export type QuotaQuery = { scope: "me" | "myTeam"; from: DateOnly; months: number }
 
 export interface SalesGateway {
   // People
@@ -224,6 +233,15 @@ export interface SalesGateway {
   // Ownership
   /** Makes another salesperson the Owner; open Tasks and Phone Calls on the record move along. */
   reassign(record: RecordRef, newOwnerId: Id): Promise<void>
+
+  // Quotas
+  /** Quota rows from a month on, for me or my team. A salesperson only ever sees their own and their direct reports'. */
+  listQuotas(query: QuotaQuery): Promise<Quota[]>
+  /**
+   * Sets a direct report's Quota for a month (the first day of it), creating the
+   * row or changing its amount. Nobody sets their own: that is refused.
+   */
+  setQuota(salespersonId: Id, month: DateOnly, amount: number): Promise<Quota>
 
   // Activities
   /** Open Tasks first, then the rest newest first. */

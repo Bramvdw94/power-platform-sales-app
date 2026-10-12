@@ -125,6 +125,7 @@ describe("Qualify carry-over", () => {
       primaryContactId: "con-1",
       stage: "qualification",
       probability: 10,
+      forecastCategory: "pipeline",
       estimatedValue: 48000,
       expectedCloseDate: "2026-12-15",
       ownerId: "alex",
