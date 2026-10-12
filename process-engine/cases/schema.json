@@ -1,0 +1,1047 @@
+[
+  {
+    "name": "a full Opportunity Process is valid",
+    "covers": [
+      "#66"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "Qualify",
+            "mapsTo": "qualification",
+            "keyFields": [
+              "description"
+            ],
+            "gate": {
+              "checks": [
+                {
+                  "field": "description",
+                  "op": "isNotEmpty"
+                }
+              ]
+            },
+            "actions": [
+              {
+                "id": "a1",
+                "type": "createTask",
+                "subject": "Call the customer",
+                "dueInDays": 3,
+                "assignTo": "owner"
+              }
+            ]
+          },
+          {
+            "id": "s2",
+            "name": "Discover",
+            "mapsTo": "needsAnalysis",
+            "gate": {
+              "checks": [
+                {
+                  "related": "phoneCalls",
+                  "atLeast": 1,
+                  "where": [
+                    {
+                      "field": "completed",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ],
+                  "sinceStepEntered": true
+                }
+              ]
+            }
+          },
+          {
+            "id": "s3",
+            "name": "Propose",
+            "mapsTo": "proposal",
+            "gate": {
+              "checks": [
+                {
+                  "field": "nextStep",
+                  "op": "isNotEmpty"
+                }
+              ]
+            },
+            "actions": [
+              {
+                "id": "a2",
+                "type": "createTask",
+                "subject": "Review the offer",
+                "dueInDays": 5,
+                "assignTo": "ownersManager"
+              },
+              {
+                "id": "a3",
+                "type": "setField",
+                "field": "probability",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "id": "s4",
+            "name": "Negotiate",
+            "mapsTo": "negotiation",
+            "gate": {
+              "checks": [
+                {
+                  "related": "quotes",
+                  "atLeast": 1,
+                  "where": [
+                    {
+                      "field": "status",
+                      "op": "equals",
+                      "value": "sent"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "a Process with Entry criteria on a parent field is valid",
+    "covers": [
+      "#64.2",
+      "#65.1"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "Qualify",
+            "mapsTo": "qualification"
+          }
+        ],
+        "entryCriteria": {
+          "match": "all",
+          "conditions": [
+            {
+              "field": "account.accountType",
+              "op": "equals",
+              "value": "partner"
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "a Lead Process maps to Lead statuses",
+    "covers": [
+      "#65"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "lead",
+        "steps": [
+          {
+            "id": "l1",
+            "name": "Reach out",
+            "mapsTo": "notContacted"
+          },
+          {
+            "id": "l2",
+            "name": "Talk",
+            "mapsTo": "working"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "a Lead Process cannot map to a Stage",
+    "covers": [
+      "#65"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "lead",
+        "steps": [
+          {
+            "id": "l1",
+            "name": "x",
+            "mapsTo": "proposal"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "an Opportunity Process cannot map to a Lead status",
+    "covers": [
+      "#65"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "working"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "a Step cannot map to a closed Stage",
+    "covers": [
+      "#64.6"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "closedWon"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "a Process needs at least one Step",
+    "covers": [
+      "#66"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": []
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "Process table cannot be account",
+    "covers": [
+      "#66"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "account",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "is empty takes no value",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "field": "description",
+                  "op": "isEmpty",
+                  "value": "x"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "is one of needs a list",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "field": "leadSource",
+                  "op": "isOneOf",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "equals needs a value",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "field": "leadSource",
+                  "op": "equals"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "all comparison operators are valid",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                },
+                {
+                  "field": "leadSource",
+                  "op": "isNot",
+                  "value": "other"
+                },
+                {
+                  "field": "leadSource",
+                  "op": "isOneOf",
+                  "value": [
+                    "website",
+                    "event"
+                  ]
+                },
+                {
+                  "field": "description",
+                  "op": "isEmpty"
+                },
+                {
+                  "field": "description",
+                  "op": "isNotEmpty"
+                },
+                {
+                  "field": "estimatedValue",
+                  "op": "greaterThan",
+                  "value": 100
+                },
+                {
+                  "field": "expectedCloseDate",
+                  "op": "lessThan",
+                  "value": "2026-12-31"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "since Step entered works on activities",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "related": "tasks",
+                  "atLeast": 1,
+                  "sinceStepEntered": true
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "since Step entered is refused on Quotes",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "related": "quotes",
+                  "atLeast": 1,
+                  "sinceStepEntered": true
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "related lists are a fixed set",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "related": "emails",
+                  "atLeast": 1
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "related checks on Quotes and Product lines are valid",
+    "covers": [
+      "#64.3",
+      "#132"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "related": "quotes",
+                  "atLeast": 1,
+                  "where": [
+                    {
+                      "field": "status",
+                      "op": "equals",
+                      "value": "sent"
+                    }
+                  ]
+                },
+                {
+                  "related": "productLines",
+                  "atLeast": 2
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "related-record conditions cannot use parent fields",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "related": "tasks",
+                  "atLeast": 1,
+                  "where": [
+                    {
+                      "field": "account.name",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "Entry criteria cannot hold related-record checks",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "entryCriteria": {
+          "match": "all",
+          "conditions": [
+            {
+              "related": "tasks",
+              "atLeast": 1
+            }
+          ]
+        },
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "Create Task needs subject, due days and assignee",
+    "covers": [
+      "#64.7"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "actions": [
+              {
+                "id": "a1",
+                "type": "createTask",
+                "subject": "Hi"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "Create Task can go to the Owner's manager",
+    "covers": [
+      "#64.7"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "actions": [
+              {
+                "id": "a1",
+                "type": "createTask",
+                "subject": "Hi",
+                "dueInDays": 2,
+                "assignTo": "ownersManager"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "assign and notify Actions are not in v2",
+    "covers": [
+      "#64.9"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "actions": [
+              {
+                "id": "a1",
+                "type": "notify",
+                "to": "owner"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "a field reference cannot have two hops",
+    "covers": [
+      "#64.2"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "gate": {
+              "checks": [
+                {
+                  "field": "account.owner.name",
+                  "op": "isNotEmpty"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "an unknown Step key is refused",
+    "covers": [
+      "#66"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "process",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "s1",
+            "name": "x",
+            "mapsTo": "qualification",
+            "color": "red"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "a valid Business rule with every effect",
+    "covers": [
+      "#64.10"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "rule",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "when": {
+          "match": "all",
+          "conditions": [
+            {
+              "field": "estimatedValue",
+              "op": "greaterThan",
+              "value": 50000
+            }
+          ]
+        },
+        "effects": [
+          {
+            "type": "required",
+            "field": "nextStep"
+          },
+          {
+            "type": "readOnly",
+            "field": "probability"
+          },
+          {
+            "type": "setValue",
+            "field": "leadSource",
+            "value": "other"
+          },
+          {
+            "type": "warning",
+            "message": "Big deal"
+          },
+          {
+            "type": "blockSave",
+            "message": "Needs approval"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "the hidden effect is not in v2",
+    "covers": [
+      "#64.10"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "rule",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "when": {
+          "match": "all",
+          "conditions": [
+            {
+              "field": "estimatedValue",
+              "op": "greaterThan",
+              "value": 1
+            }
+          ]
+        },
+        "effects": [
+          {
+            "type": "hidden",
+            "field": "nextStep"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "a rule needs at least one effect",
+    "covers": [
+      "#66"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "rule",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "account",
+        "when": {
+          "match": "all",
+          "conditions": []
+        },
+        "effects": []
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "a rule on a Contact is valid",
+    "covers": [
+      "#64"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "rule",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "contact",
+        "when": {
+          "match": "any",
+          "conditions": [
+            {
+              "field": "email",
+              "op": "isEmpty"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "type": "warning",
+            "message": "No email"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": true
+    }
+  },
+  {
+    "name": "conditions cannot be nested",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "rule",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "account",
+        "when": {
+          "match": "all",
+          "conditions": [
+            {
+              "match": "any",
+              "conditions": [
+                {
+                  "field": "name",
+                  "op": "isEmpty"
+                }
+              ]
+            }
+          ]
+        },
+        "effects": [
+          {
+            "type": "warning",
+            "message": "x"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "block save needs a message",
+    "covers": [
+      "#64.10"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "rule",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "account",
+        "when": {
+          "match": "all",
+          "conditions": []
+        },
+        "effects": [
+          {
+            "type": "blockSave"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  },
+  {
+    "name": "a rule table must be a known table",
+    "covers": [
+      "#64"
+    ],
+    "type": "schema",
+    "input": {
+      "kind": "rule",
+      "definition": {
+        "schemaVersion": 1,
+        "table": "quote",
+        "when": {
+          "match": "all",
+          "conditions": []
+        },
+        "effects": [
+          {
+            "type": "warning",
+            "message": "x"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "valid": false
+    }
+  }
+]

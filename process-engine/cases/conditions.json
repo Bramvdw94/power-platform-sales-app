@@ -1,0 +1,1035 @@
+[
+  {
+    "name": "equals matches",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "website"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "equals",
+            "value": "website"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "equals does not match another value",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "event"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "equals",
+            "value": "website"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "equals never matches an empty field",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "equals",
+            "value": "website"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "is not matches a different value",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "event"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "isNot",
+            "value": "website"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "is not matches an empty field",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "isNot",
+            "value": "website"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "is one of matches a listed value",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "event"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "isOneOf",
+            "value": [
+              "website",
+              "event"
+            ]
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "is one of misses an unlisted value",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "other"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "isOneOf",
+            "value": [
+              "website",
+              "event"
+            ]
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "is empty holds for a missing, null or blank value",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "description": "  "
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "description",
+            "op": "isEmpty"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "is empty fails when there is text",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "description": "x"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "description",
+            "op": "isEmpty"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "is not empty holds for text",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "description": "x"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "description",
+            "op": "isNotEmpty"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "is not empty treats zero as a value",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "estimatedValue": 0
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "estimatedValue",
+            "op": "isNotEmpty"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "greater than on numbers",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "estimatedValue": 1000.01
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "estimatedValue",
+            "op": "greaterThan",
+            "value": 1000
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "greater than is strict",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "estimatedValue": 1000
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "estimatedValue",
+            "op": "greaterThan",
+            "value": 1000
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "less than on numbers",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "estimatedValue": 999
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "estimatedValue",
+            "op": "lessThan",
+            "value": 1000
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "greater than on dates",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "expectedCloseDate": "2027-01-01"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "expectedCloseDate",
+            "op": "greaterThan",
+            "value": "2026-12-31"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "less than on dates",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "expectedCloseDate": "2027-01-01"
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "expectedCloseDate",
+            "op": "lessThan",
+            "value": "2026-12-31"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "greater than never holds on an empty field",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "estimatedValue",
+            "op": "greaterThan",
+            "value": -1
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "all needs every condition",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "website",
+        "estimatedValue": 5
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "equals",
+            "value": "website"
+          },
+          {
+            "field": "estimatedValue",
+            "op": "greaterThan",
+            "value": 10
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "any needs one condition",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "event",
+        "estimatedValue": 50
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "any",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "equals",
+            "value": "website"
+          },
+          {
+            "field": "estimatedValue",
+            "op": "greaterThan",
+            "value": 10
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "any with none holding fails",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "event",
+        "estimatedValue": 5
+      },
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "any",
+        "conditions": [
+          {
+            "field": "leadSource",
+            "op": "equals",
+            "value": "website"
+          },
+          {
+            "field": "estimatedValue",
+            "op": "greaterThan",
+            "value": 10
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "an empty group always holds",
+    "covers": [
+      "#64.1"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": []
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "a parent field one hop up",
+    "covers": [
+      "#64.2"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "accountId": "a1"
+      },
+      "parents": {
+        "account": {
+          "accountType": "partner"
+        }
+      },
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "account.accountType",
+            "op": "equals",
+            "value": "partner"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "a Contact reads its Account",
+    "covers": [
+      "#64.2"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "contact",
+      "record": {
+        "accountId": "a1"
+      },
+      "parents": {
+        "account": {
+          "accountType": "customer"
+        }
+      },
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "account.accountType",
+            "op": "isOneOf",
+            "value": [
+              "customer",
+              "partner"
+            ]
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "an Opportunity reads its originating Lead",
+    "covers": [
+      "#64.2"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {
+        "originatingLead": {
+          "leadSource": "referral"
+        }
+      },
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "originatingLead.leadSource",
+            "op": "equals",
+            "value": "referral"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "a missing parent reads as empty",
+    "covers": [
+      "#64.2"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "field": "account.accountType",
+            "op": "isEmpty"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "related: at least N records",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {
+        "phoneCalls": [
+          {
+            "completed": true
+          },
+          {
+            "completed": false
+          }
+        ]
+      },
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "phoneCalls",
+            "atLeast": 2
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "related: too few records",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {
+        "phoneCalls": [
+          {
+            "completed": true
+          }
+        ]
+      },
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "phoneCalls",
+            "atLeast": 3
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "related: where condition filters",
+    "covers": [
+      "#64.3",
+      "#17"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {
+        "phoneCalls": [
+          {
+            "completed": false
+          }
+        ]
+      },
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "phoneCalls",
+            "atLeast": 1,
+            "where": [
+              {
+                "field": "completed",
+                "op": "equals",
+                "value": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "related: where with any",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {
+        "tasks": [
+          {
+            "completed": false,
+            "subject": "x"
+          }
+        ]
+      },
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "tasks",
+            "atLeast": 1,
+            "where": [
+              {
+                "field": "completed",
+                "op": "equals",
+                "value": true
+              },
+              {
+                "field": "subject",
+                "op": "equals",
+                "value": "x"
+              }
+            ],
+            "match": "any"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "related: since Step entered ignores older records",
+    "covers": [
+      "#64.3",
+      "#17"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "stepEnteredOn": "2026-10-10T09:00:00Z"
+      },
+      "parents": {},
+      "related": {
+        "phoneCalls": [
+          {
+            "createdOn": "2026-10-09T09:00:00Z"
+          }
+        ]
+      },
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "phoneCalls",
+            "atLeast": 1,
+            "sinceStepEntered": true
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "related: since Step entered counts newer records",
+    "covers": [
+      "#64.3",
+      "#17"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "stepEnteredOn": "2026-10-10T09:00:00Z"
+      },
+      "parents": {},
+      "related": {
+        "phoneCalls": [
+          {
+            "createdOn": "2026-10-10T09:00:00Z"
+          }
+        ]
+      },
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "phoneCalls",
+            "atLeast": 1,
+            "sinceStepEntered": true
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "related: Quotes on an Opportunity",
+    "covers": [
+      "#64.3",
+      "#132"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {
+        "quotes": [
+          {
+            "status": "draft"
+          },
+          {
+            "status": "sent"
+          }
+        ]
+      },
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "quotes",
+            "atLeast": 1,
+            "where": [
+              {
+                "field": "status",
+                "op": "equals",
+                "value": "sent"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": true
+    }
+  },
+  {
+    "name": "related: Contacts on an Account",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "account",
+      "record": {},
+      "parents": {},
+      "related": {
+        "contacts": [
+          {
+            "lastName": "A"
+          }
+        ]
+      },
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "contacts",
+            "atLeast": 2
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  },
+  {
+    "name": "related: a missing list counts zero",
+    "covers": [
+      "#64.3"
+    ],
+    "type": "condition",
+    "input": {
+      "table": "opportunity",
+      "record": {},
+      "parents": {},
+      "related": {},
+      "group": {
+        "match": "all",
+        "conditions": [
+          {
+            "related": "notes",
+            "atLeast": 1
+          }
+        ]
+      }
+    },
+    "expect": {
+      "holds": false
+    }
+  }
+]
