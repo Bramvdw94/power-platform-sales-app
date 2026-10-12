@@ -1,0 +1,246 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://salesapp.local/process-engine/definition.schema.json",
+  "title": "Process and Business rule definitions",
+  "description": "The JSON stored in a Process's draft definition, a Process version's published definition and a Business rule's definition. Both engines (TypeScript in the app, C# in the plug-in) read exactly this shape. Field names are the app's field names (src/sales/types.ts); choice values are the app's choice keys. Size limits (20 Steps, 10 conditions, 3 related-record checks, 5 Key fields) are Publish checks, not schema rules, so the builder can explain them.",
+  "definitions": {
+    "table": {
+      "enum": ["lead", "opportunity", "account", "contact"]
+    },
+    "processTable": {
+      "enum": ["lead", "opportunity"]
+    },
+    "fieldName": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$"
+    },
+    "fieldRef": {
+      "description": "A field of the record itself (\"leadSource\") or of a parent one hop up (\"account.accountType\"). Parents: Opportunity has account, primaryContact and originatingLead; Contact has account.",
+      "type": "string",
+      "pattern": "^((account|primaryContact|originatingLead)\\.)?[a-zA-Z][a-zA-Z0-9]*$"
+    },
+    "scalar": {
+      "description": "A text, choice key, lookup id, number, yes/no, or a date as YYYY-MM-DD.",
+      "type": ["string", "number", "boolean"]
+    },
+    "id": {
+      "description": "A stable id. Step ids survive renames and new Process versions.",
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+    },
+    "fieldCondition": {
+      "type": "object",
+      "required": ["field", "op"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "field": { "$ref": "#/definitions/fieldRef" },
+        "op": { "enum": ["equals", "isNot", "isOneOf", "isEmpty", "isNotEmpty", "greaterThan", "lessThan"] },
+        "value": {
+          "anyOf": [
+            { "$ref": "#/definitions/scalar" },
+            { "type": "array", "items": { "$ref": "#/definitions/scalar" }, "minItems": 1 }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "enum": ["isEmpty", "isNotEmpty"] } } },
+          "then": { "not": { "required": ["value"] } }
+        },
+        {
+          "if": { "properties": { "op": { "const": "isOneOf" } } },
+          "then": { "required": ["value"], "properties": { "value": { "type": "array" } } }
+        },
+        {
+          "if": { "properties": { "op": { "enum": ["equals", "isNot"] } } },
+          "then": { "required": ["value"], "properties": { "value": { "$ref": "#/definitions/scalar" } } }
+        },
+        {
+          "if": { "properties": { "op": { "enum": ["greaterThan", "lessThan"] } } },
+          "then": { "required": ["value"], "properties": { "value": { "type": ["number", "string"] } } }
+        }
+      ]
+    },
+    "itemCondition": {
+      "description": "A condition on a field of a related record (no parents).",
+      "allOf": [
+        { "$ref": "#/definitions/fieldCondition" },
+        { "properties": { "field": { "$ref": "#/definitions/fieldName" } } }
+      ]
+    },
+    "relatedCheck": {
+      "description": "At least N records in one of the record's own related lists match the conditions. sinceStepEntered counts only records created since the record entered its current Step (activity lists only).",
+      "type": "object",
+      "required": ["related", "atLeast"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "related": { "enum": ["tasks", "phoneCalls", "notes", "contacts", "opportunities", "productLines", "quotes"] },
+        "atLeast": { "type": "integer", "minimum": 1 },
+        "match": { "enum": ["all", "any"] },
+        "where": { "type": "array", "items": { "$ref": "#/definitions/itemCondition" } },
+        "sinceStepEntered": { "type": "boolean" }
+      },
+      "if": { "required": ["sinceStepEntered"], "properties": { "sinceStepEntered": { "const": true } } },
+      "then": { "properties": { "related": { "enum": ["tasks", "phoneCalls", "notes"] } } }
+    },
+    "check": {
+      "anyOf": [{ "$ref": "#/definitions/fieldCondition" }, { "$ref": "#/definitions/relatedCheck" }]
+    },
+    "conditionGroup": {
+      "description": "Conditions combined with all or any, one level, no nesting. An empty list always holds.",
+      "type": "object",
+      "required": ["match", "conditions"],
+      "additionalProperties": false,
+      "properties": {
+        "match": { "enum": ["all", "any"] },
+        "conditions": { "type": "array", "items": { "$ref": "#/definitions/check" } }
+      }
+    },
+    "entryCriteria": {
+      "description": "Own fields and parents only; no related-record checks.",
+      "type": "object",
+      "required": ["match", "conditions"],
+      "additionalProperties": false,
+      "properties": {
+        "match": { "enum": ["all", "any"] },
+        "conditions": { "type": "array", "items": { "$ref": "#/definitions/fieldCondition" } }
+      }
+    },
+    "gate": {
+      "description": "Checks that must all pass to leave the Step forward.",
+      "type": "object",
+      "required": ["checks"],
+      "additionalProperties": false,
+      "properties": {
+        "checks": { "type": "array", "items": { "$ref": "#/definitions/check" } }
+      }
+    },
+    "createTaskAction": {
+      "type": "object",
+      "required": ["id", "type", "subject", "dueInDays", "assignTo"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "type": { "const": "createTask" },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "dueInDays": { "type": "integer", "minimum": 0, "maximum": 365 },
+        "assignTo": { "enum": ["owner", "ownersManager"] }
+      }
+    },
+    "setFieldAction": {
+      "type": "object",
+      "required": ["id", "type", "field", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "type": { "const": "setField" },
+        "field": { "$ref": "#/definitions/fieldName" },
+        "value": { "anyOf": [{ "$ref": "#/definitions/scalar" }, { "type": "null" }] }
+      }
+    },
+    "action": {
+      "anyOf": [{ "$ref": "#/definitions/createTaskAction" }, { "$ref": "#/definitions/setFieldAction" }]
+    },
+    "step": {
+      "type": "object",
+      "required": ["id", "name", "mapsTo"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "mapsTo": {
+          "description": "An open Stage on an Opportunity Process, an open Lead status on a Lead Process.",
+          "enum": ["qualification", "needsAnalysis", "proposal", "negotiation", "notContacted", "working"]
+        },
+        "keyFields": { "type": "array", "items": { "$ref": "#/definitions/fieldName" }, "uniqueItems": true },
+        "guidance": { "type": "string", "maxLength": 4000 },
+        "gate": { "$ref": "#/definitions/gate" },
+        "actions": { "type": "array", "items": { "$ref": "#/definitions/action" } }
+      }
+    },
+    "processDefinition": {
+      "type": "object",
+      "required": ["schemaVersion", "table", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "table": { "$ref": "#/definitions/processTable" },
+        "entryCriteria": { "$ref": "#/definitions/entryCriteria" },
+        "steps": { "type": "array", "items": { "$ref": "#/definitions/step" }, "minItems": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "table": { "const": "lead" } } },
+          "then": {
+            "properties": {
+              "steps": { "items": { "properties": { "mapsTo": { "enum": ["notContacted", "working"] } } } }
+            }
+          },
+          "else": {
+            "properties": {
+              "steps": {
+                "items": { "properties": { "mapsTo": { "enum": ["qualification", "needsAnalysis", "proposal", "negotiation"] } } }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "effect": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["type", "field"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "enum": ["required", "readOnly"] },
+            "field": { "$ref": "#/definitions/fieldName" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "field", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "setValue" },
+            "field": { "$ref": "#/definitions/fieldName" },
+            "value": { "anyOf": [{ "$ref": "#/definitions/scalar" }, { "type": "null" }] }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "warning" },
+            "message": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "field": { "$ref": "#/definitions/fieldName" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "blockSave" },
+            "message": { "type": "string", "minLength": 1, "maxLength": 500 }
+          }
+        }
+      ]
+    },
+    "businessRuleDefinition": {
+      "type": "object",
+      "required": ["schemaVersion", "table", "when", "effects"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "table": { "$ref": "#/definitions/table" },
+        "when": { "$ref": "#/definitions/conditionGroup" },
+        "effects": { "type": "array", "items": { "$ref": "#/definitions/effect" }, "minItems": 1 }
+      }
+    }
+  }
+}

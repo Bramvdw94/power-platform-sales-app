@@ -1,0 +1,1129 @@
+[
+  {
+    "name": "first match in priority order wins",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "website"
+      },
+      "parents": {
+        "account": {
+          "accountType": "partner"
+        }
+      },
+      "processes": [
+        {
+          "id": "pPartner",
+          "name": "pPartner",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vPartner"
+        },
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vWeb"
+        },
+        {
+          "id": "pFb",
+          "name": "pFb",
+          "table": "opportunity",
+          "priority": 3,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vFb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": "pPartner",
+      "versionId": "vPartner"
+    }
+  },
+  {
+    "name": "a later Process wins when the earlier does not match",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "website"
+      },
+      "parents": {
+        "account": {
+          "accountType": "customer"
+        }
+      },
+      "processes": [
+        {
+          "id": "pPartner",
+          "name": "pPartner",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vPartner"
+        },
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vWeb"
+        },
+        {
+          "id": "pFb",
+          "name": "pFb",
+          "table": "opportunity",
+          "priority": 3,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vFb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": "pWeb",
+      "versionId": "vWeb"
+    }
+  },
+  {
+    "name": "priority order is by priority, not by list order",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "website"
+      },
+      "parents": {
+        "account": {
+          "accountType": "partner"
+        }
+      },
+      "processes": [
+        {
+          "id": "pFb",
+          "name": "pFb",
+          "table": "opportunity",
+          "priority": 3,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vFb"
+        },
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vWeb"
+        },
+        {
+          "id": "pPartner",
+          "name": "pPartner",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vPartner"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": "pPartner"
+    }
+  },
+  {
+    "name": "the fallback is used when nothing matches",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "event"
+      },
+      "parents": {
+        "account": {
+          "accountType": "customer"
+        }
+      },
+      "processes": [
+        {
+          "id": "pPartner",
+          "name": "pPartner",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vPartner"
+        },
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vWeb"
+        },
+        {
+          "id": "pFb",
+          "name": "pFb",
+          "table": "opportunity",
+          "priority": 3,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vFb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": "pFb",
+      "versionId": "vFb"
+    }
+  },
+  {
+    "name": "no match and no fallback means no Process",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "event"
+      },
+      "parents": {},
+      "processes": [
+        {
+          "id": "pPartner",
+          "name": "pPartner",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vPartner"
+        },
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vWeb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": null
+    }
+  },
+  {
+    "name": "a retired Process is never picked",
+    "covers": [
+      "#65.4",
+      "#76.4"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "website"
+      },
+      "parents": {},
+      "processes": [
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": true,
+          "latestVersionId": "vWeb"
+        },
+        {
+          "id": "pFb",
+          "name": "pFb",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vFb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": "pFb"
+    }
+  },
+  {
+    "name": "a Process that was never published is never picked",
+    "covers": [
+      "#65.4"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "website"
+      },
+      "parents": {},
+      "processes": [
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": null
+        },
+        {
+          "id": "pFb",
+          "name": "pFb",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vFb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": "pFb"
+    }
+  },
+  {
+    "name": "a Process of the other table is ignored",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "lead",
+      "record": {
+        "leadSource": "website"
+      },
+      "parents": {},
+      "processes": [
+        {
+          "id": "pPartner",
+          "name": "pPartner",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vPartner"
+        },
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vWeb"
+        },
+        {
+          "id": "pFb",
+          "name": "pFb",
+          "table": "opportunity",
+          "priority": 3,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vFb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": null
+    }
+  },
+  {
+    "name": "the fallback has no criteria even when it has some",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "event"
+      },
+      "parents": {},
+      "processes": [
+        {
+          "id": "pWeb",
+          "name": "pWeb",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vWeb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": "pWeb"
+    }
+  },
+  {
+    "name": "a new Lead gets a Lead Process from its own fields",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "lead",
+      "record": {
+        "leadSource": "partner"
+      },
+      "parents": {},
+      "processes": [
+        {
+          "id": "pl",
+          "name": "pl",
+          "table": "lead",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "vl"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vl",
+          "processId": "pl",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "lead",
+            "steps": [
+              {
+                "id": "l1",
+                "name": "Reach out",
+                "mapsTo": "notContacted"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": "pl"
+    }
+  },
+  {
+    "name": "a Process without criteria that is not the fallback never matches",
+    "covers": [
+      "#65.1"
+    ],
+    "type": "pick",
+    "input": {
+      "table": "opportunity",
+      "record": {
+        "leadSource": "website"
+      },
+      "parents": {},
+      "processes": [
+        {
+          "id": "pX",
+          "name": "pX",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "vFb"
+        }
+      ],
+      "versions": [
+        {
+          "id": "vPartner",
+          "processId": "pPartner",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "account.accountType",
+                  "op": "equals",
+                  "value": "partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vWeb",
+          "processId": "pWeb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ],
+            "entryCriteria": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "leadSource",
+                  "op": "equals",
+                  "value": "website"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "vFb",
+          "processId": "pFb",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "processId": null
+    }
+  }
+]

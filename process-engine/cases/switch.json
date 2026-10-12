@@ -1,0 +1,6564 @@
+[
+  {
+    "name": "the Owner's manager can Switch Process",
+    "covers": [
+      "#66",
+      "#65.3"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "proposal",
+        "processVersionId": "v1",
+        "currentStepId": "s3",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v3"
+      },
+      "caller": {
+        "id": "m1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "processVersionId": "v3",
+        "currentStepId": "t2"
+      }
+    }
+  },
+  {
+    "name": "a Process builder can Switch Process",
+    "covers": [
+      "#66",
+      "#65.3"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "proposal",
+        "processVersionId": "v1",
+        "currentStepId": "s3",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v3"
+      },
+      "caller": {
+        "id": "b1",
+        "isProcessBuilder": true
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "processVersionId": "v3",
+        "currentStepId": "t2"
+      }
+    }
+  },
+  {
+    "name": "the Owner cannot Switch Process",
+    "covers": [
+      "#67",
+      "#65.3"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "proposal",
+        "processVersionId": "v1",
+        "currentStepId": "s3",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v3"
+      },
+      "caller": {
+        "id": "u1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": false,
+      "rejection": {
+        "code": "switchNotAllowed"
+      }
+    }
+  },
+  {
+    "name": "another salesperson cannot Switch Process",
+    "covers": [
+      "#67"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "proposal",
+        "processVersionId": "v1",
+        "currentStepId": "s3",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v3"
+      },
+      "caller": {
+        "id": "u2"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": false,
+      "rejection": {
+        "code": "switchNotAllowed"
+      }
+    }
+  },
+  {
+    "name": "Switch Process lands on the first Step of the current Stage",
+    "covers": [
+      "#66"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "negotiation",
+        "processVersionId": "v1",
+        "currentStepId": "s4",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v3"
+      },
+      "caller": {
+        "id": "m1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "currentStepId": "t3"
+      }
+    }
+  },
+  {
+    "name": "Switch Process lands on the last earlier Step when no Step maps to the Stage (Stage follows the Step)",
+    "covers": [
+      "#66",
+      "#76.2"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "needsAnalysis",
+        "processVersionId": "v1",
+        "currentStepId": "s2",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v3"
+      },
+      "caller": {
+        "id": "m1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "currentStepId": "t1"
+      }
+    }
+  },
+  {
+    "name": "Switch Process does not check Gates and runs no Actions",
+    "covers": [
+      "#66",
+      "#28"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "proposal",
+        "processVersionId": "v1",
+        "currentStepId": "s3",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10,
+        "nextStep": ""
+      },
+      "change": {
+        "processVersionId": "v3"
+      },
+      "caller": {
+        "id": "m1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "taskCount": 0
+    }
+  },
+  {
+    "name": "Switch Process to none removes the Process",
+    "covers": [
+      "#66",
+      "#31"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "proposal",
+        "processVersionId": "v1",
+        "currentStepId": "s3",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": null
+      },
+      "caller": {
+        "id": "m1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "processVersionId": null,
+        "currentStepId": null
+      }
+    }
+  },
+  {
+    "name": "Switch Process to a version that does not exist is rejected",
+    "covers": [
+      "#66"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "proposal",
+        "processVersionId": "v1",
+        "currentStepId": "s3",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "nope"
+      },
+      "caller": {
+        "id": "m1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": false,
+      "rejection": {
+        "code": "unknownVersion"
+      }
+    }
+  },
+  {
+    "name": "a closed record cannot be switched",
+    "covers": [
+      "#76.5"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "closedWon",
+        "processVersionId": "v1",
+        "currentStepId": "s3",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v3"
+      },
+      "caller": {
+        "id": "m1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": false,
+      "rejection": {
+        "code": "closedRecord"
+      }
+    }
+  },
+  {
+    "name": "Move to latest version keeps the Step when it exists with the same Stage",
+    "covers": [
+      "#76.2",
+      "#28",
+      "#29"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "qualification",
+        "processVersionId": "v1",
+        "currentStepId": "s1",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v2"
+      },
+      "caller": {
+        "id": "b1",
+        "isProcessBuilder": true
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "processVersionId": "v2"
+      },
+      "taskCount": 0
+    }
+  },
+  {
+    "name": "Move to latest version lands as Switch Process when the Step is gone",
+    "covers": [
+      "#76.2",
+      "#28"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "needsAnalysis",
+        "processVersionId": "v1",
+        "currentStepId": "s2",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v2"
+      },
+      "caller": {
+        "id": "b1",
+        "isProcessBuilder": true
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "processVersionId": "v2",
+        "currentStepId": "s2b"
+      },
+      "taskCount": 0
+    }
+  },
+  {
+    "name": "Move to latest version keeps the Step date when the Step is kept",
+    "covers": [
+      "#76.2"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "qualification",
+        "processVersionId": "v1",
+        "currentStepId": "s1",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v2"
+      },
+      "caller": {
+        "id": "b1",
+        "isProcessBuilder": true
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "processVersionId": "v2"
+      }
+    }
+  },
+  {
+    "name": "Move to latest version is never stopped by a block save rule",
+    "covers": [
+      "#88.4",
+      "#78"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "qualification",
+        "processVersionId": "v1",
+        "currentStepId": "s1",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "processVersionId": "v2",
+        "description": "zzz"
+      },
+      "caller": {
+        "id": "b1",
+        "isProcessBuilder": true
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "rules": [
+        {
+          "id": "r1",
+          "name": "No",
+          "enabled": true,
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "when": {
+              "match": "all",
+              "conditions": [
+                {
+                  "field": "description",
+                  "op": "isNotEmpty"
+                }
+              ]
+            },
+            "effects": [
+              {
+                "type": "blockSave",
+                "message": "no"
+              }
+            ]
+          }
+        }
+      ],
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": false,
+          "latestVersionId": "v2"
+        },
+        {
+          "id": "p2",
+          "name": "p2",
+          "table": "opportunity",
+          "priority": 2,
+          "isFallback": false,
+          "retired": false,
+          "latestVersionId": "v3"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "v2",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s2b",
+                "name": "Discover (renamed)",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a9",
+                    "type": "createTask",
+                    "subject": "Never",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v3",
+          "processId": "p2",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "t1",
+                "name": "Start",
+                "mapsTo": "qualification",
+                "actions": [
+                  {
+                    "id": "ta",
+                    "type": "createTask",
+                    "subject": "T",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "t2",
+                "name": "Mid",
+                "mapsTo": "proposal"
+              },
+              {
+                "id": "t3",
+                "name": "End",
+                "mapsTo": "negotiation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true
+    }
+  },
+  {
+    "name": "a Retired Process keeps its running records",
+    "covers": [
+      "#30",
+      "#64"
+    ],
+    "type": "save",
+    "input": {
+      "table": "opportunity",
+      "before": {
+        "id": "o1",
+        "ownerId": "u1",
+        "stage": "qualification",
+        "processVersionId": "v1",
+        "currentStepId": "s1",
+        "stepEnteredOn": "2026-10-10T09:00:00Z",
+        "description": "Wants a quote",
+        "accountId": "a1",
+        "probability": 10
+      },
+      "change": {
+        "description": "changed"
+      },
+      "caller": {
+        "id": "u1"
+      },
+      "users": {
+        "u1": {
+          "managerId": "m1"
+        },
+        "u2": {
+          "managerId": "m1"
+        },
+        "m1": {},
+        "b1": {
+          "managerId": "m1"
+        },
+        "u3": {
+          "managerId": "u9"
+        },
+        "u9": {
+          "disabled": true
+        },
+        "nomgr": {}
+      },
+      "now": "2026-10-12T10:00:00Z",
+      "fields": {
+        "opportunity": {
+          "name": {
+            "type": "text"
+          },
+          "nextStep": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "estimatedValue": {
+            "type": "number"
+          },
+          "probability": {
+            "type": "number"
+          },
+          "expectedCloseDate": {
+            "type": "date"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "accountId": {
+            "type": "lookup"
+          },
+          "primaryContactId": {
+            "type": "lookup"
+          },
+          "originatingLeadId": {
+            "type": "lookup"
+          },
+          "stage": {
+            "type": "choice",
+            "options": [
+              "qualification",
+              "needsAnalysis",
+              "proposal",
+              "negotiation",
+              "closedWon",
+              "closedLost"
+            ]
+          }
+        },
+        "lead": {
+          "lastName": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "phone": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "leadSource": {
+            "type": "choice",
+            "options": [
+              "website",
+              "referral",
+              "event",
+              "coldOutreach",
+              "partner",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "choice",
+            "options": [
+              "notContacted",
+              "working",
+              "qualified",
+              "disqualified"
+            ]
+          }
+        },
+        "account": {
+          "name": {
+            "type": "text"
+          },
+          "industry": {
+            "type": "choice",
+            "options": [
+              "accounting",
+              "consulting"
+            ]
+          },
+          "accountType": {
+            "type": "choice",
+            "options": [
+              "prospect",
+              "customer",
+              "partner",
+              "reseller",
+              "supplier",
+              "competitor",
+              "other"
+            ]
+          },
+          "phone": {
+            "type": "text"
+          },
+          "website": {
+            "type": "text"
+          }
+        },
+        "contact": {
+          "lastName": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "accountId": {
+            "type": "lookup"
+          }
+        },
+        "task": {
+          "completed": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "text"
+          }
+        },
+        "phoneCall": {
+          "completed": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "choice",
+            "options": [
+              "incoming",
+              "outgoing"
+            ]
+          }
+        },
+        "note": {
+          "title": {
+            "type": "text"
+          }
+        },
+        "productLine": {
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "quote": {
+          "status": {
+            "type": "choice",
+            "options": [
+              "draft",
+              "sent",
+              "accepted",
+              "rejected",
+              "revised"
+            ]
+          }
+        }
+      },
+      "processes": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "table": "opportunity",
+          "priority": 1,
+          "isFallback": true,
+          "retired": true,
+          "latestVersionId": "v1"
+        }
+      ],
+      "versions": [
+        {
+          "id": "v1",
+          "processId": "p1",
+          "definition": {
+            "schemaVersion": 1,
+            "table": "opportunity",
+            "steps": [
+              {
+                "id": "s1",
+                "name": "Qualify",
+                "mapsTo": "qualification",
+                "keyFields": [
+                  "description"
+                ],
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "description",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a1",
+                    "type": "createTask",
+                    "subject": "Call the customer",
+                    "dueInDays": 3,
+                    "assignTo": "owner"
+                  }
+                ]
+              },
+              {
+                "id": "s2",
+                "name": "Discover",
+                "mapsTo": "needsAnalysis",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "phoneCalls",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "completed",
+                          "op": "equals",
+                          "value": true
+                        }
+                      ],
+                      "sinceStepEntered": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s3",
+                "name": "Propose",
+                "mapsTo": "proposal",
+                "gate": {
+                  "checks": [
+                    {
+                      "field": "nextStep",
+                      "op": "isNotEmpty"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "id": "a2",
+                    "type": "createTask",
+                    "subject": "Review the offer",
+                    "dueInDays": 5,
+                    "assignTo": "ownersManager"
+                  },
+                  {
+                    "id": "a3",
+                    "type": "setField",
+                    "field": "probability",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "id": "s4",
+                "name": "Negotiate",
+                "mapsTo": "negotiation",
+                "gate": {
+                  "checks": [
+                    {
+                      "related": "quotes",
+                      "atLeast": 1,
+                      "where": [
+                        {
+                          "field": "status",
+                          "op": "equals",
+                          "value": "sent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "expect": {
+      "allowed": true,
+      "changes": {
+        "description": "changed"
+      }
+    }
+  }
+]
