@@ -59,6 +59,10 @@ type RecordListProps<T extends { id: string }> = {
   /** The New dialog, opened by the New button and by `?new=1` (the top bar's "+ New"). */
   renderNewDialog: (props: { open: boolean; onOpenChange: (open: boolean) => void }) => ReactNode
   filter?: ListFilter
+  /** For tables without an Owner, such as Products: no My | My team | All. */
+  hideViews?: boolean
+  /** Whether the user may create records; the New button is left out when not. Defaults to true. */
+  canCreate?: boolean
 }
 
 function parseView(value: string | null): ListView {
@@ -71,7 +75,7 @@ function parseView(value: string | null): ListView {
  * shared links keep it.
  */
 export function RecordList<T extends { id: string }>(props: RecordListProps<T>) {
-  const { title, noun, singular, load, columns, defaultSort, href, searchLabel, renderNewDialog, filter } = props
+  const { title, noun, singular, load, columns, defaultSort, href, searchLabel, renderNewDialog, filter, hideViews, canCreate = true } = props
   const gateway = useGateway()
   const [params, setParams] = useSearchParams()
 
@@ -123,25 +127,29 @@ export function RecordList<T extends { id: string }>(props: RecordListProps<T>) 
     <div className="mx-auto w-full max-w-7xl space-y-4 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <Button className="ml-auto" onClick={() => setNewOpen(true)}>
-          <Plus aria-hidden />
-          New {singular}
-        </Button>
+        {canCreate && (
+          <Button className="ml-auto" onClick={() => setNewOpen(true)}>
+            <Plus aria-hidden />
+            New {singular}
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={view} onValueChange={(value) => update({ view: value === "my" ? null : value })}>
-          <SelectTrigger aria-label="View" className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {VIEWS.map((v) => (
-              <SelectItem key={v.value} value={v.value}>
-                {v.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!hideViews && (
+          <Select value={view} onValueChange={(value) => update({ view: value === "my" ? null : value })}>
+            <SelectTrigger aria-label="View" className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {VIEWS.map((v) => (
+                <SelectItem key={v.value} value={v.value}>
+                  {v.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {filter && (
           <Select value={filterValue ?? ALL} onValueChange={(value) =>
               update({ filter: value === (filter.defaultValue ?? ALL) ? null : value })
@@ -199,7 +207,7 @@ export function RecordList<T extends { id: string }>(props: RecordListProps<T>) 
               ) : data.items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
-                    No {noun.toLowerCase()} {search ? `match “${search}”` : "in this view"}.
+                    No {noun.toLowerCase()} {search ? `match “${search}”` : hideViews ? "found" : "in this view"}.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -247,7 +255,7 @@ export function RecordList<T extends { id: string }>(props: RecordListProps<T>) 
         </div>
       )}
 
-      {renderNewDialog({ open: newOpen, onOpenChange: setNewOpen })}
+      {canCreate && renderNewDialog({ open: newOpen, onOpenChange: setNewOpen })}
     </div>
   )
 }

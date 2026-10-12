@@ -16,7 +16,8 @@ type RecordPageProps = {
   actions?: ReactNode
   /** Details and related lists. */
   children: ReactNode
-  activity: ReactNode
+  /** The activity timeline; records without activities, such as Products, leave it out. */
+  activity?: ReactNode
 }
 
 /**
@@ -46,7 +47,9 @@ export function RecordPage({ kind, name, highlights, actions, children, activity
         </dl>
       </header>
 
-      {isDesktop ? (
+      {!activity ? (
+        <div className="min-w-0 space-y-4">{children}</div>
+      ) : isDesktop ? (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <div className="min-w-0 space-y-4">{children}</div>
           <div className="min-w-0">{activity}</div>

@@ -1,6 +1,7 @@
 import {
   SalesRuleError,
   accountErrors,
+  productErrors,
   canApplyLeadAction,
   canEdit,
   changeStage,
@@ -47,6 +48,8 @@ import {
   type Opportunity,
   type OpportunityInput,
   type PhoneCall,
+  type Product,
+  type ProductInput,
   type PipelineFilter,
   type RecordRef,
   type Task,
@@ -71,6 +74,8 @@ import {
   type OpportunityListQuery,
   type OpportunityUpdate,
   type Page,
+  type ProductListQuery,
+  type ProductUpdate,
   type PhoneCallInput,
   type QualifyInput,
   type QualifyResult,
@@ -277,6 +282,59 @@ export class InMemorySalesGateway implements SalesGateway {
         .map((o) => this.toOpportunity(o)),
       canEdit: this.mayEdit(contact.ownerId),
     }
+  }
+
+  // ---- Products -----------------------------------------------------------------
+
+  async listProducts(query: ProductListQuery): Promise<Page<Product>> {
+    const search = query.search?.trim().toLocaleLowerCase()
+    const sort = query.sort ?? { field: "name", direction: "asc" }
+    const direction = sort.direction === "asc" ? 1 : -1
+    const matching = [...this.store.products.values()]
+      .filter((p) => !query.status || p.retired === (query.status === "retired"))
+      .filter((p) => !search || contains(p.name, search) || contains(p.code, search))
+      .sort((a, b) => direction * compare(a[sort.field], b[sort.field]))
+    const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE
+    const start = ((query.page ?? 1) - 1) * pageSize
+    return clone({ items: matching.slice(start, start + pageSize), totalCount: matching.length })
+  }
+
+  async getProduct(id: Id): Promise<Product> {
+    return clone(this.productRow(id))
+  }
+
+  async createProduct(input: ProductInput): Promise<Product> {
+    this.requireCatalogueManager()
+    invalid("The Product cannot be saved.", { ...productErrors(input), ...this.duplicateCode(input.code) })
+    const row: Product = {
+      ...clone(input),
+      name: input.name.trim(),
+      code: input.code.trim(),
+      description: input.description?.trim() || undefined,
+      retired: false,
+      id: this.store.newId("prod"),
+      createdOn: this.now().toISOString(),
+    }
+    this.store.products.set(row.id, withoutBlanks(row))
+    return clone(row)
+  }
+
+  async updateProduct(id: Id, update: ProductUpdate): Promise<Product> {
+    this.requireCatalogueManager()
+    const row = this.productRow(id)
+    const next = withoutBlanks({ ...row, ...defined(clone(update)) })
+    next.name = next.name?.trim()
+    next.code = next.code?.trim()
+    invalid("The Product cannot be saved.", { ...productErrors(next), ...this.duplicateCode(next.code, id) })
+    this.store.products.set(id, next)
+    return clone(next)
+  }
+
+  async retireProduct(id: Id): Promise<Product> {
+    this.requireCatalogueManager()
+    const row = { ...this.productRow(id), retired: true }
+    this.store.products.set(id, row)
+    return clone(row)
   }
 
   // ---- Accounts and Contacts -------------------------------------------------
@@ -619,6 +677,26 @@ export class InMemorySalesGateway implements SalesGateway {
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE
     const start = ((query.page ?? 1) - 1) * pageSize
     return { items: matching.slice(start, start + pageSize), totalCount: matching.length }
+  }
+
+  private requireCatalogueManager(): void {
+    if (!this.user(this.userId).isCatalogueManager) {
+      throw new GatewayError("forbidden", "Only a Catalogue manager can change Products.")
+    }
+  }
+
+  private productRow(id: Id): Product {
+    const row = this.store.products.get(id)
+    if (!row) throw new GatewayError("notFound", `Product ${id} not found.`)
+    return row
+  }
+
+  /** The Product code is unique, compared without regard to case or surrounding spaces. */
+  private duplicateCode(code: string | undefined, exceptId?: Id): FieldErrors {
+    const wanted = code?.trim().toLocaleLowerCase()
+    if (!wanted) return {}
+    const clash = [...this.store.products.values()].some((p) => p.id !== exceptId && p.code.toLocaleLowerCase() === wanted)
+    return clash ? { code: "This Product code is already used." } : {}
   }
 
   private user(id: Id): User {

@@ -11,6 +11,7 @@ import type {
   NoteRow,
   OpportunityRow,
   PhoneCallRow,
+  ProductRow,
   SystemUserRow,
   TableClient,
 } from "./client"
@@ -157,6 +158,14 @@ const phoneCallRows: PhoneCallRow[] = [
   { activityid: "99999999-0000-0000-0000-000000000020", subject: "First call", directioncode: false, actualend: "2026-09-02T10:00:00Z", statecode: 1, ...REGARDING_OPP, _ownerid_value: ADELE, createdon: "2026-09-02T10:05:00Z" },
 ]
 
+const PRODUCT = "ffffffff-0000-0000-0000-000000000001"
+const RETIRED_PRODUCT = "ffffffff-0000-0000-0000-000000000002"
+
+const productRows: ProductRow[] = [
+  { vibe_productid: PRODUCT, vibe_name: "Consulting", vibe_productcode: "CONS-HR", vibe_description: "Per hour", vibe_unit: 841200001, vibe_listprice: 125, vibe_vatrate: 841200000, statecode: 0, createdon: "2026-05-01T09:00:00Z" },
+  { vibe_productid: RETIRED_PRODUCT, vibe_name: "Legacy support", vibe_productcode: "SUP-OLD", vibe_unit: 841200004, vibe_listprice: 4800, vibe_vatrate: 841200001, statecode: 1, createdon: "2025-05-01T09:00:00Z" },
+]
+
 /** A fake Dataverse that understands the one filter the gateway sends for direct reports. */
 function fakeClient(signedIn: string) {
   return {
@@ -164,6 +173,7 @@ function fakeClient(signedIn: string) {
     contacts: fakeTable("contactid", contactRows),
     leads: fakeTable("vibe_leadid", leadRows),
     opportunities: fakeTable("vibe_opportunityid", opportunityRows),
+    products: fakeTable("vibe_productid", productRows),
     notes: fakeTable("annotationid", noteRows),
     tasks: fakeTable("activityid", taskRows),
     phoneCalls: fakeTable("activityid", phoneCallRows),
@@ -174,6 +184,8 @@ function fakeClient(signedIn: string) {
       return user
     }),
     listSystemUsers: vi.fn(async (filter: string) => {
+      // Megan alone holds the SalesApp Catalogue Manager role.
+      if (filter.includes("SalesApp Catalogue Manager")) return filter.includes(MEGAN) ? users.filter((u) => u.systemuserid === MEGAN) : []
       // Everyone in the fixture holds the SalesApp Salesperson role.
       if (filter.includes("systemuserroles_association/any(")) return users
       const managerId = /_parentsystemuserid_value eq ([0-9a-f-]+) and isdisabled eq false/.exec(filter)?.[1]
@@ -189,6 +201,11 @@ describe("DataverseSalesGateway.getCurrentUser", () => {
     expect(user).toMatchObject({ id: MEGAN, fullName: "Megan Bowen", email: "megan@contoso.example", managerId: null })
     expect(directReports.map((u) => u.fullName)).toEqual(["Adele Vance", "Alex Wilber"])
     expect(directReports[0].managerId).toBe(MEGAN)
+  })
+
+  it("knows who is a Catalogue manager", async () => {
+    expect((await new DataverseSalesGateway(fakeClient(MEGAN)).getCurrentUser()).user.isCatalogueManager).toBe(true)
+    expect((await new DataverseSalesGateway(fakeClient(ADELE)).getCurrentUser()).user.isCatalogueManager).toBe(false)
   })
 
   it("gives a salesperson without reports an empty team", async () => {
@@ -1021,5 +1038,88 @@ describe("DataverseSalesGateway, Qualify", () => {
       expect(client.opportunities.create).not.toHaveBeenCalled()
       expect(client.leads.update).not.toHaveBeenCalled()
     }
+  })
+})
+
+describe("DataverseSalesGateway Products", () => {
+  it("lists Products, filtering on state and searching name and code", async () => {
+    const client = fakeClient(ADELE)
+    const page = await new DataverseSalesGateway(client).listProducts({
+      status: "active",
+      search: "cons",
+      sort: { field: "listPrice", direction: "desc" },
+    })
+    expect(client.products.list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "statecode eq 0 and (contains(vibe_name,'cons') or contains(vibe_productcode,'cons'))",
+        orderBy: ["vibe_listprice desc", "vibe_productid asc"],
+      }),
+    )
+    expect(page.items[0]).toEqual({
+      id: PRODUCT,
+      name: "Consulting",
+      code: "CONS-HR",
+      description: "Per hour",
+      unit: "hour",
+      listPrice: 125,
+      vatRate: 21,
+      retired: false,
+      createdOn: "2026-05-01T09:00:00Z",
+    })
+    expect(page.items[1]).toMatchObject({ code: "SUP-OLD", unit: "year", vatRate: 9, retired: true })
+  })
+
+  it("creates a Product with the choice codes for Unit and VAT rate", async () => {
+    const client = fakeClient(MEGAN)
+    const product = await new DataverseSalesGateway(client).createProduct({
+      name: " Workshop day ",
+      code: "WS-DAY",
+      unit: "day",
+      listPrice: 1450,
+      vatRate: 0,
+    })
+    expect(client.products.create).toHaveBeenCalledWith({
+      vibe_name: "Workshop day",
+      vibe_productcode: "WS-DAY",
+      vibe_unit: 841200002,
+      vibe_listprice: 1450,
+      vibe_vatrate: 841200002,
+    })
+    expect(product).toMatchObject({ name: "Workshop day", unit: "day", vatRate: 0, retired: false })
+  })
+
+  it("refuses a Product with a missing name, code or price before calling Dataverse", async () => {
+    const client = fakeClient(MEGAN)
+    await expect(
+      new DataverseSalesGateway(client).createProduct({ name: "", code: " ", unit: "day", listPrice: -1, vatRate: 21 }),
+    ).rejects.toMatchObject({ code: "invalid", fieldErrors: { name: expect.any(String), code: expect.any(String), listPrice: expect.any(String) } })
+    expect(client.products.create).not.toHaveBeenCalled()
+  })
+
+  it("turns the alternate key's refusal into a field error on the code", async () => {
+    const client = fakeClient(MEGAN)
+    client.products.create.mockRejectedValueOnce(new Error("A record that has the attribute values Product code already exists. (0x80060892)"))
+    await expect(
+      new DataverseSalesGateway(client).createProduct({ name: "Copy", code: "CONS-HR", unit: "hour", listPrice: 1, vatRate: 21 }),
+    ).rejects.toMatchObject({ code: "invalid", fieldErrors: { code: "This Product code is already used." } })
+  })
+
+  it("explains a missing privilege as forbidden", async () => {
+    const client = fakeClient(ADELE)
+    client.products.update.mockRejectedValueOnce(new Error("Principal user is missing prvWritevibe_Product privilege. (0x80040220)"))
+    await expect(new DataverseSalesGateway(client).updateProduct(PRODUCT, { listPrice: 1 })).rejects.toMatchObject({ code: "forbidden" })
+  })
+
+  it("changes only the fields given, and clears a blank description", async () => {
+    const client = fakeClient(MEGAN)
+    await new DataverseSalesGateway(client).updateProduct(PRODUCT, { listPrice: 130, description: "" })
+    expect(client.products.update).toHaveBeenCalledWith(PRODUCT, { vibe_listprice: 130, vibe_description: null })
+  })
+
+  it("retires a Product by deactivating it", async () => {
+    const client = fakeClient(MEGAN)
+    const product = await new DataverseSalesGateway(client).retireProduct(PRODUCT)
+    expect(client.products.update).toHaveBeenCalledWith(PRODUCT, { statecode: 1, statuscode: 2 })
+    expect(product.retired).toBe(true)
   })
 })

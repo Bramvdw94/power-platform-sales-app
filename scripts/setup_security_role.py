@@ -54,6 +54,12 @@ for t in ["Note", "Activity"]:
         f"prvAppend{t}": BASIC, f"prvAssign{t}": BASIC,
     })
 
+# Products (#99) are organisation-owned, so the only depth is Global. Everyone
+# reads the catalogue; only the Catalogue Manager role creates and changes it,
+# and nobody deletes. Retire is a state change, which needs Write.
+PRODUCT_READ = {"prvReadvibe_Product": GLOBAL}
+PRODUCT_MANAGE = {"prvCreatevibe_Product": GLOBAL, "prvWritevibe_Product": GLOBAL}
+
 # Privileges beyond the spec, each proven necessary by security_check.py or a
 # real call. name -> (depth, why).
 EXTRAS = {
@@ -84,7 +90,7 @@ PLATFORM = {
 
 ROLES = {
     "SalesApp Salesperson": {
-        "privileges": {**SPEC, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}},
+        "privileges": {**SPEC, **PRODUCT_READ, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}},
         "users": ["Megan Bowen", "Adele Vance", "Alex Wilber", "Diego Siciliani"],
     },
     # Fallback from #21: Manager hierarchy gives a manager Write on a direct
@@ -95,6 +101,12 @@ ROLES = {
     # direct reports' (through hierarchy). Verified by security_check.py.
     "SalesApp Sales Manager": {
         "privileges": {**{f"prvAssign{t}": LOCAL for t in SALES_TABLES}, **PLATFORM},
+        "users": ["Megan Bowen"],
+    },
+    # Megan in the demo (#99). The role holds only what Salesperson lacks; she
+    # keeps reading everything through Salesperson.
+    "SalesApp Catalogue Manager": {
+        "privileges": {**PRODUCT_READ, **PRODUCT_MANAGE, **PLATFORM},
         "users": ["Megan Bowen"],
     },
 }

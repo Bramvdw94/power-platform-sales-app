@@ -12,6 +12,7 @@ import {
   TasksService,
   Vibe_leadsService,
   Vibe_opportunitiesService,
+  Vibe_productsService,
   WhoAmIService,
 } from "@/generated"
 import type { IGetAllOptions } from "@/generated/models/CommonModels"
@@ -23,6 +24,7 @@ import {
   NOTE_COLUMNS,
   OPPORTUNITY_COLUMNS,
   PHONE_CALL_COLUMNS,
+  PRODUCT_COLUMNS,
   SYSTEM_USER_COLUMNS,
   TASK_COLUMNS,
   type DataverseClient,
@@ -105,6 +107,7 @@ export function createGeneratedClient(): DataverseClient {
     contacts: table(ContactsService, "contact", CONTACT_COLUMNS),
     leads: table(Vibe_leadsService, "vibe_lead", LEAD_COLUMNS),
     opportunities: table(Vibe_opportunitiesService, "vibe_opportunity", OPPORTUNITY_COLUMNS),
+    products: table(Vibe_productsService, "vibe_product", PRODUCT_COLUMNS),
     notes: table(AnnotationsService, "annotation", NOTE_COLUMNS),
     tasks: table(TasksService, "task", TASK_COLUMNS),
     phoneCalls: table(PhonecallsService, "phonecall", PHONE_CALL_COLUMNS),

@@ -1,4 +1,4 @@
-import type { AccountType, DisqualifyReason, Industry, LeadSource, LeadStatus, LostReason, Opportunity, RecordRef, RecordType, Stage } from "@/sales"
+import type { AccountType, DisqualifyReason, Industry, LeadSource, LeadStatus, LostReason, Opportunity, ProductUnit, RecordRef, RecordType, Stage, VatRate } from "@/sales"
 
 // Display formatting shared by list and record pages. Terms follow GLOSSARY.md.
 
@@ -86,6 +86,25 @@ const euro = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR"
 
 export function formatEuro(value: number): string {
   return euro.format(value)
+}
+
+const euroCents = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** A price to the cent, such as a List price: "€95.00". */
+export function formatPrice(value: number): string {
+  return euroCents.format(value)
+}
+
+export const PRODUCT_UNIT_LABELS: Record<ProductUnit, string> = {
+  piece: "Piece",
+  hour: "Hour",
+  day: "Day",
+  month: "Month",
+  year: "Year",
+}
+
+export function formatVatRate(rate: VatRate): string {
+  return `${rate} %`
 }
 
 const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" })

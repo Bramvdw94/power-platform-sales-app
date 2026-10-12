@@ -23,7 +23,8 @@ the hierarchy settings or the tables.
 Prerequisites, set by `python scripts/setup_security_role.py --apply`: Megan
 Bowen, Adele Vance, Alex Wilber and Diego Siciliani each hold SalesApp
 Salesperson; Megan also holds SalesApp Sales Manager (the #21 fallback, since
-hierarchy does not grant Assign); Adele and Alex have Megan as Manager; Diego
+hierarchy does not grant Assign) and SalesApp Catalogue Manager (#99, the
+only holder); Adele and Alex have Megan as Manager; Diego
 does not.
 
 The script creates its own records as Adele, all named `[security-check] …`:
@@ -40,7 +41,13 @@ The script creates its own records as Adele, all named `[security-check] …`:
 | Megan reassigns Adele's Opportunity to Alex | 204, and its open Task moves along |
 | Megan reassigns Adele's deactivated Lead | 204 |
 | Megan updates or reassigns Diego's Lead | 403 |
+| Adele, Alex and Diego read a Product | 200 |
+| Adele, Alex and Diego create a Product, change its List price or retire it | 403 |
+| Megan creates a Product, changes its List price, retires and reactivates it | 204 |
+| Megan creates a second Product with the same Product code | 412 (alternate key) |
+| Megan deletes a Product | 403 (nobody has Delete) |
 
+The Product checks (#99) use a Product named `[security-check] Product`.
 Cleanup deletes the records as the signed-in admin.
 
 ## Last run

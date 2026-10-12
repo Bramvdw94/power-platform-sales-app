@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from auth import get_plugin_headers, get_token, load_env  # noqa: E402
 
 ROLE_NAME = "SalesApp Salesperson"
+CATALOGUE_ROLE = "SalesApp Catalogue Manager"
 TAG = "[security-check]"
 USERS = {
     "megan": "Megan Bowen",
@@ -147,6 +148,13 @@ def load_users(dv, report):
                        f"?$select=name&$filter=name eq '{q(ROLE_NAME)}'")["value"]
         report.check(f"{fullname} has {ROLE_NAME}", len(roles) == 1)
     megan = ids["megan"]["systemuserid"]
+    roles = dv.get(f"systemusers({megan})/systemuserroles_association"
+                   f"?$select=name&$filter=name eq '{q(CATALOGUE_ROLE)}'")["value"]
+    report.check(f"Megan has {CATALOGUE_ROLE}", len(roles) == 1)
+    for key in ("adele", "alex", "diego"):
+        roles = dv.get(f"systemusers({ids[key]['systemuserid']})/systemuserroles_association"
+                       f"?$select=name&$filter=name eq '{q(CATALOGUE_ROLE)}'")["value"]
+        report.check(f"{USERS[key]} does not have {CATALOGUE_ROLE}", len(roles) == 0)
     for key in ("adele", "alex"):
         report.check(f"{USERS[key]} reports to Megan", ids[key]["_parentsystemuserid_value"] == megan)
     report.check("Diego is outside Megan's team", ids["diego"]["_parentsystemuserid_value"] != megan)
@@ -296,6 +304,48 @@ def run(dv, report, created):
         "PATCH", f"vibe_leads({diego_lead})", {"vibe_jobtitle": "Updated by Megan"}, as_user=megan), 403)
     report.expect_status("Megan reassigns Diego's Lead", dv.call(
         "PATCH", f"vibe_leads({diego_lead})", {"ownerid@odata.bind": f"/systemusers({megan})"}, as_user=megan), 403)
+
+    products(dv, report, users, track)
+
+
+def products(dv, report, users, track):
+    """Products (#99): everyone reads, only the Catalogue Manager writes, nobody deletes."""
+    print("Products: Catalogue Manager creates and changes, salespeople read", flush=True)
+    adele, megan = users["adele"], users["megan"]
+    unit = dv.get("GlobalOptionSetDefinitions(Name='vibe_productunit')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    vat = dv.get("GlobalOptionSetDefinitions(Name='vibe_vatrate')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    code = f"{TAG}-P1"
+
+    def body(**changes):
+        return {"vibe_name": f"{TAG} Product", "vibe_productcode": code, "vibe_unit": unit, "vibe_vatrate": vat,
+                "vibe_listprice": 100, **changes}
+
+    report.expect_status("Adele creates a Product", dv.call("POST", "vibe_products", body(), as_user=adele), 403)
+    result = dv.call("POST", "vibe_products", body(), as_user=megan)
+    report.expect_status("Megan creates a Product", result, 204)
+    if not result[3]:
+        return
+    product = track("vibe_products", result[3])
+    report.expect_status("Megan creates a second Product with the same code", dv.call(
+        "POST", "vibe_products", body(vibe_name=f"{TAG} Duplicate"), as_user=megan), 412)
+    for key in ("adele", "alex", "diego"):
+        who = USERS[key]
+        report.expect_status(f"{who} reads the Product", dv.call(
+            "GET", f"vibe_products({product})?$select=vibe_name,vibe_listprice", as_user=users[key]), 200)
+        report.expect_status(f"{who} changes the List price", dv.call(
+            "PATCH", f"vibe_products({product})", {"vibe_listprice": 1}, as_user=users[key]), 403)
+        report.expect_status(f"{who} retires the Product", dv.call(
+            "PATCH", f"vibe_products({product})", {"statecode": 1, "statuscode": 2}, as_user=users[key]), 403)
+    report.expect_status("Megan changes the List price", dv.call(
+        "PATCH", f"vibe_products({product})", {"vibe_listprice": 120}, as_user=megan), 204)
+    report.expect_status("Megan retires the Product", dv.call(
+        "PATCH", f"vibe_products({product})", {"statecode": 1, "statuscode": 2}, as_user=megan), 204)
+    report.expect_status("Adele still reads the retired Product", dv.call(
+        "GET", f"vibe_products({product})?$select=vibe_name,statecode", as_user=adele), 200)
+    report.expect_status("Megan reactivates the Product", dv.call(
+        "PATCH", f"vibe_products({product})", {"statecode": 0, "statuscode": 1}, as_user=megan), 204)
+    report.expect_status("Megan deletes the Product (nobody may)", dv.call(
+        "DELETE", f"vibe_products({product})", as_user=megan), 403)
 
 
 def cleanup(dv, created):

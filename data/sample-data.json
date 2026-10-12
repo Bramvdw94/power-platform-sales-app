@@ -5,6 +5,169 @@
     "alex": "Alex Wilber",
     "diego": "Diego Siciliani"
   },
+  "products": [
+    {
+      "key": "prod-services",
+      "name": "Services",
+      "code": "SERVICES",
+      "description": "Generic line for anything not in the catalogue: describe it and set the unit price on the line.",
+      "unit": "piece",
+      "listPrice": 1,
+      "vatRate": 21,
+      "createdDaysAgo": 320
+    },
+    {
+      "key": "prod-consultant",
+      "name": "Consultant",
+      "code": "CONS-HR",
+      "description": "Consultant, billed per hour.",
+      "unit": "hour",
+      "listPrice": 110,
+      "vatRate": 21,
+      "createdDaysAgo": 320
+    },
+    {
+      "key": "prod-senior",
+      "name": "Senior consultant",
+      "code": "CONS-SR",
+      "description": "Senior consultant, billed per hour.",
+      "unit": "hour",
+      "listPrice": 145,
+      "vatRate": 21,
+      "createdDaysAgo": 320
+    },
+    {
+      "key": "prod-architect",
+      "name": "Solution architect",
+      "code": "ARCH-HR",
+      "description": "Solution architect, billed per hour.",
+      "unit": "hour",
+      "listPrice": 165,
+      "vatRate": 21,
+      "createdDaysAgo": 320
+    },
+    {
+      "key": "prod-pm-day",
+      "name": "Project management",
+      "code": "PM-DAY",
+      "description": "Project manager for one day.",
+      "unit": "day",
+      "listPrice": 1050,
+      "vatRate": 21,
+      "createdDaysAgo": 300
+    },
+    {
+      "key": "prod-workshop",
+      "name": "Workshop day",
+      "code": "WS-DAY",
+      "description": "On-site workshop of one day for up to 12 people, including preparation.",
+      "unit": "day",
+      "listPrice": 1450,
+      "vatRate": 21,
+      "createdDaysAgo": 300
+    },
+    {
+      "key": "prod-secaudit",
+      "name": "Security audit",
+      "code": "SEC-AUDIT",
+      "description": "Fixed-price security audit of up to 150 users, with a written report.",
+      "unit": "piece",
+      "listPrice": 7500,
+      "vatRate": 21,
+      "createdDaysAgo": 300
+    },
+    {
+      "key": "prod-migration",
+      "name": "Cloud migration package",
+      "code": "MIG-PKG",
+      "description": "Fixed-price migration of one workload to the cloud, including cut-over support.",
+      "unit": "piece",
+      "listPrice": 18500,
+      "vatRate": 21,
+      "createdDaysAgo": 280
+    },
+    {
+      "key": "prod-m365",
+      "name": "Microsoft 365 Business Premium",
+      "code": "LIC-M365",
+      "description": "Licence per user per month.",
+      "unit": "month",
+      "listPrice": 22,
+      "vatRate": 21,
+      "createdDaysAgo": 320
+    },
+    {
+      "key": "prod-endpoint",
+      "name": "Endpoint protection",
+      "code": "LIC-EDR",
+      "description": "Endpoint protection and response per device per month.",
+      "unit": "month",
+      "listPrice": 6.5,
+      "vatRate": 21,
+      "createdDaysAgo": 280
+    },
+    {
+      "key": "prod-backup",
+      "name": "Cloud backup, 1 TB",
+      "code": "BKP-1TB",
+      "description": "Managed cloud backup of 1 TB per month, with monthly restore test.",
+      "unit": "month",
+      "listPrice": 39,
+      "vatRate": 21,
+      "createdDaysAgo": 280
+    },
+    {
+      "key": "prod-workplace",
+      "name": "Managed workplace",
+      "code": "MWP-USER",
+      "description": "Device, patching, helpdesk and licences bundled per user per month.",
+      "unit": "month",
+      "listPrice": 54,
+      "vatRate": 21,
+      "createdDaysAgo": 260
+    },
+    {
+      "key": "prod-support",
+      "name": "Annual support contract",
+      "code": "SUP-YEAR",
+      "description": "Support contract with 4 hour response time, per year.",
+      "unit": "year",
+      "listPrice": 4800,
+      "vatRate": 21,
+      "createdDaysAgo": 260
+    },
+    {
+      "key": "prod-training",
+      "name": "Training course",
+      "code": "TRN-COURSE",
+      "description": "One-day course per participant; training is charged at the reduced VAT rate.",
+      "unit": "piece",
+      "listPrice": 895,
+      "vatRate": 9,
+      "createdDaysAgo": 240
+    },
+    {
+      "key": "prod-export",
+      "name": "Remote services, outside the EU",
+      "code": "SVC-EXPORT",
+      "description": "Services for customers outside the EU, charged without VAT.",
+      "unit": "hour",
+      "listPrice": 125,
+      "vatRate": 0,
+      "createdDaysAgo": 200
+    },
+    {
+      "key": "prod-legacy",
+      "name": "Legacy on-premise support",
+      "code": "SUP-OLD",
+      "description": "Support for the old on-premise server stack. No longer sold.",
+      "unit": "year",
+      "listPrice": 3600,
+      "vatRate": 21,
+      "retired": true,
+      "createdDaysAgo": 420
+    }
+  ],
   "accounts": [
     {
       "key": "acc-vandijk",

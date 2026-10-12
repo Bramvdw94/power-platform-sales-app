@@ -6,11 +6,11 @@ import type { InMemoryData } from "./store"
 // Siciliani is a salesperson outside her team.
 
 export const SEED_USERS = {
-  megan: { id: "user-megan", fullName: "Megan Bowen", email: "megan@contoso.example", managerId: null, isSalesperson: true },
-  adele: { id: "user-adele", fullName: "Adele Vance", email: "adele@contoso.example", managerId: "user-megan", isSalesperson: true },
-  alex: { id: "user-alex", fullName: "Alex Wilber", email: "alex@contoso.example", managerId: "user-megan", isSalesperson: true },
-  diego: { id: "user-diego", fullName: "Diego Siciliani", email: "diego@contoso.example", managerId: null, isSalesperson: true },
-  bram: { id: "user-bram", fullName: "Bram (admin)", email: "bram@contoso.example", managerId: null, isSalesperson: false },
+  megan: { id: "user-megan", fullName: "Megan Bowen", email: "megan@contoso.example", managerId: null, isSalesperson: true, isCatalogueManager: true },
+  adele: { id: "user-adele", fullName: "Adele Vance", email: "adele@contoso.example", managerId: "user-megan", isSalesperson: true, isCatalogueManager: false },
+  alex: { id: "user-alex", fullName: "Alex Wilber", email: "alex@contoso.example", managerId: "user-megan", isSalesperson: true, isCatalogueManager: false },
+  diego: { id: "user-diego", fullName: "Diego Siciliani", email: "diego@contoso.example", managerId: null, isSalesperson: true, isCatalogueManager: false },
+  bram: { id: "user-bram", fullName: "Bram (admin)", email: "bram@contoso.example", managerId: null, isSalesperson: false, isCatalogueManager: false },
 } satisfies Record<string, User>
 
 /** Fixed IDs of the seeded records, for tests. */
@@ -29,6 +29,7 @@ export const SEED_IDS = {
   tasks: { overdue: "task-call-back", dueLater: "task-send-proposal", done: "task-intro" },
   notes: { kickoff: "note-kickoff" },
   phoneCalls: { open: "call-planned", logged: "call-logged" },
+  products: { consultingHour: "prod-consulting-hour", workshopDay: "prod-workshop-day", licence: "prod-licence-month", retired: "prod-retired-support" },
 } as const
 
 function addDays(date: DateOnly, days: number): DateOnly {
@@ -43,7 +44,7 @@ function at(date: DateOnly): Timestamp {
 /** The seed data, with dates relative to today so Home and the Pipeline look current. */
 export function createSeedData(today: DateOnly): InMemoryData {
   const { megan, adele, alex, diego } = SEED_USERS
-  const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P } = SEED_IDS
+  const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR } = SEED_IDS
   const daysAgo = (n: number) => at(addDays(today, -n))
   const inDays = (n: number) => addDays(today, n)
 
@@ -73,6 +74,12 @@ export function createSeedData(today: DateOnly): InMemoryData {
       { id: O.diegosProposal, name: "Northwind BV - Backup service", accountId: A.northwind, stage: "proposal", probability: 50, estimatedValue: 15000, expectedCloseDate: inDays(20), ownerId: diego.id, createdOn: daysAgo(20) },
       { id: O.won, name: "Fabrikam NV - Laptops", accountId: A.fabrikam, stage: "closedWon", probability: 100, estimatedValue: 30000, actualValue: 27500, expectedCloseDate: inDays(-20), closeDate: inDays(-15), closedById: alex.id, ownerId: alex.id, createdOn: daysAgo(80) },
       { id: O.lost, name: "Tailwind Traders - Network refresh", accountId: A.tailwind, stage: "closedLost", probability: 0, estimatedValue: 60000, expectedCloseDate: inDays(-30), closeDate: inDays(-25), lostReason: "choseCompetitor", closedById: adele.id, ownerId: adele.id, createdOn: daysAgo(100) },
+    ],
+    products: [
+      { id: PR.consultingHour, name: "Consulting", code: "CONS-HR", description: "Senior consultant, billed per hour.", unit: "hour", listPrice: 125, vatRate: 21, retired: false, createdOn: daysAgo(200) },
+      { id: PR.workshopDay, name: "Workshop day", code: "WS-DAY", description: "On-site workshop of one day, up to 12 people.", unit: "day", listPrice: 1450, vatRate: 21, retired: false, createdOn: daysAgo(200) },
+      { id: PR.licence, name: "Cloud licence", code: "LIC-M365", unit: "month", listPrice: 22.5, vatRate: 21, retired: false, createdOn: daysAgo(190) },
+      { id: PR.retired, name: "Legacy support", code: "SUP-OLD", description: "Support contract we no longer sell.", unit: "year", listPrice: 4800, vatRate: 9, retired: true, createdOn: daysAgo(400) },
     ],
     activities: [
       { id: T.overdue, kind: "task", subject: "Call Thomas back", dueDate: inDays(-2), completed: false, regarding: { type: "lead", id: L.working }, ownerId: alex.id, createdOn: daysAgo(6) },

@@ -47,6 +47,15 @@ class DataFile(unittest.TestCase):
         self.assertEqual((stages["closedWon"], stages["closedLost"]), (6, 4))
         self.assertEqual((len(DATA["notes"]), len(DATA["tasks"]), len(DATA["phoneCalls"])), (40, 30, 20))
 
+    def test_catalogue_is_a_realistic_it_services_catalogue(self):
+        products = DATA["products"]
+        self.assertGreaterEqual(len(products), 12)
+        units = {p["unit"] for p in products}
+        self.assertEqual(units, set(sd.PRODUCT_UNITS))
+        self.assertEqual({p["vatRate"] for p in products}, set(sd.VAT_RATES))
+        self.assertTrue(any(p["code"] == "SERVICES" for p in products), "a generic Services Product")
+        self.assertEqual([p["code"] for p in products if p.get("retired")], ["SUP-OLD"])
+
     def test_every_demo_user_has_home_and_pipeline_content(self):
         for user in sd.USER_KEYS:
             tasks = [t for t in DATA["tasks"] if not t["completed"] and sd.owner_of(DATA, t) == user]
@@ -66,6 +75,23 @@ class DataFile(unittest.TestCase):
 
 
 class Validation(unittest.TestCase):
+    def test_products_need_a_unique_code_a_unit_and_a_price_in_cents(self):
+        def clash(data):
+            find(data, "prod-consultant")["code"] = "cons-sr"
+        self.assertTrue(any("duplicate Product code" in e for e in broken(clash)))
+
+        def bad_unit(data):
+            find(data, "prod-consultant")["unit"] = "fortnight"
+        self.assertIn("prod-consultant: unknown unit 'fortnight'", broken(bad_unit))
+
+        def bad_vat(data):
+            find(data, "prod-consultant")["vatRate"] = 6
+        self.assertTrue(any("vatRate must be one of" in e for e in broken(bad_vat)))
+
+        def bad_price(data):
+            find(data, "prod-consultant")["listPrice"] = 10.005
+        self.assertTrue(any("whole cents" in e for e in broken(bad_price)))
+
     def test_qualified_lead_needs_its_opportunity(self):
         def drop_link(data):
             find(data, "opp-devries").pop("originatingLead")
@@ -163,6 +189,18 @@ class Payloads(unittest.TestCase):
         self.assertIsNone(planned.final_state)
         self.assertEqual(planned.body["scheduledend"], "2026-10-11T09:00:00Z")
         self.assertEqual(received.body["phonenumber"], "+31 10 555 0112")  # the Primary Contact's
+
+    def test_products_have_no_owner_and_a_retired_one_is_deactivated(self):
+        recs = records()
+        workshop, legacy = recs["prod-workshop"], recs["prod-legacy"]
+        self.assertNotIn("ownerid@odata.bind", workshop.body)
+        self.assertEqual(
+            {k: workshop.body[k] for k in ("vibe_productcode", "vibe_unit", "vibe_listprice", "vibe_vatrate")},
+            {"vibe_productcode": "WS-DAY", "vibe_unit": 841200002, "vibe_listprice": 1450, "vibe_vatrate": 841200000},
+        )
+        self.assertIsNone(workshop.final_state)
+        self.assertEqual(recs["prod-training"].body["vibe_vatrate"], 841200001)  # 9 %
+        self.assertEqual(legacy.final_state, (1, 2))
 
     def test_load_order_puts_parents_first(self):
         order = [r.table.section for r in sd.build_records(DATA, USERS, NAV, CLOCK)]

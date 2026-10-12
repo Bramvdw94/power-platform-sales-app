@@ -475,3 +475,40 @@ describe("Pipeline and Home", () => {
     expect(adeleHome.opportunitiesClosingThisMonth).toEqual([])
   })
 })
+
+describe("Products", () => {
+  const { products } = SEED_IDS
+  const input = { name: "Support", code: "SUP-M", unit: "month", listPrice: 99, vatRate: 21 } as const
+
+  it("lets everyone read the catalogue", async () => {
+    for (const user of [megan, adele, alex, diego]) {
+      expect((await as(user.id).listProducts({})).totalCount).toBe(4)
+    }
+    expect((await as(adele.id).listProducts({ status: "retired" })).items.map((p) => p.id)).toEqual([products.retired])
+  })
+
+  it("lets only a Catalogue manager create, change and retire", async () => {
+    for (const user of [adele, alex, diego, bram]) {
+      expect((await errorOf(as(user.id).createProduct(input))).code).toBe("forbidden")
+      expect((await errorOf(as(user.id).updateProduct(products.licence, { listPrice: 1 }))).code).toBe("forbidden")
+      expect((await errorOf(as(user.id).retireProduct(products.licence))).code).toBe("forbidden")
+    }
+    expect(store.products.get(products.licence)).toMatchObject({ listPrice: 22.5, retired: false })
+  })
+
+  it("refuses a duplicate Product code, whatever its case", async () => {
+    const error = await errorOf(as(megan.id).createProduct({ ...input, code: " cons-hr " }))
+    expect(error).toMatchObject({ code: "invalid", fieldErrors: { code: "This Product code is already used." } })
+    const edit = await errorOf(as(megan.id).updateProduct(products.licence, { code: "WS-DAY" }))
+    expect(edit.fieldErrors.code).toBeDefined()
+    await expect(as(megan.id).updateProduct(products.licence, { code: "lic-m365" })).resolves.toMatchObject({ code: "lic-m365" })
+  })
+
+  it("keeps a Retired Product and clears a blank description", async () => {
+    const product = await as(megan.id).updateProduct(products.consultingHour, { description: "" })
+    expect(product.description).toBeUndefined()
+    expect(await as(megan.id).retireProduct(products.consultingHour)).toMatchObject({ retired: true })
+    expect((await as(adele.id).listProducts({ status: "active" })).items.map((p) => p.id)).not.toContain(products.consultingHour)
+    expect(await as(adele.id).getProduct(products.consultingHour)).toMatchObject({ retired: true })
+  })
+})

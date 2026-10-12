@@ -120,6 +120,7 @@ def check(dv, data, users):
             print(f"  note: {name} has no Opportunity closing this month (normal at a month's end)")
 
     for label, entity_set, attribute, values in (
+        ("Products", "vibe_products", "vibe_productcode", [r["code"] for r in data["products"]]),
         ("Accounts", "accounts", "name", [r["name"] for r in data["accounts"]]),
         ("Contacts", "contacts", "emailaddress1", [r["email"] for r in data["contacts"]]),
         ("Leads", "vibe_leads", "vibe_email", [r["email"] for r in data["leads"]]),

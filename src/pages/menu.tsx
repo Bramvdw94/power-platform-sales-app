@@ -5,7 +5,7 @@ import { RECORD_LISTS } from "@/components/shell/nav-items"
 import { UserAvatar } from "@/components/shell/user-badge"
 import { useCurrentUser } from "@/hooks/use-current-user"
 
-/** The phone's Menu tab: the four record lists, who is signed in, and the theme. */
+/** The phone's Menu tab: the record lists, who is signed in, and the theme. */
 export default function MenuPage() {
   const { data } = useCurrentUser()
   return (
