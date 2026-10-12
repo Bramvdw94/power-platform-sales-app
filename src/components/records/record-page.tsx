@@ -29,12 +29,12 @@ export function RecordPage({ kind, name, highlights, actions, children, activity
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 p-4 md:p-6">
       <header className="space-y-3 rounded-md border p-4">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start">
+          <div className="min-w-0 md:flex-1">
             <p className="text-sm text-muted-foreground">{kind}</p>
             <h1 className="text-2xl font-semibold tracking-tight break-words">{name}</h1>
           </div>
-          {actions && <div className="flex flex-wrap justify-end gap-2">{actions}</div>}
+          {actions && <div className="flex flex-wrap gap-2 md:justify-end">{actions}</div>}
         </div>
         <dl className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
           {highlights.map((item) => (

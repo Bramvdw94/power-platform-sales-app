@@ -145,7 +145,7 @@ function StagePath({ opportunity, canChange }: { opportunity: Opportunity; canCh
           const done = isOpen ? index < current : opportunity.stage === "closedWon"
           const clickable = canChange && isOpen && !isCurrent
           return (
-            <li key={stage} className="min-w-0 flex-1">
+            <li key={stage} className="flex-auto md:min-w-0 md:flex-1">
               <button
                 type="button"
                 aria-current={isCurrent ? "step" : undefined}
@@ -158,7 +158,7 @@ function StagePath({ opportunity, canChange }: { opportunity: Opportunity; canCh
                     ? "bg-primary font-medium text-primary-foreground"
                     : done
                       ? "bg-primary/15 text-foreground"
-                      : "bg-muted text-muted-foreground",
+                      : "bg-muted text-foreground/75",
                   clickable && "hover:bg-primary/25 hover:text-foreground",
                   "disabled:cursor-default",
                 )}
@@ -169,14 +169,14 @@ function StagePath({ opportunity, canChange }: { opportunity: Opportunity; canCh
             </li>
           )
         })}
-        <li className="min-w-0 flex-1">
+        <li className="flex-auto md:min-w-0 md:flex-1">
           <span
             aria-current={!isOpen ? "step" : undefined}
             className={cn(
               "flex h-9 w-full items-center justify-center rounded-md px-2 text-sm whitespace-nowrap",
-              opportunity.stage === "closedWon" && "bg-green-600 font-medium text-white",
-              opportunity.stage === "closedLost" && "bg-destructive font-medium text-white",
-              isOpen && "bg-muted text-muted-foreground",
+              opportunity.stage === "closedWon" && "bg-green-700 font-medium text-white",
+              opportunity.stage === "closedLost" && "bg-red-700 font-medium text-white",
+              isOpen && "bg-muted text-foreground/75",
             )}
           >
             {closedLabel}

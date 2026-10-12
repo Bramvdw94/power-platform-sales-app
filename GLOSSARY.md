@@ -66,7 +66,7 @@ Where a Lead came from: Website, Referral, Event, Cold outreach, Partner, or Oth
 _Avoid_: Origin, channel, campaign
 
 **Estimated value**:
-What an open Opportunity is expected to be worth, in euros. It is replaced by the actual value when the Opportunity is Closed Won.
+What an open Opportunity is expected to be worth, in euros excluding VAT. While the Opportunity has Product lines it is their total and can't be typed over; without lines the Owner enters it. It is replaced by the actual value when the Opportunity is Closed Won.
 _Avoid_: Amount, revenue, deal size
 
 **Expected close date**:
@@ -88,6 +88,90 @@ _Avoid_: Disqualify reason
 **Pipeline**:
 All open Opportunities, viewed by stage.
 _Avoid_: Funnel
+
+### Forecasting
+
+**Forecast category**:
+How firmly the Owner counts on an open Opportunity: Pipeline, Best case, Commit, or Omitted (not counted at all). Each open Stage gives a default (Qualification and Needs Analysis Pipeline, Proposal Best case, Negotiation Commit) that the Owner may override; changing the Stage, or reopening, resets it to the default. A closed Opportunity counts as won or lost by its Stage, never by its Forecast category.
+_Avoid_: Forecast stage, confidence, Won, Lost
+
+**Forecast**:
+The expected sales of a person or team per month or quarter: what is already Closed won, plus open Opportunities in their Expected close month, added up by Forecast category and weighted by Probability, set against the Quota.
+_Avoid_: Projection, prediction, pipeline
+
+**Quota**:
+The amount in euros a salesperson is expected to win in one month. A quarter's Quota is the sum of its months. A salesperson's manager sets it, and nobody sets their own; only the salesperson and their manager may see it.
+_Avoid_: Target, goal, budget
+
+**Gap**:
+How much of the Quota is not yet Closed won in a period.
+_Avoid_: Shortfall, remaining
+
+### Products
+
+**Product**:
+Something the team sells, kept in the catalogue with a code, a Unit (Piece, Hour, Day, Month or Year), a List price and a VAT rate. A Product that is no longer sold is retired: it stays on existing Product lines but can't be added to new ones.
+_Avoid_: Item, article, SKU, service
+
+**List price**:
+The standard price in euros, excluding VAT, of one Unit of a Product. The team has one price list, so each Product has exactly one List price.
+_Avoid_: Catalogue price, base price
+
+**Product line**:
+One Product on an Opportunity, with a quantity, a unit price and a discount percentage. The unit price starts at the List price when the line is added and the Owner may change it; later changes to the List price don't touch existing lines.
+_Avoid_: Line item, opportunity product
+
+**Catalogue manager**:
+A person allowed to create, change and retire Products and their List prices. Everyone in sales can read the catalogue.
+_Avoid_: Product admin, Process builder
+
+### Quotes
+
+**Quote**:
+A priced offer sent to the customer for one Opportunity. Its Quote lines are copied from the Opportunity's Product lines when it is made and are then changed on the Quote alone; nothing flows back to the Opportunity, and a Quote never changes the Estimated value. An Opportunity may have several Quotes, and a closed Opportunity gets no new ones.
+_Avoid_: Offer, proposal, estimate
+
+**Quote line**:
+One Product on a Quote, with a quantity, a unit price, a discount percentage and the Product's VAT rate. Amounts on a line exclude VAT; VAT is worked out per rate on the Quote's total.
+_Avoid_: Line item, quote product
+
+**Quote status**:
+Where a Quote stands: Draft (being prepared, the only status in which it can be changed or deleted), Sent, Accepted, Rejected, or Revised (replaced by a newer revision). A Sent Quote past its Valid until date shows as expired but keeps its status.
+_Avoid_: Quote stage, Expired, Won
+
+**Valid until**:
+The last day the customer can accept a Quote at its prices.
+_Avoid_: Expiry date, due date
+
+**Revise**:
+Replacing a Sent Quote with a new Draft that keeps its Quote number with the next revision number; the old one becomes Revised.
+_Avoid_: Copy, new version, amend
+
+**Accept**:
+Recording that the customer agreed to a Quote. The Opportunity's other Sent Quotes become Rejected and the user is offered to Close the Opportunity as won at the Quote's net total.
+_Avoid_: Win, sign, approve
+
+### Activities
+
+**Activity**:
+Something a salesperson recorded or planned against a Lead, Opportunity, Account or Contact: a Note, a Task or a Phone Call.
+_Avoid_: Interaction, touchpoint
+
+**Note**:
+Free text kept on a record for later reference.
+_Avoid_: Comment, memo
+
+**Task**:
+A to-do with a due date, open until it is completed.
+_Avoid_: Reminder, follow-up
+
+**Phone Call**:
+A call made or received, logged after it happened, or planned for later.
+_Avoid_: Call log
+
+**Related activity**:
+An Activity shown on an Account although it belongs to another record: one of the Account's current Contacts, one of its Opportunities, or the Lead such an Opportunity was qualified from.
+_Avoid_: Rollup, inherited activity
 
 ### People
 
@@ -138,8 +222,20 @@ Moving a record to another Process, or to none. Only the Owner's manager or a Pr
 _Avoid_: Change process, reassign
 
 **Publish**:
-Making a draft Process or Business rule take effect. Until then edits change nothing for users. A published Process can be retired, after which no new record gets it; a Business rule can be turned off.
+Making a draft Process or Business rule take effect. Until then edits change nothing for users. Publishing a Process makes a new Process version; a Business rule has no versions, so a published change or turning it off applies to every record at once.
 _Avoid_: Activate, deploy, save
+
+**Process version**:
+A Process as it stood at one Publish. A record follows the Process version it started on until it is moved; closed, qualified and disqualified records keep theirs for good, and a reopened record carries on with its own.
+_Avoid_: Revision, release
+
+**Move to latest version**:
+A Process builder moving every open record on older versions of a Process onto its latest Process version in one go. A record stays on its Step when that Step still exists and maps to the same Stage or Lead status; otherwise it lands as with Switch Process. Gates are not checked and Actions do not run.
+_Avoid_: Upgrade, migrate, republish
+
+**Retire**:
+Stopping a published Process from being picked for new records. Records already on it keep following it to the end; a Process builder can Switch Process for all of them at once.
+_Avoid_: Delete, deactivate, turn off
 
 **Process builder**:
 A person allowed to build and Publish Processes and Business rules. It is a right given separately from being a manager; everyone in sales can read the definitions.
