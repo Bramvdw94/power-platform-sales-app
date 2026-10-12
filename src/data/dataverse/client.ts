@@ -39,6 +39,8 @@ export type AccountRow = Row & {
   address1_postalcode?: string | null
   address1_country?: string | null
   description?: string | null
+  customertypecode?: number | null
+  industrycode?: number | null
   _ownerid_value?: Id | null
   createdon?: string | null
 }
@@ -53,6 +55,8 @@ export const ACCOUNT_COLUMNS = [
   "address1_postalcode",
   "address1_country",
   "description",
+  "customertypecode",
+  "industrycode",
   "_ownerid_value",
   "createdon",
 ] as const

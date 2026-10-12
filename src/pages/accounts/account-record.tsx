@@ -14,7 +14,7 @@ import {
 } from "@/components/records/record-page"
 import { Button } from "@/components/ui/button"
 import { useGateway } from "@/hooks/use-gateway"
-import { opportunitySummary } from "@/lib/format"
+import { ACCOUNT_TYPE_LABELS, INDUSTRY_LABELS, opportunitySummary } from "@/lib/format"
 import { fullName, type Account } from "@/sales"
 import { NewContactDialog } from "@/pages/contacts/contact-form"
 import { NewOpportunityDialog } from "@/pages/opportunities/opportunity-form"
@@ -37,6 +37,7 @@ export default function AccountRecordPage() {
       kind="Account"
       name={account.name}
       highlights={[
+        { label: "Account type", value: account.accountType && ACCOUNT_TYPE_LABELS[account.accountType] },
         { label: "City", value: [account.city, account.country].filter(Boolean).join(", ") },
         { label: "Phone", value: account.phone },
         { label: "Website", value: account.website && <ExternalLink href={account.website} /> },
@@ -125,6 +126,8 @@ function AccountDetails({ account }: { account: Account }) {
         { label: "Account Name", value: account.name, wide: true },
         { label: "Website", value: account.website && <ExternalLink href={account.website} /> },
         { label: "Phone", value: account.phone },
+        { label: "Account type", value: account.accountType && ACCOUNT_TYPE_LABELS[account.accountType] },
+        { label: "Industry", value: account.industry && INDUSTRY_LABELS[account.industry] },
         { label: "Street", value: account.street, wide: true },
         { label: "Postcode", value: account.postcode },
         { label: "City", value: account.city },

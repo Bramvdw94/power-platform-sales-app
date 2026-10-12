@@ -16,6 +16,20 @@ export type User = {
   isSalesperson: boolean
 }
 
+export const ACCOUNT_TYPES = ["prospect", "customer", "partner", "reseller", "supplier", "competitor", "other"] as const
+export type AccountType = (typeof ACCOUNT_TYPES)[number]
+
+/** Dataverse's standard Industry list, in its own order (code = position + 1). */
+export const INDUSTRIES = [
+  "accounting", "agriculture", "broadcastingPublishing", "brokers", "buildingSupplyRetail", "businessServices",
+  "consulting", "consumerServices", "design", "distributors", "medicalOffices", "durableManufacturing",
+  "eatingDrinking", "entertainmentRetail", "equipmentRental", "financial", "foodTobacco", "capitalIntensiveProcessing",
+  "repairServices", "insurance", "legalServices", "nonDurableRetail", "outboundConsumerService", "petrochemical",
+  "serviceRetail", "sigAffiliations", "socialServices", "tradeContractors", "specialtyRealty", "transportation",
+  "utilities", "vehicleRetail", "wholesale",
+] as const
+export type Industry = (typeof INDUSTRIES)[number]
+
 export const LEAD_SOURCES = ["website", "referral", "event", "coldOutreach", "partner", "other"] as const
 export type LeadSource = (typeof LEAD_SOURCES)[number]
 
@@ -56,6 +70,8 @@ export type Account = Owned & {
   postcode?: string
   country?: string
   description?: string
+  accountType?: AccountType
+  industry?: Industry
 }
 
 export type Contact = Owned & {

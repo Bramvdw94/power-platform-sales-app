@@ -4,7 +4,6 @@ import { isOpenStage, isValidProbability } from "./stages"
 import {
   DISQUALIFY_REASONS,
   LEAD_SOURCES,
-  type AccountInput,
   type ContactInput,
   type DisqualifyReason,
   type LeadInput,
@@ -45,7 +44,7 @@ export function opportunityErrors(opportunity: Partial<OpportunityInput>): Field
   return errors
 }
 
-export function accountErrors(account: Partial<AccountInput>): FieldErrors {
+export function accountErrors(account: { name?: string }): FieldErrors {
   return isBlank(account.name) ? { name: "Account Name is required." } : {}
 }
 

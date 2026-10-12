@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<forms xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <systemform>
+    <formid>{ad5b37e1-47bc-4488-992e-786079f987ca}</formid>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <FormPresentation>1</FormPresentation>
+    <FormActivationState>1</FormActivationState>
+    <form>
+      <tabs>
+        <tab verticallayout="true" id="{46C43CD0-A3F2-4E0A-8FD8-F52DD25CA7ED}" IsUserDefined="1">
+          <labels>
+            <label description="" languagecode="1033" />
+          </labels>
+          <columns>
+            <column width="100%">
+              <sections>
+                <section showlabel="false" showbar="false" IsUserDefined="0" id="{FCB2C7E4-D01E-4210-8EE0-7091C450B008}">
+                  <labels>
+                    <label description="GENERAL" languagecode="1033" />
+                  </labels>
+                  <rows>
+                    <row>
+                      <cell id="{2AFAA07F-CE2C-472D-94BE-351426AD6A08}">
+                        <labels>
+                          <label description="" languagecode="1033" />
+                        </labels>
+                        <control id="vibe_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="vibe_name" />
+                      </cell>
+                    </row>
+                    <row></row>
+                  </rows>
+                </section>
+              </sections>
+            </column>
+          </columns>
+        </tab>
+      </tabs>
+    </form>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>1</CanBeDeleted>
+    <LocalizedNames>
+      <LocalizedName description="Information" languagecode="1033" />
+    </LocalizedNames>
+  </systemform>
+</forms>

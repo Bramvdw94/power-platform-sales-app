@@ -14,7 +14,7 @@ import type {
   SystemUserRow,
   TableClient,
 } from "./client"
-import { DataverseSalesGateway, toMoment } from "./dataverse-gateway"
+import { DataverseSalesGateway, toAccount, toMoment } from "./dataverse-gateway"
 
 const MEGAN = "aaaaaaaa-0000-0000-0000-000000000001"
 const ADELE = "aaaaaaaa-0000-0000-0000-000000000002"
@@ -536,6 +536,18 @@ describe("DataverseSalesGateway, Accounts and Contacts", () => {
     const account = await new DataverseSalesGateway(client).createAccount({ name: "Contoso", city: "Gent" })
     expect(client.accounts.create).toHaveBeenCalledWith({ name: "Contoso", address1_city: "Gent" })
     expect(account).toMatchObject({ name: "Contoso", city: "Gent", ownerId: ADELE })
+  })
+
+  it("reads and writes Account type and Industry as Dataverse's standard codes", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    const account = await gateway.updateAccount(TAILWIND, { accountType: "reseller", industry: "consulting" })
+    expect(client.accounts.update).toHaveBeenCalledWith(TAILWIND, { customertypecode: 9, industrycode: 7 })
+    expect(toAccount({ ...accountRows[0], customertypecode: 8, industrycode: 33 })).toMatchObject({ accountType: "prospect", industry: "wholesale" })
+    expect(account.id).toBe(TAILWIND)
+
+    await gateway.updateAccount(TAILWIND, { accountType: "", industry: "" })
+    expect(client.accounts.update).toHaveBeenLastCalledWith(TAILWIND, { customertypecode: null, industrycode: null })
   })
 
   it("turns Dataverse's refusals into gateway errors", async () => {

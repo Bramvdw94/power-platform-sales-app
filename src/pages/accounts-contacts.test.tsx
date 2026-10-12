@@ -88,6 +88,33 @@ describe("Accounts and Contacts flow", () => {
     expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument()
   })
 
+  it("shows and saves Account type and Industry on the Account page", async () => {
+    const user = userEvent.setup()
+    const { store } = renderApp(`/accounts/${accounts.tailwind}`, { userId: adele.id })
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }))
+    const form = screen.getByRole("form", { name: "Edit Account" })
+    await user.click(within(form).getByLabelText("Account type"))
+    await user.click(await screen.findByRole("option", { name: "Customer" }))
+    await user.click(within(form).getByLabelText("Industry"))
+    await user.click(await screen.findByRole("option", { name: "Consulting" }))
+    await user.click(within(form).getByRole("button", { name: "Save" }))
+
+    expect(await screen.findByRole("button", { name: "Edit" })).toBeInTheDocument()
+    const details = screen.getByRole("region", { name: "Details" })
+    expect(within(details).getByText("Customer")).toBeInTheDocument()
+    expect(within(details).getByText("Consulting")).toBeInTheDocument()
+    expect(store.accounts.get(accounts.tailwind)).toMatchObject({ accountType: "customer", industry: "consulting" })
+
+    await user.click(screen.getByRole("button", { name: "Edit" }))
+    await user.click(within(screen.getByRole("form", { name: "Edit Account" })).getByLabelText("Industry"))
+    await user.click(await screen.findByRole("option", { name: "—" }))
+    await user.click(within(screen.getByRole("form", { name: "Edit Account" })).getByRole("button", { name: "Save" }))
+    await screen.findByRole("button", { name: "Edit" })
+    expect(store.accounts.get(accounts.tailwind)?.industry).toBeUndefined()
+    expect(store.accounts.get(accounts.tailwind)?.accountType).toBe("customer")
+  })
+
   it("lets a manager edit a report's Contact", async () => {
     const user = userEvent.setup()
     const { store } = renderApp(`/contacts/${contacts.lotte}`, { userId: megan.id })

@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>0</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>1</isdefault>
+    <savedqueryid>{d8c2ea74-fc67-419e-97c2-1d30c253d641}</savedqueryid>
+    <layoutxml>
+      <grid name="vibe_processversions" jump="vibe_name" select="1" icon="1" preview="1">
+        <row name="vibe_processversion" id="vibe_processversionid">
+          <cell name="vibe_name" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>2</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="vibe_processversion">
+          <attribute name="vibe_processversionid" />
+          <attribute name="vibe_name" />
+          <attribute name="createdon" />
+          <order attribute="vibe_name" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="0" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Process version Associated View" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>
