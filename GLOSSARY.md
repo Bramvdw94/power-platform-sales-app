@@ -222,8 +222,20 @@ Moving a record to another Process, or to none. Only the Owner's manager or a Pr
 _Avoid_: Change process, reassign
 
 **Publish**:
-Making a draft Process or Business rule take effect. Until then edits change nothing for users. A published Process can be retired, after which no new record gets it; a Business rule can be turned off.
+Making a draft Process or Business rule take effect. Until then edits change nothing for users. Publishing a Process makes a new Process version; a Business rule has no versions, so a published change or turning it off applies to every record at once.
 _Avoid_: Activate, deploy, save
+
+**Process version**:
+A Process as it stood at one Publish. A record follows the Process version it started on until it is moved; closed, qualified and disqualified records keep theirs for good, and a reopened record carries on with its own.
+_Avoid_: Revision, release
+
+**Move to latest version**:
+A Process builder moving every open record on older versions of a Process onto its latest Process version in one go. A record stays on its Step when that Step still exists and maps to the same Stage or Lead status; otherwise it lands as with Switch Process. Gates are not checked and Actions do not run.
+_Avoid_: Upgrade, migrate, republish
+
+**Retire**:
+Stopping a published Process from being picked for new records. Records already on it keep following it to the end; a Process builder can Switch Process for all of them at once.
+_Avoid_: Delete, deactivate, turn off
 
 **Process builder**:
 A person allowed to build and Publish Processes and Business rules. It is a right given separately from being a manager; everyone in sales can read the definitions.
