@@ -26,6 +26,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sample_data as sd  # noqa: E402
 
 
+# Sample data skips custom plug-ins (QuotaGuardPlugin now, the process engine later):
+# the loader is not a manager, and demo data must always load.
+BYPASS = {"MSCRM.BypassCustomPluginExecution": "true"}
+
+
 def upsert(dv, rec, can_backdate):
     """Create the record with its fixed ID, or update it. Returns "created" or "updated"."""
     table = rec.table
@@ -35,7 +40,7 @@ def upsert(dv, rec, can_backdate):
         body[table.id_attribute] = rec.id
         if can_backdate:
             body["overriddencreatedon"] = rec.created_on
-        dv.create(table.entity_set, body)
+        dv.create(table.entity_set, body, headers=BYPASS)
         return "created"
     if table.open_state and state != table.open_state[0]:
         # Closed records (Qualified Leads, closed deals, completed activities)
@@ -51,7 +56,7 @@ def set_state(dv, rec, state):
 
 def patch(dv, rec, body):
     path = f"{rec.table.entity_set}({rec.id})"
-    status, err, code, _ = dv.call("PATCH", path, body)
+    status, err, code, _ = dv.call("PATCH", path, body, headers=BYPASS)
     if status not in (200, 204):
         raise RuntimeError(f"update {rec.key} ({path}) failed: {status} {code} {err}")
 
@@ -119,6 +124,15 @@ def check(dv, data, users):
         if this_month == 0:
             print(f"  note: {name} has no Opportunity closing this month (normal at a month's end)")
 
+    # A salesperson reads their own Quotas; Megan also her reports'; Diego none.
+    sees = {"adele": {"adele"}, "alex": {"alex"}, "megan": {"megan", "adele", "alex"}, "diego": set()}
+    for key, user in users.items():
+        expected = sum(q["salesperson"] in sees[key] for q in data.get("quotas", []))
+        rows = dv.get("vibe_quotas?$select=_vibe_salespersonid_value", as_user=user)["value"]
+        got = len(rows)
+        if got != expected:
+            print(f"  FAIL {data['users'][key]} reads {got} Quotas, expected {expected}")
+            ok = False
     for label, entity_set, attribute, values in (
         ("Products", "vibe_products", "vibe_productcode", [r["code"] for r in data["products"]]),
         ("Accounts", "accounts", "name", [r["name"] for r in data["accounts"]]),

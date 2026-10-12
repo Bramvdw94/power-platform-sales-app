@@ -400,6 +400,14 @@
           "x-ms-read-only": true,
           "maxLength": 200
         },
+        "vibe_currentstep": {
+          "type": "string",
+          "title": "Current step",
+          "x-ms-dataverse-attribute": "vibe_currentstep",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "vibe_CurrentStep",
+          "maxLength": 100
+        },
         "vibe_description": {
           "type": "string",
           "title": "Description",
@@ -431,6 +439,43 @@
           "x-ms-dataverse-type": "DateTimeType",
           "x-ms-schema-name": "vibe_ExpectedCloseDate",
           "required": true
+        },
+        "vibe_forecastcategory": {
+          "type": "string",
+          "title": "Forecast category",
+          "x-ms-dataverse-attribute": "vibe_forecastcategory",
+          "x-ms-dataverse-type": "PicklistType",
+          "x-ms-schema-name": "vibe_ForecastCategory",
+          "enum": [
+            "Pipeline",
+            "Best case",
+            "Commit",
+            "Omitted"
+          ],
+          "x-ms-enum-values": [
+            841200000,
+            841200001,
+            841200002,
+            841200003
+          ],
+          "Color": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "x-ms-optionsetmetadataid": "baa8f28a-7ec6-f111-b377-7c1e5253a39d",
+          "x-ms-isGlobal": true,
+          "x-ms-optionsetdisplayname": "Forecast category",
+          "x-ms-optionSetType": "Picklist"
+        },
+        "vibe_forecastcategoryname": {
+          "type": "string",
+          "title": "vibe_forecastcategoryname",
+          "x-ms-dataverse-attribute": "vibe_forecastcategoryname",
+          "x-ms-dataverse-type": "VirtualType",
+          "x-ms-schema-name": "vibe_forecastcategoryName",
+          "x-ms-read-only": true
         },
         "vibe_leadsource": {
           "type": "string",
@@ -599,6 +644,22 @@
           "x-ms-dataverse-type": "IntegerType",
           "x-ms-schema-name": "vibe_Probability"
         },
+        "vibe_processversionid": {
+          "type": "string",
+          "title": "Process version",
+          "x-ms-dataverse-attribute": "vibe_processversionid",
+          "x-ms-dataverse-type": "LookupType",
+          "x-ms-schema-name": "vibe_ProcessVersionId"
+        },
+        "vibe_processversionidname": {
+          "type": "string",
+          "title": "vibe_processversionidname",
+          "x-ms-dataverse-attribute": "vibe_processversionidname",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "vibe_ProcessVersionIdName",
+          "x-ms-read-only": true,
+          "maxLength": 850
+        },
         "vibe_stage": {
           "type": "string",
           "title": "Stage",
@@ -642,6 +703,13 @@
           "x-ms-dataverse-type": "VirtualType",
           "x-ms-schema-name": "vibe_stageName",
           "x-ms-read-only": true
+        },
+        "vibe_stepenteredon": {
+          "type": "string",
+          "title": "Step entered on",
+          "x-ms-dataverse-attribute": "vibe_stepenteredon",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "vibe_StepEnteredOn"
         }
       },
       "required": [

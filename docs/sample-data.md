@@ -13,6 +13,7 @@ reaches a real company. Decided in #20, built in #35.
 | Contacts | 50 (two per Account) |
 | Leads | 30: 8 Not Contacted, 12 Working, 6 Qualified, 4 Disqualified (with reason) |
 | Opportunities | 30: 20 open (5 Qualification, 5 Needs Analysis, 6 Proposal, 4 Negotiation), 6 Closed Won, 4 Closed Lost (with Lost reason) |
+| Quotas | 18: Adele, Alex and Megan, this month and the next 5 |
 | Notes, Tasks, Phone Calls | 40, 30 (8 overdue, 6 due today, 5 completed), 20 (16 logged, 4 planned) |
 
 Products are organisation-owned, so they have no Owner and every user reads
@@ -34,6 +35,12 @@ Some records exist for demos of specific features:
 - Working Lead *Bart Verhoeven* has the same e-mail as an existing Contact
   (one strong match in the Qualify dialog); *Scheldepoort Shipping* and
   *Noordkaap Retail* Leads partly match an existing Account name.
+- Every open Opportunity has a Forecast category, defaulted from its Stage;
+  five are overridden (three to Omitted, one to Commit on a Proposal, one to
+  Best case on Needs Analysis) so the forecast has parked and promoted deals
+  to show. Closed deals have none.
+- Quotas belong to the salesperson and are written with the plug-in bypass,
+  because the loader is neither the salesperson nor their manager.
 - Qualified and Disqualified Leads, closed deals, completed Tasks and logged
   Phone Calls are inactive, as the app leaves them.
 
@@ -82,7 +89,8 @@ today". The demo users need the SalesApp Salesperson role first
 - **Checked.** After loading, the script reads as each demo user (through
   `MSCRMCallerID`) what Home and the Pipeline would show, and confirms that
   every Account, Contact, Lead and Opportunity in the file exists exactly
-  once. It fails if a user's Home would have an empty section; an empty
+  once, and that each demo user reads only the Quotas they may (Adele and Alex
+  their own, Megan her own and her reports', Diego none). It fails if a user's Home would have an empty section; an empty
   "closing this month" is only a note, since it can happen at a month's end.
 - **Reset** deletes exactly the IDs from the data file, activities first.
   Hand-made records are left alone, except what Dataverse cascades from a

@@ -46,6 +46,7 @@ class DataFile(unittest.TestCase):
         self.assertTrue(all(stages[s] > 0 for s in sd.OPEN_STAGES))
         self.assertEqual((stages["closedWon"], stages["closedLost"]), (6, 4))
         self.assertEqual((len(DATA["notes"]), len(DATA["tasks"]), len(DATA["phoneCalls"])), (40, 30, 20))
+        self.assertEqual(len(DATA["quotas"]), 18)
 
     def test_catalogue_is_a_realistic_it_services_catalogue(self):
         products = DATA["products"]
@@ -127,7 +128,57 @@ class Validation(unittest.TestCase):
         self.assertIn("acc-vandijk: unknown owner 'bram'", broken(bram))
 
 
+class ForecastAndQuotaValidation(unittest.TestCase):
+    def test_a_closed_deal_has_no_forecast_category(self):
+        def set_one(data):
+            find(data, "opp-hofstad-servicedesk")["forecastCategory"] = "commit"
+        self.assertIn("opp-hofstad-servicedesk: a closed Opportunity has no Forecast category", broken(set_one))
+
+    def test_unknown_forecast_category(self):
+        def set_one(data):
+            find(data, "opp-devries")["forecastCategory"] = "won"
+        self.assertIn("opp-devries: unknown forecastCategory 'won'", broken(set_one))
+
+    def test_one_quota_per_person_and_month(self):
+        def twice(data):
+            data["quotas"].append({**data["quotas"][0], "key": "quota-adele-dup"})
+        self.assertTrue(any("a second Quota for adele" in e for e in broken(twice)))
+
+    def test_quota_needs_a_demo_user_and_a_sane_amount(self):
+        def bad(data):
+            data["quotas"][0]["salesperson"] = "bram"
+            data["quotas"][1]["amount"] = -1
+        errors = broken(bad)
+        self.assertTrue(any("salesperson must be a demo user" in e for e in errors))
+        self.assertTrue(any("amount must be 0 or more" in e for e in errors))
+
+
 class Payloads(unittest.TestCase):
+    def test_forecast_categories(self):
+        recs = records()
+        by = lambda key: recs[key].body["vibe_forecastcategory"]
+        self.assertEqual(by("opp-devries"), 841200002)           # Proposal, overridden to Commit
+        self.assertEqual(by("opp-vandijk-erp"), 841200001)       # Proposal default: Best case
+        self.assertEqual(by("opp-hoekstra"), 841200000)          # Needs Analysis default: Pipeline
+        self.assertEqual(by("opp-brouwer-tablets"), 841200003)   # Omitted
+        self.assertIsNone(by("opp-hofstad-servicedesk"))         # closed
+        omitted = [k for k, r in recs.items() if r.body.get("vibe_forecastcategory") == 841200003]
+        self.assertGreaterEqual(len(omitted), 2)
+
+    def test_quotas_for_adele_alex_and_megan_for_six_months(self):
+        quotas = [r for r in records().values() if r.table.section == "quotas"]
+        self.assertEqual(Counter(q.body["nav_quota_salesperson@odata.bind"] for q in quotas),
+                         {f"/systemusers({USERS[u]})": 6 for u in ("adele", "alex", "megan")})
+        adele_now = records()["quota-adele-0"]
+        self.assertEqual((adele_now.body["vibe_month"], adele_now.body["vibe_amount"]), ("2026-10-01", 40000))
+        self.assertEqual(adele_now.body["ownerid@odata.bind"], f"/systemusers({USERS['adele']})")
+        self.assertEqual(records()["quota-megan-5"].body["vibe_month"], "2027-03-01")
+        self.assertEqual(adele_now.body["vibe_name"], "Adele Vance 2026-10")
+
+    def test_first_of_month_wraps_the_year(self):
+        from datetime import date
+        self.assertEqual(sd.first_of_month(date(2026, 11, 30), 2), "2027-01-01")
+
     def test_dates_are_relative_to_the_load_day(self):
         opp = records()["opp-vandijk-erp"]  # expectedCloseInDays 6, created 55 days ago
         self.assertEqual(opp.body["vibe_expectedclosedate"], "2026-10-15")

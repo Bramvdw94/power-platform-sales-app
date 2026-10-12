@@ -12,6 +12,13 @@ export const Vibe_opportunitiesstatuscode = {
   2: 'Inactive'
 } as const;
 export type Vibe_opportunitiesstatuscode = keyof typeof Vibe_opportunitiesstatuscode;
+export const Vibe_opportunitiesvibe_forecastcategory = {
+  841200000: 'Pipeline',
+  841200001: 'Best case',
+  841200002: 'Commit',
+  841200003: 'Omitted'
+} as const;
+export type Vibe_opportunitiesvibe_forecastcategory = keyof typeof Vibe_opportunitiesvibe_forecastcategory;
 export const Vibe_opportunitiesvibe_leadsource = {
   841200000: 'Website',
   841200001: 'Referral',
@@ -51,9 +58,11 @@ export interface Vibe_opportunitiesBase {
   vibe_actualvalue?: number;
   vibe_closedate?: string;
   "vibe_ClosedBy@odata.bind"?: string;
+  vibe_currentstep?: string;
   vibe_description?: string;
   vibe_estimatedvalue: number;
   vibe_expectedclosedate: string;
+  vibe_forecastcategory?: Vibe_opportunitiesvibe_forecastcategory;
   vibe_leadsource?: Vibe_opportunitiesvibe_leadsource;
   vibe_lostcomment?: string;
   vibe_lostreason?: Vibe_opportunitiesvibe_lostreason;
@@ -63,7 +72,9 @@ export interface Vibe_opportunitiesBase {
   "vibe_OriginatingLeadId@odata.bind"?: string;
   "vibe_PrimaryContactId@odata.bind"?: string;
   vibe_probability?: number;
+  "vibe_ProcessVersionId@odata.bind"?: string;
   vibe_stage: Vibe_opportunitiesvibe_stage;
+  vibe_stepenteredon?: string;
 }
 
 export interface Vibe_opportunities extends Vibe_opportunitiesBase {
@@ -93,11 +104,13 @@ export interface Vibe_opportunities extends Vibe_opportunitiesBase {
   vibe_closedbyname?: string;
   vibe_closedbyyominame?: string;
   vibe_estimatedvalue_base?: number;
+  vibe_forecastcategoryname?: string;
   vibe_leadsourcename?: string;
   vibe_lostreasonname?: string;
   vibe_originatingleadidname?: string;
   vibe_primarycontactidname?: string;
   vibe_primarycontactidyominame?: string;
+  vibe_processversionidname?: string;
   vibe_stagename?: string;
   createdby?: object;
   _createdby_value?: string;
@@ -123,4 +136,6 @@ export interface Vibe_opportunities extends Vibe_opportunitiesBase {
   _vibe_originatingleadid_value?: string;
   vibe_primarycontactid?: object;
   _vibe_primarycontactid_value?: string;
+  vibe_processversionid?: object;
+  _vibe_processversionid_value?: string;
 }

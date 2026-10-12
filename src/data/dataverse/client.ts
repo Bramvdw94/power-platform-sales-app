@@ -138,6 +138,7 @@ export type OpportunityRow = Row & {
   _vibe_primarycontactid_value?: Id | null
   vibe_stage?: number | null
   vibe_probability?: number | null
+  vibe_forecastcategory?: number | null
   vibe_estimatedvalue?: number | null
   vibe_expectedclosedate?: string | null
   vibe_nextstep?: string | null
@@ -160,6 +161,7 @@ export const OPPORTUNITY_COLUMNS = [
   "_vibe_primarycontactid_value",
   "vibe_stage",
   "vibe_probability",
+  "vibe_forecastcategory",
   "vibe_estimatedvalue",
   "vibe_expectedclosedate",
   "vibe_nextstep",
@@ -200,6 +202,19 @@ export const PRODUCT_COLUMNS = [
   "statecode",
   "createdon",
 ] as const
+/** The vibe_quota columns the app reads. */
+export type QuotaRow = Row & {
+  vibe_quotaid: Id
+  _vibe_salespersonid_value?: Id | null
+  /** Date only: the first day of the month. */
+  vibe_month?: string | null
+  vibe_amount?: number | null
+}
+
+export const QUOTA_COLUMNS = ["vibe_quotaid", "_vibe_salespersonid_value", "vibe_month", "vibe_amount"] as const
+
+/** A Quota's Salesperson lookup (to systemuser), as a navigation property. */
+export const QUOTA_SALESPERSON_NAVIGATION = "vibe_SalespersonId"
 
 /** The annotation (Note) columns the app reads. */
 export type NoteRow = Row & {
@@ -291,6 +306,7 @@ export interface DataverseClient {
   leads: TableClient<LeadRow>
   opportunities: TableClient<OpportunityRow>
   products: TableClient<ProductRow>
+  quotas: TableClient<QuotaRow>
   notes: TableClient<NoteRow>
   tasks: TableClient<ActivityRow>
   phoneCalls: TableClient<PhoneCallRow>

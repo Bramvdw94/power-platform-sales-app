@@ -1,4 +1,4 @@
-import { toDateOnly, type DateOnly, type Timestamp, type User } from "@/sales"
+import { quotaMonths, toDateOnly, type DateOnly, type Timestamp, type User } from "@/sales"
 import type { InMemoryData } from "./store"
 
 // A small fixed data set for tests and local development, mirroring the
@@ -48,8 +48,15 @@ export function createSeedData(today: DateOnly): InMemoryData {
   const daysAgo = (n: number) => at(addDays(today, -n))
   const inDays = (n: number) => addDays(today, n)
 
+  const [thisMonth, nextMonth] = quotaMonths(today, 2)
   return {
     users: Object.values(SEED_USERS),
+    quotas: [
+      { id: "quota-adele-1", salespersonId: adele.id, month: thisMonth, amount: 40000 },
+      { id: "quota-adele-2", salespersonId: adele.id, month: nextMonth, amount: 45000 },
+      { id: "quota-alex-1", salespersonId: alex.id, month: thisMonth, amount: 30000 },
+      { id: "quota-megan-1", salespersonId: megan.id, month: thisMonth, amount: 20000 },
+    ],
     accounts: [
       { id: A.tailwind, name: "Tailwind Traders", website: "https://tailwind.example", city: "Utrecht", country: "Netherlands", ownerId: adele.id, createdOn: daysAgo(120) },
       { id: A.fabrikam, name: "Fabrikam NV", website: "https://fabrikam.example", city: "Antwerpen", country: "Belgium", ownerId: alex.id, createdOn: daysAgo(90) },

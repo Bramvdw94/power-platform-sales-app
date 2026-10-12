@@ -1,9 +1,11 @@
 import { SalesRuleError, throwIfFieldErrors, type FieldErrors } from "./errors"
 import { isDateOnly } from "./dates"
+import { defaultForecastCategory } from "./forecast"
 import {
   LOST_REASONS,
   OPEN_STAGES,
   type DateOnly,
+  type ForecastCategory,
   type Id,
   type LostReason,
   type OpenStage,
@@ -37,11 +39,11 @@ export function isValidProbability(value: number): boolean {
   return Number.isInteger(value) && value >= 0 && value <= 100
 }
 
-export type StageChange = Pick<Opportunity, "stage" | "probability">
+export type StageChange = Pick<Opportunity, "stage" | "probability"> & { forecastCategory: ForecastCategory }
 
 /**
  * Moving an open Opportunity to another open Stage: forward, back or skipping.
- * The Probability resets to the new Stage's default.
+ * The Probability and the Forecast category reset to the new Stage's defaults.
  */
 export function changeStage(opportunity: Pick<Opportunity, "stage">, to: Stage): StageChange {
   if (!isOpenStage(opportunity.stage)) {
@@ -50,7 +52,7 @@ export function changeStage(opportunity: Pick<Opportunity, "stage">, to: Stage):
   if (!isOpenStage(to)) {
     throw new SalesRuleError("Closed Won and Closed Lost are reached only by closing the Opportunity.")
   }
-  return { stage: to, probability: STAGE_DEFAULT_PROBABILITY[to] }
+  return { stage: to, probability: STAGE_DEFAULT_PROBABILITY[to], forecastCategory: defaultForecastCategory(to) }
 }
 
 export type CloseInput =
@@ -71,7 +73,7 @@ export type CloseInput =
 
 export type CloseChange = Pick<
   Opportunity,
-  "stage" | "probability" | "actualValue" | "closeDate" | "lostReason" | "lostComment" | "closedById"
+  "stage" | "probability" | "forecastCategory" | "actualValue" | "closeDate" | "lostReason" | "lostComment" | "closedById"
 >
 
 /** Close an open Opportunity as Closed Won or Closed Lost. */
@@ -94,6 +96,7 @@ export function closeOpportunity(
     return {
       stage: "closedWon",
       probability: STAGE_DEFAULT_PROBABILITY.closedWon,
+      forecastCategory: undefined,
       actualValue,
       closeDate,
       lostReason: undefined,
@@ -107,6 +110,7 @@ export function closeOpportunity(
   return {
     stage: "closedLost",
     probability: STAGE_DEFAULT_PROBABILITY.closedLost,
+    forecastCategory: undefined,
     actualValue: undefined,
     closeDate,
     lostReason: input.lostReason,
@@ -126,6 +130,7 @@ export function reopenOpportunity(opportunity: Pick<Opportunity, "stage">, to: S
   return {
     stage: to,
     probability: STAGE_DEFAULT_PROBABILITY[to],
+    forecastCategory: defaultForecastCategory(to),
     actualValue: undefined,
     closeDate: undefined,
     lostReason: undefined,

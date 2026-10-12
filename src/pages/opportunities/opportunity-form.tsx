@@ -9,13 +9,16 @@ import type { OpportunityUpdate } from "@/data/gateway"
 import { useGateway } from "@/hooks/use-gateway"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
 import { fieldErrorsOf } from "@/lib/errors"
-import { LEAD_SOURCE_LABELS, STAGE_LABELS } from "@/lib/format"
+import { FORECAST_CATEGORY_LABELS, LEAD_SOURCE_LABELS, STAGE_LABELS } from "@/lib/format"
 import { toPatch, type FormValues } from "@/lib/form"
 import { cn } from "@/lib/utils"
 import {
+  FORECAST_CATEGORIES,
   LEAD_SOURCES,
   OPEN_STAGES,
+  defaultForecastCategory,
   opportunityErrors,
+  type ForecastCategory,
   type LeadSource,
   type OpenStage,
   type Opportunity,
@@ -91,6 +94,7 @@ export function ChoiceField<T extends string>({
 }
 
 export const OPEN_STAGE_OPTIONS = OPEN_STAGES.map((s) => ({ value: s, label: STAGE_LABELS[s] }))
+const FORECAST_CATEGORY_OPTIONS = FORECAST_CATEGORIES.map((c) => ({ value: c, label: FORECAST_CATEGORY_LABELS[c] }))
 const LEAD_SOURCE_OPTIONS = LEAD_SOURCES.map((s) => ({ value: s, label: LEAD_SOURCE_LABELS[s] }))
 
 /**
@@ -112,6 +116,7 @@ export function NewOpportunityDialog({
   const [values, setValues] = useState<FormValues<"name" | "estimatedValue" | "expectedCloseDate">>({})
   const [company, setCompany] = useState<AccountChoice | null>(account)
   const [stage, setStage] = useState<OpenStage>("qualification")
+  const [forecastOverride, setForecastOverride] = useState<ForecastCategory | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const create = useMutation({
@@ -128,6 +133,7 @@ export function NewOpportunityDialog({
       setValues({})
       setCompany(account)
       setStage("qualification")
+      setForecastOverride(null)
       setErrors({})
       create.reset()
     }
@@ -140,6 +146,7 @@ export function NewOpportunityDialog({
       name: values.name?.trim() ?? "",
       accountId: company?.id ?? "",
       stage,
+      forecastCategory: forecastOverride ?? undefined,
       estimatedValue: toNumber(values.estimatedValue),
       expectedCloseDate: values.expectedCloseDate ?? "",
     }
@@ -167,8 +174,19 @@ export function NewOpportunityDialog({
             required
             value={stage}
             options={OPEN_STAGE_OPTIONS}
-            onChange={(value) => value && setStage(value)}
+            onChange={(value) => {
+              if (!value) return
+              setStage(value)
+              setForecastOverride(null)
+            }}
             error={errors.stage}
+          />
+          <ChoiceField
+            id="new-opportunity-forecast"
+            label="Forecast category"
+            value={forecastOverride ?? defaultForecastCategory(stage)}
+            options={FORECAST_CATEGORY_OPTIONS}
+            onChange={(value) => value && setForecastOverride(value)}
           />
           <TextFields idPrefix="new-opportunity" specs={VALUE_SPECS} values={values} errors={errors} onChange={onChange} />
           {create.isError && <FormAlert error={create.error} />}
@@ -206,6 +224,7 @@ export function EditOpportunityForm({ opportunity, onDone }: { opportunity: Oppo
     opportunity.primaryContactId ? { id: opportunity.primaryContactId, name: opportunity.primaryContactName ?? "" } : null,
   )
   const [leadSource, setLeadSource] = useState<LeadSource | "">(opportunity.leadSource ?? "")
+  const [forecast, setForecast] = useState<ForecastCategory | "">(opportunity.forecastCategory ?? "")
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const save = useMutation({
@@ -228,6 +247,7 @@ export function EditOpportunityForm({ opportunity, onDone }: { opportunity: Oppo
       estimatedValue: toNumber(values.estimatedValue),
       probability: toNumber(values.probability),
       leadSource,
+      ...(forecast && forecast !== opportunity.forecastCategory ? { forecastCategory: forecast } : {}),
     }
     const found = opportunityErrors({ ...patch, stage: "qualification", leadSource: undefined })
     setErrors(found)
@@ -245,6 +265,13 @@ export function EditOpportunityForm({ opportunity, onDone }: { opportunity: Oppo
         <ContactPicker id="edit-opportunity-contact" value={contact} onChange={setContact} />
       </FormField>
       <TextFields idPrefix="edit-opportunity" specs={EDIT_SPECS.slice(1, 4)} values={values} errors={errors} onChange={onChange} />
+      <ChoiceField
+        id="edit-opportunity-forecast"
+        label="Forecast category"
+        value={forecast}
+        options={FORECAST_CATEGORY_OPTIONS}
+        onChange={setForecast}
+      />
       <ChoiceField
         id="edit-opportunity-lead-source"
         label="Lead source"

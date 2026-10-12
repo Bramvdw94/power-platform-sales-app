@@ -68,6 +68,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "vibe_quotas": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "vibe_quotaid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "whoami": {
     "tableId": "",
     "version": "",

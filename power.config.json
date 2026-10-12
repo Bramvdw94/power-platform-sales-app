@@ -63,6 +63,11 @@
           "entitySetName": "vibe_products",
           "logicalName": "vibe_product",
           "isHidden": false
+        },
+        "quotas": {
+          "entitySetName": "vibe_quotas",
+          "logicalName": "vibe_quota",
+          "isHidden": false
         }
       },
       "environmentVariableName": ""

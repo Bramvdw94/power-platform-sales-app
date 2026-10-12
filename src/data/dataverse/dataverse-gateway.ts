@@ -26,12 +26,14 @@ import {
   type QualifyResult,
   type QualifyStep,
   type QualifySuggestions,
+  type QuotaQuery,
   type SalesGateway,
   type SearchResults,
   type TaskInput,
 } from "@/data/gateway"
 import {
   DISQUALIFY_REASONS,
+  FORECAST_CATEGORIES,
   ACCOUNT_TYPES,
   INDUSTRIES,
   LEAD_SOURCES,
@@ -52,7 +54,13 @@ import {
   matchesPipelineFilter,
   closeOpportunity,
   contactErrors,
+  defaultForecastCategory,
   defaultOpportunityName,
+  effectiveForecastCategory,
+  overrideForecastCategory,
+  quotaErrors,
+  quotaMonths,
+  requireCanSetQuota,
   disqualifyErrors,
   fullName,
   isLeadReadOnly,
@@ -85,6 +93,8 @@ import {
   type DateOnly,
   type ContactInput,
   type FieldErrors,
+  type ForecastCategory,
+  type Quota,
   type Id,
   type Lead,
   type LeadAction,
@@ -108,6 +118,7 @@ import {
 } from "@/sales"
 import {
   CONTACT_ACCOUNT_NAVIGATION,
+  QUOTA_SALESPERSON_NAVIGATION,
   LEAD_DISQUALIFIED_BY_NAVIGATION,
   OPPORTUNITY_NAVIGATION,
   RECORD_TABLES,
@@ -123,6 +134,7 @@ import {
   type OpportunityRow,
   type PhoneCallRow,
   type ProductRow,
+  type QuotaRow,
   type RowPage,
   type SystemUserRow,
   type TableClient,
@@ -314,6 +326,22 @@ export function toContact(row: ContactRow): Contact {
   }
 }
 
+/** Open Opportunities always have a Forecast category: the stored one, else the Stage's default. */
+function forecastCategoryOf(row: OpportunityRow): ForecastCategory | undefined {
+  const stage = fromChoice(STAGES, row.vibe_stage) ?? "qualification"
+  return effectiveForecastCategory({ stage, forecastCategory: fromChoice(FORECAST_CATEGORIES, row.vibe_forecastcategory) })
+}
+
+export function toQuota(row: QuotaRow): Quota {
+  return {
+    id: row.vibe_quotaid,
+    salespersonId: row._vibe_salespersonid_value ?? "",
+    salespersonName: lookupName(row, "vibe_salespersonid") ?? "",
+    month: (row.vibe_month ?? "").slice(0, 10),
+    amount: row.vibe_amount ?? 0,
+  }
+}
+
 export function toOpportunity(row: OpportunityRow): Opportunity {
   return {
     id: row.vibe_opportunityid,
@@ -324,6 +352,7 @@ export function toOpportunity(row: OpportunityRow): Opportunity {
     primaryContactName: lookupName(row, "vibe_primarycontactid"),
     stage: fromChoice(STAGES, row.vibe_stage) ?? "qualification",
     probability: row.vibe_probability ?? 0,
+    forecastCategory: forecastCategoryOf(row),
     estimatedValue: row.vibe_estimatedvalue ?? 0,
     expectedCloseDate: (row.vibe_expectedclosedate ?? "").slice(0, 10),
     nextStep: optional(row.vibe_nextstep),
@@ -949,6 +978,7 @@ export class DataverseSalesGateway implements SalesGateway {
               ...opportunityFields(draft),
               vibe_stage: toChoice(STAGES, draft.stage),
               vibe_probability: draft.probability,
+              vibe_forecastcategory: toChoice(FORECAST_CATEGORIES, draft.forecastCategory ?? defaultForecastCategory("qualification")),
               ...bind(OPPORTUNITY_NAVIGATION.originatingLead, "vibe_leads", lead.id),
             }),
           ),
@@ -984,6 +1014,7 @@ export class DataverseSalesGateway implements SalesGateway {
           ...opportunityFields(input),
           vibe_stage: toChoice(STAGES, input.stage),
           vibe_probability: input.probability ?? STAGE_DEFAULT_PROBABILITY[input.stage],
+          vibe_forecastcategory: toChoice(FORECAST_CATEGORIES, input.forecastCategory ?? defaultForecastCategory(input.stage)),
         }),
       ),
     )
@@ -995,6 +1026,7 @@ export class DataverseSalesGateway implements SalesGateway {
     if (isOpportunityReadOnly(current)) throw new GatewayError("invalid", "A closed Opportunity is read-only.")
     const next = { ...current, ...Object.fromEntries(Object.entries(update).filter(([, v]) => v !== undefined)) }
     invalid("The Opportunity cannot be saved.", opportunityErrors({ ...next, stage: current.stage } as OpportunityInput))
+    if (update.forecastCategory) rule(() => overrideForecastCategory(current, update.forecastCategory!))
     await this.call(() => this.client.opportunities.update(guid(id), fields(opportunityFields(update))))
     return this.readOpportunity(id)
   }
@@ -1006,6 +1038,7 @@ export class DataverseSalesGateway implements SalesGateway {
       this.client.opportunities.update(guid(id), {
         vibe_stage: toChoice(STAGES, change.stage),
         vibe_probability: change.probability,
+        vibe_forecastcategory: toChoice(FORECAST_CATEGORIES, change.forecastCategory),
       }),
     )
     return this.readOpportunity(id)
@@ -1029,6 +1062,54 @@ export class DataverseSalesGateway implements SalesGateway {
 
   private async readOpportunity(id: Id): Promise<Opportunity> {
     return toOpportunity(await this.call(() => this.client.opportunities.get(guid(id))))
+  }
+
+  // ---- Quotas ------------------------------------------------------------------
+
+  /** Dataverse returns only the rows the user may read: their own and their direct reports'. */
+  async listQuotas(query: QuotaQuery): Promise<Quota[]> {
+    const { user, directReports } = await this.getCurrentUser()
+    const people = query.scope === "me" ? [user.id] : teamMemberIds(user.id, [user, ...directReports])
+    const last = quotaMonths(query.from, query.months).at(-1) ?? query.from
+    const filter = [
+      `(${people.map((p) => `_vibe_salespersonid_value eq ${guid(p)}`).join(" or ")})`,
+      `vibe_month ge ${query.from}`,
+      `vibe_month le ${last}`,
+    ].join(" and ")
+    const page = await this.call(() =>
+      this.client.quotas.list({ filter, orderBy: ["vibe_month asc", "vibe_quotaid asc"], pageSize: RELATED_LIMIT }),
+    )
+    return page.rows.map(toQuota)
+  }
+
+  async setQuota(salespersonId: Id, month: DateOnly, amount: number): Promise<Quota> {
+    const { user, directReports } = await this.getCurrentUser()
+    const person = [user, ...directReports].find((u) => u.id.toLowerCase() === salespersonId.toLowerCase())
+    try {
+      requireCanSetQuota(user, person ?? { id: salespersonId, managerId: null, fullName: "that salesperson" })
+    } catch (error) {
+      if (error instanceof SalesRuleError) throw new GatewayError("forbidden", error.message)
+      throw error
+    }
+    invalid("The Quota cannot be saved.", quotaErrors({ month, amount }))
+    const [existing] = (
+      await this.call(() =>
+        this.client.quotas.list({
+          filter: `_vibe_salespersonid_value eq ${guid(salespersonId)} and vibe_month eq ${month}`,
+          pageSize: 1,
+        }),
+      )
+    ).rows
+    const row = existing
+      ? await this.call(() => this.client.quotas.update(existing.vibe_quotaid, { vibe_amount: amount }))
+      : await this.call(() =>
+          this.client.quotas.create({
+            ...bind(QUOTA_SALESPERSON_NAVIGATION, "systemusers", salespersonId),
+            vibe_month: month,
+            vibe_amount: amount,
+          }),
+        )
+    return { ...toQuota(row), salespersonId, salespersonName: person?.fullName ?? "", month, amount }
   }
 
   // ---- Ownership ---------------------------------------------------------------
@@ -1420,6 +1501,7 @@ function opportunityFields(input: OpportunityUpdate) {
   return {
     vibe_name: column(input.name),
     vibe_probability: input.probability,
+    vibe_forecastcategory: choiceColumn(FORECAST_CATEGORIES, input.forecastCategory),
     vibe_estimatedvalue: input.estimatedValue,
     vibe_expectedclosedate: column(input.expectedCloseDate),
     vibe_nextstep: column(input.nextStep),
@@ -1435,6 +1517,7 @@ function closeFields(change: CloseChange): Fields {
   return {
     vibe_stage: toChoice(STAGES, change.stage),
     vibe_probability: change.probability,
+    vibe_forecastcategory: choiceColumn(FORECAST_CATEGORIES, change.forecastCategory) ?? null,
     vibe_actualvalue: change.actualValue ?? null,
     vibe_closedate: change.closeDate ?? null,
     vibe_lostreason: choiceColumn(LOST_REASONS, change.lostReason) ?? null,

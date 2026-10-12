@@ -14,6 +14,7 @@ export * as TasksModel from './models/TasksModel';
 export * as Vibe_leadsModel from './models/Vibe_leadsModel';
 export * as Vibe_opportunitiesModel from './models/Vibe_opportunitiesModel';
 export * as Vibe_productsModel from './models/Vibe_productsModel';
+export * as Vibe_quotasModel from './models/Vibe_quotasModel';
 export * as WhoAmIModel from './models/WhoAmIModel';
 
 // Services
@@ -26,4 +27,5 @@ export * from './services/TasksService';
 export * from './services/Vibe_leadsService';
 export * from './services/Vibe_opportunitiesService';
 export * from './services/Vibe_productsService';
+export * from './services/Vibe_quotasService';
 export * from './services/WhoAmIService';

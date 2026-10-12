@@ -334,6 +334,35 @@ describe("Opportunities", () => {
     expect((await gateway.updateOpportunity(O.won, { nextStep: "Renegotiate" })).nextStep).toBe("Renegotiate")
   })
 
+  it("defaults the Forecast category from the Stage, on create and on Stage change", async () => {
+    const gateway = as(alex.id)
+    expect((await gateway.getOpportunity(O.proposal)).opportunity.forecastCategory).toBe("bestCase")
+    const created = await gateway.createOpportunity({
+      name: "Fabrikam NV - Support",
+      accountId: A.fabrikam,
+      stage: "negotiation",
+      estimatedValue: 1000,
+      expectedCloseDate: "2026-12-01",
+    })
+    expect(created.forecastCategory).toBe("commit")
+    expect((await gateway.changeStage(created.id, "needsAnalysis")).forecastCategory).toBe("pipeline")
+  })
+
+  it("keeps a Forecast category override until the Stage changes, and resets it on reopen", async () => {
+    const gateway = as(alex.id)
+    expect((await gateway.updateOpportunity(O.proposal, { forecastCategory: "omitted" })).forecastCategory).toBe("omitted")
+    expect((await gateway.updateOpportunity(O.proposal, { nextStep: "Call" })).forecastCategory).toBe("omitted")
+    expect((await gateway.changeStage(O.proposal, "negotiation")).forecastCategory).toBe("commit")
+    expect((await gateway.updateOpportunity(O.proposal, { forecastCategory: "omitted" })).forecastCategory).toBe("omitted")
+    const closed = await gateway.closeOpportunity(O.proposal, { outcome: "won" })
+    expect(closed.forecastCategory).toBeUndefined()
+    expect((await gateway.reopenOpportunity(O.proposal, "proposal")).forecastCategory).toBe("bestCase")
+  })
+
+  it("refuses a Forecast category on a closed Opportunity", async () => {
+    expect((await errorOf(as(alex.id).updateOpportunity(O.won, { forecastCategory: "commit" }))).code).toBe("invalid")
+  })
+
   it("does not let an update change the Stage", async () => {
     const update = { nextStep: "Call", stage: "closedWon" } as never
     expect((await as(alex.id).updateOpportunity(O.proposal, update)).stage).toBe("proposal")
@@ -510,5 +539,50 @@ describe("Products", () => {
     expect(await as(megan.id).retireProduct(products.consultingHour)).toMatchObject({ retired: true })
     expect((await as(adele.id).listProducts({ status: "active" })).items.map((p) => p.id)).not.toContain(products.consultingHour)
     expect(await as(adele.id).getProduct(products.consultingHour)).toMatchObject({ retired: true })
+  })
+})
+
+describe("Quotas", () => {
+  const from = "2026-10-01"
+
+  it("shows a salesperson only their own Quota", async () => {
+    const quotas = await as(adele.id).listQuotas({ scope: "myTeam", from, months: 6 })
+    expect(quotas.map((q) => [q.salespersonName, q.month, q.amount])).toEqual([
+      ["Adele Vance", "2026-10-01", 40000],
+      ["Adele Vance", "2026-11-01", 45000],
+    ])
+    expect(await as(diego.id).listQuotas({ scope: "me", from, months: 6 })).toEqual([])
+  })
+
+  it("shows a manager her own and her direct reports' Quotas, or just her own", async () => {
+    const team = await as(megan.id).listQuotas({ scope: "myTeam", from, months: 6 })
+    expect(new Set(team.map((q) => q.salespersonName))).toEqual(new Set(["Adele Vance", "Alex Wilber", "Megan Bowen"]))
+    const mine = await as(megan.id).listQuotas({ scope: "me", from, months: 6 })
+    expect(mine.map((q) => q.salespersonName)).toEqual(["Megan Bowen"])
+  })
+
+  it("limits the months shown", async () => {
+    expect(await as(adele.id).listQuotas({ scope: "me", from, months: 1 })).toHaveLength(1)
+    expect(await as(adele.id).listQuotas({ scope: "me", from: "2026-11-01", months: 6 })).toHaveLength(1)
+  })
+
+  it("lets a manager set a direct report's Quota, creating or changing the row", async () => {
+    const gateway = as(megan.id)
+    expect((await gateway.setQuota(adele.id, "2026-12-01", 50000)).amount).toBe(50000)
+    expect((await gateway.setQuota(adele.id, "2026-10-01", 41000)).amount).toBe(41000)
+    const adeles = await as(adele.id).listQuotas({ scope: "me", from, months: 6 })
+    expect(adeles.map((q) => [q.month, q.amount])).toEqual([["2026-10-01", 41000], ["2026-11-01", 45000], ["2026-12-01", 50000]])
+  })
+
+  it("refuses to set your own Quota, a peer's, or an outsider's", async () => {
+    expect((await errorOf(as(megan.id).setQuota(megan.id, "2026-10-01", 1))).code).toBe("forbidden")
+    expect((await errorOf(as(adele.id).setQuota(adele.id, "2026-10-01", 1))).code).toBe("forbidden")
+    expect((await errorOf(as(alex.id).setQuota(adele.id, "2026-10-01", 1))).code).toBe("forbidden")
+    expect((await errorOf(as(megan.id).setQuota(diego.id, "2026-10-01", 1))).code).toBe("forbidden")
+  })
+
+  it("refuses a month that is not the first, and a negative amount", async () => {
+    expect((await errorOf(as(megan.id).setQuota(adele.id, "2026-10-15", 1))).fieldErrors.month).toBeDefined()
+    expect((await errorOf(as(megan.id).setQuota(adele.id, "2026-10-01", -5))).fieldErrors.amount).toBeDefined()
   })
 })

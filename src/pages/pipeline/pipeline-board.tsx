@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from "react"
-import { formatEuro, STAGE_LABELS } from "@/lib/format"
+import { FORECAST_CATEGORY_LABELS, formatEuro, STAGE_LABELS } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { OPEN_STAGES, isOpenStage, pipelineValue, type Opportunity, type Stage } from "@/sales"
 import { ExpectedCloseDate } from "../opportunities/expected-close-date"
@@ -142,6 +142,11 @@ function PipelineCard({
         <span className="font-semibold tabular-nums">{formatEuro(pipelineValue(opportunity))}</span>
         <span className="text-xs text-muted-foreground tabular-nums">{opportunity.probability}%</span>
       </div>
+      {opportunity.forecastCategory && (
+        <div className="text-xs text-muted-foreground" data-testid="forecast-category">
+          {FORECAST_CATEGORY_LABELS[opportunity.forecastCategory]}
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2 text-xs">
         <ExpectedCloseDate opportunity={opportunity} />
         <OwnerInitials name={opportunity.ownerName} />

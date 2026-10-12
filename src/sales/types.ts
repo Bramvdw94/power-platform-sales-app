@@ -79,6 +79,9 @@ export const OPEN_STAGES = ["qualification", "needsAnalysis", "proposal", "negot
 export type OpenStage = (typeof OPEN_STAGES)[number]
 export type ClosedStage = Exclude<Stage, OpenStage>
 
+export const FORECAST_CATEGORIES = ["pipeline", "bestCase", "commit", "omitted"] as const
+export type ForecastCategory = (typeof FORECAST_CATEGORIES)[number]
+
 export const LOST_REASONS = ["price", "choseCompetitor", "noBudget", "noDecision", "other"] as const
 export type LostReason = (typeof LOST_REASONS)[number]
 
@@ -144,6 +147,8 @@ export type Opportunity = Owned & {
   stage: Stage
   /** Percentage 0-100. Defaults from the Stage; the Owner may override it. */
   probability: number
+  /** How firmly the Owner counts on it. Open Opportunities only: defaults from the Stage, the Owner may override it. */
+  forecastCategory?: ForecastCategory
   /** In euros. */
   estimatedValue: number
   expectedCloseDate: DateOnly
@@ -220,9 +225,21 @@ export type OpportunityInput = {
   stage: OpenStage
   /** Defaults to the Stage's default Probability. */
   probability?: number
+  /** Defaults to the Stage's default Forecast category. */
+  forecastCategory?: ForecastCategory
   estimatedValue: number
   expectedCloseDate: DateOnly
   nextStep?: string
   description?: string
   leadSource?: LeadSource
+}
+
+/** What a salesperson is expected to win in one month, in euros. */
+export type Quota = {
+  id: Id
+  salespersonId: Id
+  salespersonName: string
+  /** Always the first day of the month. */
+  month: DateOnly
+  amount: number
 }

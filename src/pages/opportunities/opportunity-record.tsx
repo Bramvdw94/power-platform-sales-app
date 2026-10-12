@@ -9,7 +9,7 @@ import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/compone
 import { Button } from "@/components/ui/button"
 import { useGateway } from "@/hooks/use-gateway"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
-import { LEAD_SOURCE_LABELS, LOST_REASON_LABELS, STAGE_LABELS, formatDate, formatEuro } from "@/lib/format"
+import { FORECAST_CATEGORY_LABELS, LEAD_SOURCE_LABELS, LOST_REASON_LABELS, STAGE_LABELS, formatDate, formatEuro } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import {
   OPEN_STAGES,
@@ -74,6 +74,7 @@ export default function OpportunityRecordPage() {
         { label: "Account", value: accountLink },
         { label: "Stage", value: STAGE_LABELS[opportunity.stage] },
         { label: "Probability", value: `${opportunity.probability}%` },
+        ...(opportunity.forecastCategory ? [{ label: "Forecast category", value: FORECAST_CATEGORY_LABELS[opportunity.forecastCategory] }] : []),
         opportunity.stage === "closedWon"
           ? { label: "Actual value", value: formatEuro(opportunity.actualValue ?? 0) }
           : { label: "Estimated value", value: formatEuro(opportunity.estimatedValue) },
@@ -213,6 +214,7 @@ function OpportunityDetailList({ details, accountLink }: { details: OpportunityD
         { label: "Estimated value", value: formatEuro(opportunity.estimatedValue) },
         { label: "Expected close date", value: formatDate(opportunity.expectedCloseDate) },
         { label: "Probability", value: `${opportunity.probability}%` },
+        ...(opportunity.forecastCategory ? [{ label: "Forecast category", value: FORECAST_CATEGORY_LABELS[opportunity.forecastCategory] }] : []),
         { label: "Lead source", value: opportunity.leadSource && LEAD_SOURCE_LABELS[opportunity.leadSource] },
         { label: "Next step", value: opportunity.nextStep, wide: true },
         {
