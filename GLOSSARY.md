@@ -210,7 +210,7 @@ Tips text a Step shows the user on how to work the record at that point.
 _Avoid_: Help, instructions
 
 **Business rule**:
-An if/then rule a Process builder builds that applies to every record of one table (Lead, Opportunity, Account or Contact) whenever its condition holds, whichever Step the record is on, or whether it follows a Process at all.
+An if/then rule a Process builder builds that applies to every record of one table (Lead, Opportunity, Account or Contact) whenever its condition holds, whichever Step the record is on, or whether it follows a Process at all. A required or block save rule only stops a save that creates the record, changes a field the rule depends on, or moves its Step, Stage or status; Reassign, Close as lost, Disqualify, Switch Process and Move to latest version are never stopped by a Business rule.
 _Avoid_: Validation rule, policy, automation
 
 **Entry criteria**:
@@ -240,3 +240,7 @@ _Avoid_: Delete, deactivate, turn off
 **Process builder**:
 A person allowed to build and Publish Processes and Business rules. It is a right given separately from being a manager; everyone in sales can read the definitions.
 _Avoid_: Admin, designer, customizer
+
+**Engine error**:
+A Business rule or Action that could not run on a record, for example because a field it uses was removed. The save goes through without it, and the Process builder sees the error on the rule or Process to fix it.
+_Avoid_: Rule failure, crash, bug
