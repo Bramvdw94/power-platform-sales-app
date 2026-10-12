@@ -1,4 +1,4 @@
-import type { DisqualifyReason, LeadSource, LeadStatus, LostReason, Opportunity, RecordRef, RecordType, Stage } from "@/sales"
+import type { AccountType, DisqualifyReason, Industry, LeadSource, LeadStatus, LostReason, Opportunity, RecordRef, RecordType, Stage } from "@/sales"
 
 // Display formatting shared by list and record pages. Terms follow GLOSSARY.md.
 
@@ -7,6 +7,52 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   working: "Working",
   qualified: "Qualified",
   disqualified: "Disqualified",
+}
+
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  prospect: "Prospect",
+  customer: "Customer",
+  partner: "Partner",
+  reseller: "Reseller",
+  supplier: "Supplier",
+  competitor: "Competitor",
+  other: "Other",
+}
+
+export const INDUSTRY_LABELS: Record<Industry, string> = {
+  accounting: "Accounting",
+  agriculture: "Agriculture and Non-petrol Natural Resource Extraction",
+  broadcastingPublishing: "Broadcasting Printing and Publishing",
+  brokers: "Brokers",
+  buildingSupplyRetail: "Building Supply Retail",
+  businessServices: "Business Services",
+  consulting: "Consulting",
+  consumerServices: "Consumer Services",
+  design: "Design, Direction and Creative Management",
+  distributors: "Distributors, Dispatchers and Processors",
+  medicalOffices: "Doctor's Offices and Clinics",
+  durableManufacturing: "Durable Manufacturing",
+  eatingDrinking: "Eating and Drinking Places",
+  entertainmentRetail: "Entertainment Retail",
+  equipmentRental: "Equipment Rental and Leasing",
+  financial: "Financial",
+  foodTobacco: "Food and Tobacco Processing",
+  capitalIntensiveProcessing: "Inbound Capital Intensive Processing",
+  repairServices: "Inbound Repair and Services",
+  insurance: "Insurance",
+  legalServices: "Legal Services",
+  nonDurableRetail: "Non-Durable Merchandise Retail",
+  outboundConsumerService: "Outbound Consumer Service",
+  petrochemical: "Petrochemical Extraction and Distribution",
+  serviceRetail: "Service Retail",
+  sigAffiliations: "SIG Affiliations",
+  socialServices: "Social Services",
+  tradeContractors: "Special Outbound Trade Contractors",
+  specialtyRealty: "Specialty Realty",
+  transportation: "Transportation",
+  utilities: "Utility Creation and Distribution",
+  vehicleRetail: "Vehicle Retail",
+  wholesale: "Wholesale",
 }
 
 export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {

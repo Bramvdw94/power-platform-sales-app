@@ -6,6 +6,7 @@
 import type {
   Account,
   AccountInput,
+  AccountType,
   AccountSuggestions,
   Activity,
   CloseInput,
@@ -16,6 +17,7 @@ import type {
   DisqualifyReason,
   FieldErrors,
   Id,
+  Industry,
   Lead,
   LeadInput,
   LeadSource,
@@ -106,7 +108,11 @@ export type HomeData = {
 export type LeadUpdate = Partial<LeadInput>
 /** Blank strings clear a field; so does a blank Lead source. */
 export type OpportunityUpdate = Partial<Omit<OpportunityInput, "stage" | "leadSource">> & { leadSource?: LeadSource | "" }
-export type AccountUpdate = Partial<AccountInput>
+/** A blank Account type or Industry clears it. */
+export type AccountUpdate = Partial<Omit<AccountInput, "accountType" | "industry">> & {
+  accountType?: AccountType | ""
+  industry?: Industry | ""
+}
 export type ContactUpdate = Partial<ContactInput>
 
 export type DisqualifyInput = { reason?: DisqualifyReason; comment?: string }

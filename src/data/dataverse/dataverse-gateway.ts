@@ -30,6 +30,8 @@ import {
 } from "@/data/gateway"
 import {
   DISQUALIFY_REASONS,
+  ACCOUNT_TYPES,
+  INDUSTRIES,
   LEAD_SOURCES,
   LEAD_STATUSES,
   LOST_REASONS,
@@ -68,7 +70,9 @@ import {
   teamMemberIds,
   toDateOnly,
   type Account,
+  type AccountType,
   type AccountInput,
+  type Industry,
   type Activity,
   type CloseChange,
   type CloseInput,
@@ -230,6 +234,37 @@ export function toGatewayError(error: unknown): unknown {
   return error
 }
 
+/** Account type is Dataverse's standard Relationship type column, so its codes are the standard ones. */
+const ACCOUNT_TYPE_CODES: Record<AccountType, number> = {
+  prospect: 8,
+  customer: 3,
+  partner: 5,
+  reseller: 9,
+  supplier: 10,
+  competitor: 1,
+  other: 12,
+}
+
+function accountTypeOf(code: number | null | undefined): AccountType | undefined {
+  return ACCOUNT_TYPES.find((t) => ACCOUNT_TYPE_CODES[t] === code)
+}
+
+function accountTypeColumn(value: AccountType | "" | undefined): number | null | undefined {
+  if (value === undefined) return undefined
+  return value === "" ? null : (ACCOUNT_TYPE_CODES[value] ?? null)
+}
+
+/** Industry is Dataverse's standard Industry column; its code is the position in the standard list + 1. */
+function industryOf(code: number | null | undefined): Industry | undefined {
+  return code === null || code === undefined ? undefined : INDUSTRIES[code - 1]
+}
+
+function industryColumn(value: Industry | "" | undefined): number | null | undefined {
+  if (value === undefined) return undefined
+  const index = value === "" ? -1 : INDUSTRIES.indexOf(value)
+  return index < 0 ? null : index + 1
+}
+
 export function toAccount(row: AccountRow): Account {
   return {
     id: row.accountid,
@@ -241,6 +276,8 @@ export function toAccount(row: AccountRow): Account {
     postcode: optional(row.address1_postalcode),
     country: optional(row.address1_country),
     description: optional(row.description),
+    accountType: accountTypeOf(row.customertypecode),
+    industry: industryOf(row.industrycode),
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
@@ -327,6 +364,8 @@ const ACCOUNT_SORT: Partial<Record<keyof Account, string>> = {
   city: "address1_city",
   postcode: "address1_postalcode",
   country: "address1_country",
+  accountType: "customertypecode",
+  industry: "industrycode",
   ownerName: "_ownerid_value",
   createdOn: "createdon",
 }
@@ -1205,7 +1244,7 @@ export function toPhoneCall(row: PhoneCallRow, record?: RecordRef): PhoneCall | 
   }
 }
 
-function accountFields(input: Partial<AccountInput>) {
+function accountFields(input: Partial<AccountInput> | AccountUpdate) {
   return {
     name: column(input.name),
     websiteurl: column(input.website),
@@ -1215,6 +1254,8 @@ function accountFields(input: Partial<AccountInput>) {
     address1_postalcode: column(input.postcode),
     address1_country: column(input.country),
     description: column(input.description),
+    customertypecode: accountTypeColumn(input.accountType),
+    industrycode: industryColumn(input.industry),
   }
 }
 

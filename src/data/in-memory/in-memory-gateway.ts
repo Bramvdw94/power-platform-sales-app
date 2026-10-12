@@ -291,7 +291,7 @@ export class InMemorySalesGateway implements SalesGateway {
   async updateAccount(id: Id, update: AccountUpdate): Promise<Account> {
     const row = this.accountRow(id)
     this.requireEdit(row.ownerId)
-    const next = withoutBlanks({ ...row, ...defined(clone(update)) })
+    const next = withoutBlanks({ ...row, ...defined(clone(update)) }) as AccountRow
     invalid("The Account cannot be saved.", accountErrors(next))
     this.store.accounts.set(id, next)
     return this.toAccount(next)
