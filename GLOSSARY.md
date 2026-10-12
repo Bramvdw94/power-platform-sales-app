@@ -89,6 +89,28 @@ _Avoid_: Disqualify reason
 All open Opportunities, viewed by stage.
 _Avoid_: Funnel
 
+### Activities
+
+**Activity**:
+Something a salesperson recorded or planned against a Lead, Opportunity, Account or Contact: a Note, a Task or a Phone Call.
+_Avoid_: Interaction, touchpoint
+
+**Note**:
+Free text kept on a record for later reference.
+_Avoid_: Comment, memo
+
+**Task**:
+A to-do with a due date, open until it is completed.
+_Avoid_: Reminder, follow-up
+
+**Phone Call**:
+A call made or received, logged after it happened, or planned for later.
+_Avoid_: Call log
+
+**Related activity**:
+An Activity shown on an Account although it belongs to another record: one of the Account's current Contacts, one of its Opportunities, or the Lead such an Opportunity was qualified from.
+_Avoid_: Rollup, inherited activity
+
 ### People
 
 **Owner**:
