@@ -79,10 +79,10 @@ ENGINE_MANAGE = {
     for verb in ["Create", "Write", "Delete", "Append", "AppendTo"]
 }
 ENGINE_ERRORS = {"prvReadvibe_EngineError": GLOBAL}
-# Switch Process needs Write on the record, and v1's contract is that a manager has no reach
-# outside their team (security_check.py), so the Process Builder role does not widen Write:
-# a builder switches the records they can already write. Records of people outside their team
-# need a decision (story 31, 66); see issue #94.
+# Switch Process on any record (spec #91, Security summary; stories 31 and 66), including
+# Move to latest version and the bulk switch for a retired Process, writes other people's
+# Leads and Opportunities. So a Process builder has Write on all of them (Bram, 2026-10-13).
+SWITCH_ANY_RECORD = {"prvWritevibe_Lead": GLOBAL, "prvWritevibe_Opportunity": GLOBAL}
 
 # Privileges beyond the spec, each proven necessary by security_check.py or a
 # real call. name -> (depth, why).
@@ -141,7 +141,7 @@ ROLES = {
     # Megan in the demo (#94). Holds only what Salesperson lacks; she keeps reading
     # everything through Salesperson.
     "SalesApp Process Builder": {
-        "privileges": {**ENGINE_MANAGE, **ENGINE_ERRORS, **PLATFORM},
+        "privileges": {**ENGINE_MANAGE, **ENGINE_ERRORS, **SWITCH_ANY_RECORD, **PLATFORM},
         "users": ["Megan Bowen"],
     },
 }

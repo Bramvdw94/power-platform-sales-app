@@ -21,6 +21,8 @@
     <RolePrivilege name="prvReadvibe_EngineError" level="Global" />
     <RolePrivilege name="prvWriteSharePointData" level="Global" />
     <RolePrivilege name="prvWritevibe_BusinessRule" level="Global" />
+    <RolePrivilege name="prvWritevibe_Lead" level="Global" />
+    <RolePrivilege name="prvWritevibe_Opportunity" level="Global" />
     <RolePrivilege name="prvWritevibe_Process" level="Global" />
     <RolePrivilege name="prvWritevibe_ProcessVersion" level="Global" />
   </RolePrivileges>

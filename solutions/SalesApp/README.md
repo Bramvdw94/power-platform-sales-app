@@ -114,10 +114,9 @@ the shared cases in `process-engine/cases` (the TypeScript engine runs the same 
 - **Fails open:** a rule or Action the engine can't run is skipped and a `vibe_EngineError`
   row says why. A rejection (Gate, required, read-only, block save, Switch Process) comes back
   as an ordinary plug-in error with the message the app shows.
-- **Roles:** Salesperson reads definitions; **SalesApp Process Builder** (Megan) writes them
-  and reads Engine errors. The role does not widen Write on Leads and Opportunities, so a
-  builder switches the Process of records they can already write (their own and their
-  reports'). Records of people outside the team need a decision before the bulk Switch.
+- **Roles:** Salesperson reads definitions; **SalesApp Process Builder** (Megan) writes them,
+  reads Engine errors and has Write on all Leads and Opportunities, so Switch Process, Move to
+  latest version and the bulk switch work on any record (spec #91).
 - **One package:** all plug-ins ship in one package, `vibe_SalesApp.Plugins`. A push replaces
   the whole package, so rebase on main before pushing, and switch the steps off and on
   afterwards (`register_plugin_package.py` does) or users hit `missing prvReadPluginType`.
