@@ -13,8 +13,12 @@ import {
   PhonecallsService,
   SystemusersService,
   TasksService,
+  EnvironmentvariabledefinitionsService,
+  EnvironmentvariablevaluesService,
   Vibe_leadsService,
   Vibe_opportunitiesService,
+  Vibe_processesService,
+  Vibe_processversionsService,
   Vibe_productlinesService,
   Vibe_productsService,
   Vibe_quotasService,
@@ -28,6 +32,10 @@ import type { IGetAllOptions } from "@/generated/models/CommonModels"
 import type { Id } from "@/sales"
 import {
   ACCOUNT_COLUMNS,
+  ENVIRONMENT_VARIABLE_DEFINITION_COLUMNS,
+  ENVIRONMENT_VARIABLE_VALUE_COLUMNS,
+  PROCESS_COLUMNS,
+  PROCESS_VERSION_COLUMNS,
   CONTACT_COLUMNS,
   LEAD_COLUMNS,
   NOTE_COLUMNS,
@@ -142,6 +150,10 @@ export function createGeneratedClient(): DataverseClient {
     quoteLines: table(Vibe_quotelinesService, "vibe_quoteline", QUOTE_LINE_COLUMNS),
     quoteTemplates: table(Vibe_quotetemplatesService, "vibe_quotetemplate", QUOTE_TEMPLATE_COLUMNS),
     quoteSettings: table(Vibe_quotesettingsesService, "vibe_quotesettings", QUOTE_SETTINGS_COLUMNS),
+    processes: table(Vibe_processesService, "vibe_process", PROCESS_COLUMNS),
+    processVersions: table(Vibe_processversionsService, "vibe_processversion", PROCESS_VERSION_COLUMNS),
+    environmentVariableDefinitions: table(EnvironmentvariabledefinitionsService, "environmentvariabledefinition", ENVIRONMENT_VARIABLE_DEFINITION_COLUMNS),
+    environmentVariableValues: table(EnvironmentvariablevaluesService, "environmentvariablevalue", ENVIRONMENT_VARIABLE_VALUE_COLUMNS),
 
     async uploadQuotePdf(quoteId, fileName, bytes) {
       unwrap(await getClient(dataSourcesInfo).uploadFileToRecord(QUOTES_SOURCE, quoteId, QUOTE_PDF_COLUMN, fileName, bytes), "Quote PDF upload")

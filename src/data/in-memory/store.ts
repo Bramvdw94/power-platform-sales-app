@@ -1,3 +1,4 @@
+import type { BusinessRuleRow, ProcessRow, ProcessVersionRow } from "@/sales/engine"
 import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, ProductLine, Quota, Quote, QuoteLine, QuoteSettings, QuoteTemplate, User } from "@/sales"
 
 // What the in-memory store keeps: records without the display names that
@@ -27,6 +28,9 @@ export type InMemoryData = {
   quoteLines?: QuoteLine[]
   quoteTemplates?: QuoteTemplate[]
   quoteSettings?: QuoteSettings
+  processes?: ProcessRow[]
+  processVersions?: ProcessVersionRow[]
+  businessRules?: BusinessRuleRow[]
 }
 
 /** An email the in-memory gateway "sent": tests read these instead of a mailbox. */
@@ -50,6 +54,11 @@ export class InMemorySalesStore {
   readonly quotePdfs = new Map<Id, Uint8Array>()
   readonly sentEmails: SentEmail[] = []
   quoteSettings: QuoteSettings
+  readonly processes: ProcessRow[]
+  readonly processVersions: ProcessVersionRow[]
+  readonly businessRules: BusinessRuleRow[]
+  /** The kill switch: false turns Processes and Business rules off, so records behave as in v1. */
+  engineEnabled = true
   private sequence = 0
 
   constructor(data: InMemoryData) {
@@ -67,6 +76,9 @@ export class InMemorySalesStore {
     for (const row of copy.quoteLines ?? []) this.quoteLines.set(row.id, row)
     for (const row of copy.quoteTemplates ?? []) this.quoteTemplates.set(row.id, row)
     this.quoteSettings = copy.quoteSettings ?? EMPTY_QUOTE_SETTINGS
+    this.processes = copy.processes ?? []
+    this.processVersions = copy.processVersions ?? []
+    this.businessRules = copy.businessRules ?? []
   }
 
   /** The next Quote number: Q-00001, then one more than the highest in use. */

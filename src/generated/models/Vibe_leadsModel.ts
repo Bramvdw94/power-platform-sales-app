@@ -46,6 +46,7 @@ export interface Vibe_leadsBase {
   timezoneruleversionnumber?: number;
   utcconversiontimezonecode?: number;
   vibe_company: string;
+  vibe_currentstep?: string;
   vibe_description?: string;
   "vibe_DisqualifiedBy@odata.bind"?: string;
   vibe_disqualifiedon?: string;
@@ -60,6 +61,8 @@ export interface Vibe_leadsBase {
   vibe_leadstatus: Vibe_leadsvibe_leadstatus;
   vibe_name: string;
   vibe_phone?: string;
+  "vibe_ProcessVersionId@odata.bind"?: string;
+  vibe_stepenteredon?: string;
   vibe_website?: string;
 }
 
@@ -87,6 +90,7 @@ export interface Vibe_leads extends Vibe_leadsBase {
   vibe_disqualifyreasonname?: string;
   vibe_leadsourcename?: string;
   vibe_leadstatusname?: string;
+  vibe_processversionidname?: string;
   createdby?: object;
   _createdby_value?: string;
   createdonbehalfby?: object;
@@ -103,4 +107,6 @@ export interface Vibe_leads extends Vibe_leadsBase {
   _owninguser_value?: string;
   vibe_disqualifiedby?: object;
   _vibe_disqualifiedby_value?: string;
+  vibe_processversionid?: object;
+  _vibe_processversionid_value?: string;
 }

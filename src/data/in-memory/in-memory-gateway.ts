@@ -51,6 +51,10 @@ import {
   suggestAccounts,
   suggestContacts,
   toDateOnly,
+  toEngineRecord,
+  activityRelated,
+  opportunityParents,
+  opportunityRelated,
   type Account,
   type AccountInput,
   type Activity,
@@ -89,6 +93,7 @@ import {
   type Task,
   type User,
 } from "@/sales"
+import { evaluateSave, type EngineRecord, type ProcessTable } from "@/sales/engine"
 import {
   GatewayError,
   QualifyError,
@@ -111,6 +116,7 @@ import {
   type ProductListQuery,
   type ProductUpdate,
   type PhoneCallInput,
+  type ProcessDefinitions,
   type QuoteDetails,
   type SendQuoteInput,
   type QualifyInput,
@@ -322,6 +328,50 @@ export class InMemorySalesGateway implements SalesGateway {
         .map((o) => this.toOpportunity(o)),
       canEdit: this.mayEdit(contact.ownerId),
     }
+  }
+
+  // ---- Processes --------------------------------------------------------------
+
+  async getProcessDefinitions(table: ProcessTable): Promise<ProcessDefinitions> {
+    const processes = this.store.processes.filter((p) => p.table === table && p.latestVersionId)
+    const ids = new Set(processes.map((p) => p.id))
+    return clone({
+      engineEnabled: this.store.engineEnabled,
+      processes,
+      versions: this.store.processVersions.filter((v) => ids.has(v.processId)),
+    })
+  }
+
+  async moveStep(record: RecordRef, stepId: string): Promise<void> {
+    if (record.type === "lead") {
+      const row = this.leadRow(record.id)
+      this.requireEdit(row.ownerId)
+      const step = this.stepOf(row.processVersionId, stepId)
+      this.saveLead({ ...row, currentStepId: step.id, status: step.mapsTo as LeadRow["status"] })
+    } else if (record.type === "opportunity") {
+      const row = this.opportunityRow(record.id)
+      this.requireEdit(row.ownerId)
+      const step = this.stepOf(row.processVersionId, stepId)
+      const stage = step.mapsTo as OpenStage
+      this.saveOpportunity({ ...row, currentStepId: step.id, ...(stage !== row.stage ? rule(() => changeStage(row, stage)) : {}) })
+    } else {
+      throw new GatewayError("invalid", "Only Leads and Opportunities follow a Process.")
+    }
+  }
+
+  async switchProcess(record: RecordRef, processVersionId: Id | null): Promise<void> {
+    // Who may switch (the Owner's manager or a Process builder) is the engine's call, not the Owner-or-manager rule.
+    if (record.type === "lead") this.saveLead({ ...this.leadRow(record.id), processVersionId: processVersionId ?? undefined })
+    else if (record.type === "opportunity") this.saveOpportunity({ ...this.opportunityRow(record.id), processVersionId: processVersionId ?? undefined })
+    else throw new GatewayError("invalid", "Only Leads and Opportunities follow a Process.")
+  }
+
+  private stepOf(versionId: Id | undefined, stepId: string) {
+    const version = this.store.processVersions.find((v) => v.id === versionId)
+    if (!version) throw new GatewayError("invalid", "This record doesn't follow a Process.")
+    const step = version.definition.steps.find((s) => s.id === stepId)
+    if (!step) throw new GatewayError("invalid", "That Step isn't part of this Process.")
+    return step
   }
 
   // ---- Products -----------------------------------------------------------------
@@ -729,8 +779,7 @@ export class InMemorySalesGateway implements SalesGateway {
   async createLead(input: LeadInput): Promise<Lead> {
     invalid("The Lead cannot be saved.", leadErrors(input))
     const row: LeadRow = { ...clone(input), status: "notContacted", ...this.newOwned("lead") }
-    this.store.leads.set(row.id, row)
-    return this.toLead(row)
+    return this.saveLead(row)
   }
 
   async updateLead(id: Id, update: LeadUpdate): Promise<Lead> {
@@ -739,8 +788,7 @@ export class InMemorySalesGateway implements SalesGateway {
     if (isLeadReadOnly(row)) throw new GatewayError("invalid", `A ${row.status} Lead is read-only.`)
     const next = withoutBlanks({ ...row, ...defined(clone(update)) })
     invalid("The Lead cannot be saved.", leadErrors(next))
-    this.store.leads.set(id, next)
-    return this.toLead(next)
+    return this.saveLead(next)
   }
 
   async setLeadStatus(id: Id, status: "notContacted" | "working"): Promise<Lead> {
@@ -801,6 +849,8 @@ export class InMemorySalesGateway implements SalesGateway {
       "The Opportunity details are incomplete.",
       opportunityErrors({ ...input.opportunity, accountId: "chosen in the dialog", stage: "qualification" }),
     )
+    // A Lead on a Process can only be qualified from its last Step; check before creating anything.
+    this.runEngine("lead", lead, { ...lead, status: "qualified" })
 
     // Separate writes, ordered so the Lead is marked Qualified last. A failure
     // in between reports the step and what was already created.
@@ -834,7 +884,7 @@ export class InMemorySalesGateway implements SalesGateway {
       if (existing) return existing.id
       const draft = newOpportunityFromLead(lead, { accountId, primaryContactId: contactId }, input.opportunity)
       const row: OpportunityRow = { ...draft, id: this.store.newId("opp"), createdOn: this.now().toISOString() }
-      this.store.opportunities.set(row.id, row)
+      this.saveOpportunity(row)
       created.opportunityId = row.id
       return row.id
     })
@@ -858,8 +908,7 @@ export class InMemorySalesGateway implements SalesGateway {
       forecastCategory: input.forecastCategory ?? defaultForecastCategory(input.stage),
       ...this.newOwned("opp"),
     }
-    this.store.opportunities.set(row.id, row)
-    return this.toOpportunity(row)
+    return this.saveOpportunity(row)
   }
 
   async updateOpportunity(id: Id, update: OpportunityUpdate): Promise<Opportunity> {
@@ -1066,13 +1115,85 @@ export class InMemorySalesGateway implements SalesGateway {
   }
 
   private saveLead(row: LeadRow): Lead {
-    this.store.leads.set(row.id, row)
-    return this.toLead(row)
+    const before = this.store.leads.get(row.id) ?? null
+    const saved = this.runEngine("lead", before, row, true)
+    this.store.leads.set(saved.id, saved)
+    return this.toLead(saved)
   }
 
   private saveOpportunity(row: OpportunityRow): Opportunity {
-    this.store.opportunities.set(row.id, row)
-    return this.toOpportunity(row)
+    const before = this.store.opportunities.get(row.id) ?? null
+    const saved = this.runEngine("opportunity", before, row, true)
+    this.store.opportunities.set(saved.id, saved)
+    return this.toOpportunity(saved)
+  }
+
+  /**
+   * What the plug-in does on Dataverse: picks the Process of a new record, checks Gates on a Step move, makes the
+   * Stage or Lead status follow the Step, and creates Action Tasks, all in the save. A refusal throws and stores nothing.
+   */
+  private runEngine<R extends LeadRow | OpportunityRow>(table: ProcessTable, before: R | null, next: R, createTasks = false): R {
+    const store = this.store
+    if (!store.engineEnabled || (store.processes.length === 0 && store.businessRules.length === 0)) return next
+    const keys = new Set([...Object.keys(next), ...Object.keys(before ?? {})])
+    const change: EngineRecord = {}
+    for (const key of keys) {
+      const value = (next as Record<string, unknown>)[key] as EngineRecord[string]
+      if (!before || (before as Record<string, unknown>)[key] !== value) change[key] = value
+    }
+    const recordId = next.id
+    const activities = [...store.activities.values()].filter((a) => a.regarding.type === table && a.regarding.id === recordId)
+    const toActivities = activities.map((a) => this.toActivity(a))
+    let related, parents
+    if (table === "opportunity") {
+      const row = next as OpportunityRow
+      related = opportunityRelated(toActivities, this.linesOf(recordId), this.quotesOf(recordId))
+      const account = store.accounts.get(row.accountId)
+      const contact = row.primaryContactId ? store.contacts.get(row.primaryContactId) : undefined
+      const lead = row.originatingLeadId ? store.leads.get(row.originatingLeadId) : undefined
+      parents = opportunityParents({
+        account: account && this.toAccount(account),
+        primaryContact: contact && this.toContact(contact),
+        originatingLead: lead && this.toLead(lead),
+      })
+    } else {
+      related = activityRelated(toActivities)
+    }
+    const me = this.user(this.userId)
+    const outcome = evaluateSave({
+      table,
+      before: before ? toEngineRecord(before) : null,
+      change,
+      related,
+      parents,
+      caller: { id: this.userId, isProcessBuilder: me.isProcessBuilder },
+      users: Object.fromEntries(store.users.map((u) => [u.id, { managerId: u.managerId }])),
+      now: this.now().toISOString(),
+      processes: store.processes,
+      versions: store.processVersions,
+      rules: store.businessRules.filter((r) => r.definition.table === table),
+    })
+    if (!outcome.allowed) throw new GatewayError("invalid", outcome.rejection?.message ?? "The record cannot be saved.")
+    const final = { ...next, ...outcome.changes } as Record<string, unknown>
+    for (const key of Object.keys(final)) if (final[key] === null || final[key] === undefined) delete final[key]
+    if (createTasks) {
+      for (const task of outcome.tasks) {
+        const regarding = { type: table, id: recordId } as RecordRef
+        this.addActivity({
+          kind: "task",
+          id: this.store.newId("act"),
+          regarding,
+          ownerId: task.ownerId,
+          createdOn: this.now().toISOString(),
+          subject: task.subject,
+          description: task.description,
+          dueDate: task.dueDate,
+          completed: false,
+          actionId: task.actionId,
+        })
+      }
+    }
+    return final as R
   }
 
   private page<T extends { ownerId: Id; createdOn: string }>(

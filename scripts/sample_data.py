@@ -23,7 +23,7 @@ the end import `security_check` (and through it `auth`) only when called.
 import json
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import ROUND_HALF_UP, Decimal
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -75,6 +75,10 @@ TABLES = [
     # The three starter templates and the settings row come from data/quote-templates.json (#102).
     Table("quoteTemplates", "qtpl-", "vibe_quotetemplate", "vibe_quotetemplates", "vibe_quotetemplateid", (0, 1), owned=False),
     Table("quoteSettings", "qset-", "vibe_quotesettings", "vibe_quotesettingses", "vibe_quotesettingsid", (0, 1), owned=False),
+    # The two starter Processes and their only version each come from data/processes.json (#95).
+    # A Process points at its latest version, so that lookup is written last (Record.after).
+    Table("processes", "proc-", "vibe_process", "vibe_processes", "vibe_processid", (0, 1), owned=False),
+    Table("processVersions", "procver-", "vibe_processversion", "vibe_processversions", "vibe_processversionid", (0, 1), owned=False),
     Table("accounts", "acc-", "account", "accounts", "accountid", (0, 1)),
     Table("contacts", "con-", "contact", "contacts", "contactid", (0, 1)),
     Table("leads", "lead-", "vibe_lead", "vibe_leads", "vibe_leadid", (0, 1)),
@@ -141,9 +145,29 @@ def load_quote_templates(path=QUOTE_TEMPLATES_PATH):
     return {"quoteTemplates": templates, "quoteSettings": [{"key": "qset-company", "createdDaysAgo": 0, **raw["settings"]}]}
 
 
+PROCESSES_PATH = Path(__file__).resolve().parent.parent / "data" / "processes.json"
+PROCESS_TABLES = ["lead", "opportunity", "account", "contact"]
+
+
+def load_processes(path=PROCESSES_PATH):
+    """The starter Processes and their versions, as sample-data sections with fixed keys."""
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))["processes"]
+    processes = [{
+        "key": p["id"], "createdDaysAgo": 0, "name": p["name"], "table": p["table"],
+        "priority": p["priority"], "isFallback": p["isFallback"], "latestVersion": p["versionId"],
+    } for p in raw]
+    versions = [{
+        "key": p["versionId"], "createdDaysAgo": 0, "name": f"{p['name']} v1", "process": p["id"],
+        "versionNumber": 1, "definition": p["definition"],
+    } for p in raw]
+    return {"processes": processes, "processVersions": versions}
+
+
 def load_data(path=DATA_PATH):
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     for section, rows in load_quote_templates().items():
+        data.setdefault(section, rows)
+    for section, rows in load_processes().items():
         data.setdefault(section, rows)
     return data
 
@@ -405,6 +429,34 @@ def validate(data):
             err(f"{quota['key']}: a second Quota for {person_month[0]} in month {person_month[1]}")
         seen_quotas.add(person_month)
 
+    versions = {v["key"]: v for v in data.get("processVersions", [])}
+    for v in versions.values():
+        if v.get("process") not in {p["key"] for p in data.get("processes", [])}:
+            err(f"{v['key']}: unknown process {v.get('process')!r}")
+    for proc in data.get("processes", []):
+        if proc.get("table") not in ("lead", "opportunity"):
+            err(f"{proc['key']}: a Process is for Leads or Opportunities, not {proc.get('table')!r}")
+        if proc.get("latestVersion") not in versions:
+            err(f"{proc['key']}: latestVersion {proc.get('latestVersion')!r} is not a known version")
+    for section, table, field, closed in (("leads", "lead", "status", ("qualified", "disqualified")), ("opportunities", "opportunity", "stage", ("closedWon", "closedLost"))):
+        for rec in data.get(section, []):
+            place = rec.get("process")
+            if place is None:
+                continue
+            version = versions.get(place.get("version"))
+            steps = {st["id"]: st for st in version["definition"]["steps"]} if version else {}
+            if not version or version["definition"]["table"] != table:
+                err(f"{rec['key']}: process version {place.get('version')!r} is not a {table} Process version")
+            elif place.get("step") not in steps:
+                err(f"{rec['key']}: step {place.get('step')!r} is not a Step of {place.get('version')}")
+            elif rec.get(field) in closed:
+                if place["step"] != version["definition"]["steps"][-1]["id"]:
+                    err(f"{rec['key']}: a closed record stays on its Process's last Step")
+            elif steps[place["step"]]["mapsTo"] != rec.get(field):
+                err(f"{rec['key']}: Step {place['step']!r} maps to {steps[place['step']]['mapsTo']}, not {rec.get(field)}")
+            if place.get("enteredDaysAgo", 0) > rec.get("createdDaysAgo", 0):
+                err(f"{rec['key']}: entered its Step before it was created")
+
     return errors
 
 
@@ -438,6 +490,7 @@ class Record:
     body: dict                        # fields written on create and update
     created_on: str                   # overriddencreatedon, create only
     final_state: tuple | None = None  # (statecode, statuscode) once everything is loaded
+    after: dict | None = None         # fields written once everything is loaded (lookups to records created later)
 
 
 class Clock:
@@ -522,6 +575,36 @@ def build_records(data, users, nav, clock):
             "vibe_emailmessage": st.get("emailMessage"),
         })
 
+    for proc in data.get("processes", []):
+        add("processes", proc, {
+            "vibe_name": proc["name"],
+            "vibe_tablechoice": choice(PROCESS_TABLES, proc["table"]),
+            "vibe_priority": proc["priority"],
+            "vibe_isfallback": bool(proc["isFallback"]),
+            "vibe_retired": False,
+        })
+        out[-1] = replace(out[-1], after=bind(nav["process.latestversion"], "vibe_processversions", proc["latestVersion"]))
+
+    for version in data.get("processVersions", []):
+        add("processVersions", version, {
+            "vibe_name": version["name"],
+            "vibe_versionnumber": version["versionNumber"],
+            "vibe_definition": json.dumps(version["definition"], separators=(",", ":")),
+            "vibe_publishedon": clock.moment(-version["createdDaysAgo"], 9),
+            **bind(nav["processversion.process"], "vibe_processes", version["process"]),
+        })
+
+    def on_process(rec, table):
+        """The Process version, Step and Step date of a record that follows a Process."""
+        place = rec.get("process")
+        if not place:
+            return {}
+        return {
+            **bind(nav[f"{table}.processversion"], "vibe_processversions", place["version"]),
+            "vibe_currentstep": place["step"],
+            "vibe_stepenteredon": clock.moment(-place.get("enteredDaysAgo", 0), 9),
+        }
+
     for acc in data["accounts"]:
         add("accounts", acc, {
             "name": acc["name"],
@@ -570,6 +653,7 @@ def build_records(data, users, nav, clock):
                 "vibe_disqualifiedon": clock.moment(-lead["disqualifiedDaysAgo"], 14),
                 **user_bind(nav["lead.disqualifiedby"], users[lead["disqualifiedBy"]]),
             })
+        body.update(on_process(lead, "lead"))
         # Qualified and Disqualified Leads are read-only: deactivated (spec #23).
         final = (1, 2) if status in ("qualified", "disqualified") else None
         add("leads", lead, body, final)
@@ -593,6 +677,7 @@ def build_records(data, users, nav, clock):
             "vibe_lostreason": choice(LOST_REASONS, opp["lostReason"]) if opp.get("lostReason") else None,
             "vibe_lostcomment": opp.get("lostComment"),
         }
+        body.update(on_process(opp, "opportunity"))
         if opp.get("primaryContact"):
             body.update(bind(nav["opportunity.primarycontact"], "contacts", opp["primaryContact"]))
         if opp.get("originatingLead"):
@@ -755,6 +840,10 @@ NAV_LOOKUPS = {
     "opportunity.primarycontact": ("vibe_opportunity", "vibe_primarycontactid", "contact"),
     "opportunity.originatinglead": ("vibe_opportunity", "vibe_originatingleadid", "vibe_lead"),
     "opportunity.closedby": ("vibe_opportunity", "vibe_closedby", "systemuser"),
+    "lead.processversion": ("vibe_lead", "vibe_processversionid", "vibe_processversion"),
+    "opportunity.processversion": ("vibe_opportunity", "vibe_processversionid", "vibe_processversion"),
+    "process.latestversion": ("vibe_process", "vibe_latestversionid", "vibe_processversion"),
+    "processversion.process": ("vibe_processversion", "vibe_processid", "vibe_process"),
     "quota.salesperson": ("vibe_quota", "vibe_salespersonid", "systemuser"),
     "quote.opportunity": ("vibe_quote", "vibe_opportunityid", "vibe_opportunity"),
     "quote.account": ("vibe_quote", "vibe_accountid", "account"),
@@ -785,6 +874,7 @@ def summary(data):
         f"{len(data['products'])} Products ({sum(bool(p.get('retired')) for p in data['products'])} retired)",
         f"{len(data['notes'])} Notes, {len(data['tasks'])} Tasks, {len(data['phoneCalls'])} Phone Calls",
         f"{len(data.get('quotas', []))} Quotas",
+        f"{len(data.get('processes', []))} starter Processes; {sum('process' in r for r in leads)} Leads and {sum('process' in r for r in opps)} Opportunities follow one",
     ]
 
 

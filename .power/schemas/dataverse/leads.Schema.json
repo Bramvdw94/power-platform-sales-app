@@ -312,6 +312,14 @@
           "required": true,
           "maxLength": 200
         },
+        "vibe_currentstep": {
+          "type": "string",
+          "title": "Current step",
+          "x-ms-dataverse-attribute": "vibe_currentstep",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "vibe_CurrentStep",
+          "maxLength": 100
+        },
         "vibe_description": {
           "type": "string",
           "title": "Description",
@@ -544,6 +552,29 @@
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "vibe_Phone",
           "maxLength": 50
+        },
+        "vibe_processversionid": {
+          "type": "string",
+          "title": "Process version",
+          "x-ms-dataverse-attribute": "vibe_processversionid",
+          "x-ms-dataverse-type": "LookupType",
+          "x-ms-schema-name": "vibe_ProcessVersionId"
+        },
+        "vibe_processversionidname": {
+          "type": "string",
+          "title": "vibe_processversionidname",
+          "x-ms-dataverse-attribute": "vibe_processversionidname",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "vibe_ProcessVersionIdName",
+          "x-ms-read-only": true,
+          "maxLength": 850
+        },
+        "vibe_stepenteredon": {
+          "type": "string",
+          "title": "Step entered on",
+          "x-ms-dataverse-attribute": "vibe_stepenteredon",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "vibe_StepEnteredOn"
         },
         "vibe_website": {
           "type": "string",

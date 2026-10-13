@@ -53,6 +53,8 @@ import type {
   User,
 } from "@/sales"
 
+import type { ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
+
 export type CurrentUser = {
   user: User
   /** Users whose Manager is the current user. "My team" = the user plus these. */
@@ -206,6 +208,17 @@ export type PhoneCallInput = {
 /** "me": my own Quota rows. "myTeam": mine and my direct reports'. */
 export type QuotaQuery = { scope: "me" | "myTeam"; from: DateOnly; months: number }
 
+/**
+ * The published Processes of a table, for the process bar. Every version a
+ * record might still sit on is included. When the kill switch is off
+ * `engineEnabled` is false and records behave as in v1.
+ */
+export type ProcessDefinitions = {
+  engineEnabled: boolean
+  processes: ProcessRow[]
+  versions: ProcessVersionRow[]
+}
+
 export interface SalesGateway {
   // People
   getCurrentUser(): Promise<CurrentUser>
@@ -258,6 +271,16 @@ export interface SalesGateway {
   /** Closing as lost sets the Opportunity's Sent Quotes to Rejected; reopening leaves Quotes as they are. */
   closeOpportunity(id: Id, input: CloseInput): Promise<Opportunity>
   reopenOpportunity(id: Id, stage: OpenStage): Promise<Opportunity>
+
+  // Processes: a record that follows a Process moves Step by Step; the engine checks the Gate and sets the Stage or Lead status.
+  getProcessDefinitions(table: ProcessTable): Promise<ProcessDefinitions>
+  /**
+   * Moves a Lead or Opportunity to a Step of its Process. Forward through the Gates of the Steps left behind
+   * (refused with a GatewayError naming the open checks), back without checks. Stage or Lead status follow the Step.
+   */
+  moveStep(record: RecordRef, stepId: string): Promise<void>
+  /** Switch Process: to another Process version, or none (null), landing on the Step that fits the current Stage or status. */
+  switchProcess(record: RecordRef, processVersionId: Id | null): Promise<void>
 
   // Products: everyone reads; only a Catalogue Manager creates, edits and retires. No delete.
   listProducts(query: ProductListQuery): Promise<Page<Product>>

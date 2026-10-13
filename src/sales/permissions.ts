@@ -35,3 +35,15 @@ export function isInView(view: ListView, ownerId: Id, userId: Id, users: OrgChar
       return true
   }
 }
+
+/**
+ * Only the Owner's manager and Process builders may Switch Process on a record.
+ * The Owner and peers may not: that would sidestep the team's Process.
+ */
+export function canSwitchProcess(
+  user: Pick<User, "id" | "isProcessBuilder">,
+  ownerId: Id,
+  directReports: ReadonlyArray<Pick<User, "id">>,
+): boolean {
+  return user.isProcessBuilder || directReports.some((r) => r.id === ownerId)
+}

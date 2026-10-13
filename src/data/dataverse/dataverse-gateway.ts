@@ -19,6 +19,7 @@ import {
   type NoteInput,
   type Page,
   type PhoneCallInput,
+  type ProcessDefinitions,
   type ProductListQuery,
   type ProductUpdate,
   QualifyError,
@@ -33,6 +34,7 @@ import {
   type SearchResults,
   type TaskInput,
 } from "@/data/gateway"
+import type { ProcessDefinition, ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
 import {
   DISQUALIFY_REASONS,
   FORECAST_CATEGORIES,
@@ -99,6 +101,7 @@ import {
   suggestContacts,
   teamMemberIds,
   toDateOnly,
+  type ProcessState,
   type Account,
   type AccountType,
   type AccountInput,
@@ -152,6 +155,7 @@ import {
   QUOTA_SALESPERSON_NAVIGATION,
   LEAD_DISQUALIFIED_BY_NAVIGATION,
   OPPORTUNITY_NAVIGATION,
+  PROCESS_VERSION_NAVIGATION,
   PRODUCT_LINE_NAVIGATION,
   QUOTE_LINE_NAVIGATION,
   QUOTE_NAVIGATION,
@@ -208,6 +212,7 @@ const ACTIVE = "statecode eq 0"
 export const SALESPERSON_ROLE = "SalesApp Salesperson"
 /** The security role that creates, edits and retires Products. */
 export const CATALOGUE_MANAGER_ROLE = "SalesApp Catalogue Manager"
+export const PROCESS_BUILDER_ROLE = "SalesApp Process Builder"
 
 const PIPELINE_VIEW: Record<PipelineOwnerFilter, ListView> = { mine: "my", myTeam: "myTeam", everyone: "all" }
 
@@ -285,6 +290,10 @@ function rule<T>(apply: () => T): T {
   }
 }
 
+/** What the process engine plug-in says when it stops a save, so a salesperson reads it without Dataverse's wrapping. */
+const ENGINE_REFUSAL =
+  /\d+ open checks? on “[^”]*”\.|A Lead on this Process can only be qualified from its last Step, “[^”]*”\.|Only the Owner's manager or a Process builder can switch the Process\.|A closed record (?:keeps its Process|can't move Step)\.|That Step isn't part of this Process\.|That Process version doesn't exist\.|No Step of this Process maps to [^.]*\./
+
 /**
  * Dataverse's refusals as GatewayErrors: a missing privilege is "forbidden"
  * (the record's Owner changed, or the user is neither Owner nor manager), a
@@ -293,6 +302,8 @@ function rule<T>(apply: () => T): T {
 export function toGatewayError(error: unknown): unknown {
   if (error instanceof GatewayError || !(error instanceof Error)) return error
   const message = error.message
+  const refusal = ENGINE_REFUSAL.exec(message)
+  if (refusal) return new GatewayError("invalid", refusal[0])
   if (/0x80040220|SecLib::|privilege|does not have permission|not have.*access/i.test(message)) {
     return new GatewayError("forbidden", message)
   }
@@ -388,6 +399,25 @@ export function toQuota(row: QuotaRow): Quota {
   }
 }
 
+const PROCESS_TABLE_CHOICE: Record<ProcessTable, number> = { lead: CHOICE_BASE, opportunity: CHOICE_BASE + 1 }
+
+function parseProcessDefinition(json: string | null | undefined): ProcessDefinition | undefined {
+  try {
+    const parsed = json ? (JSON.parse(json) as ProcessDefinition) : undefined
+    return parsed && Array.isArray(parsed.steps) ? parsed : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function processStateOf(row: LeadRow | OpportunityRow): ProcessState {
+  return {
+    processVersionId: optional(row._vibe_processversionid_value),
+    currentStepId: optional(row.vibe_currentstep),
+    stepEnteredOn: optional(row.vibe_stepenteredon),
+  }
+}
+
 export function toOpportunity(row: OpportunityRow): Opportunity {
   return {
     id: row.vibe_opportunityid,
@@ -411,6 +441,7 @@ export function toOpportunity(row: OpportunityRow): Opportunity {
     lostComment: optional(row.vibe_lostcomment),
     closedById: optional(row._vibe_closedby_value),
     closedByName: lookupName(row, "vibe_closedby"),
+    ...processStateOf(row),
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
@@ -434,6 +465,7 @@ export function toLead(row: LeadRow): Lead {
     disqualifyComment: optional(row.vibe_disqualifycomment),
     disqualifiedOn: optional(row.vibe_disqualifiedon),
     disqualifiedById: optional(row._vibe_disqualifiedby_value),
+    ...processStateOf(row),
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
@@ -668,6 +700,7 @@ export function toUser(row: SystemUserRow): User {
     // Role membership is read only by listSalespeople and for the current user; users read elsewhere are not checked.
     isSalesperson: false,
     isCatalogueManager: false,
+    isProcessBuilder: false,
     phone: optional(row.address1_telephone1),
   }
 }
@@ -695,15 +728,18 @@ export class DataverseSalesGateway implements SalesGateway {
 
   private async loadCurrentUser(): Promise<CurrentUser> {
     const userId = await this.client.whoAmI()
-    const [user, reports, catalogueManager] = await Promise.all([
+    const [user, reports, catalogueManager, processBuilder] = await Promise.all([
       this.client.getSystemUser(userId),
       this.client.listSystemUsers(`_parentsystemuserid_value eq ${guid(userId)} and isdisabled eq false`),
       this.client.listSystemUsers(
         `systemuserid eq ${guid(userId)} and systemuserroles_association/any(r:r/name eq ${text(CATALOGUE_MANAGER_ROLE)})`,
       ),
+      this.client.listSystemUsers(
+        `systemuserid eq ${guid(userId)} and systemuserroles_association/any(r:r/name eq ${text(PROCESS_BUILDER_ROLE)})`,
+      ),
     ])
     return {
-      user: { ...toUser(user), isCatalogueManager: catalogueManager.length > 0 },
+      user: { ...toUser(user), isCatalogueManager: catalogueManager.length > 0, isProcessBuilder: processBuilder.length > 0 },
       directReports: reports.map(toUser).sort((a, b) => a.fullName.localeCompare(b.fullName)),
     }
   }
@@ -907,6 +943,90 @@ export class DataverseSalesGateway implements SalesGateway {
     }
   }
 
+  // ---- Processes --------------------------------------------------------------
+  // The plug-in does the work on every write; the app only reads the published definitions
+  // (for the process bar) and writes the new Step or Process version.
+
+  async getProcessDefinitions(table: ProcessTable): Promise<ProcessDefinitions> {
+    const [engineEnabled, processRows] = await Promise.all([
+      this.engineEnabled(),
+      this.all(this.client.processes, `${ACTIVE} and vibe_tablechoice eq ${PROCESS_TABLE_CHOICE[table]}`, ["vibe_priority asc"]),
+    ])
+    const processes: ProcessRow[] = processRows
+      .filter((r) => r._vibe_latestversionid_value)
+      .map((r) => ({
+        id: r.vibe_processid,
+        name: r.vibe_name ?? "",
+        table,
+        priority: r.vibe_priority ?? 0,
+        isFallback: r.vibe_isfallback === true,
+        retired: r.vibe_retired === true,
+        latestVersionId: r._vibe_latestversionid_value ?? null,
+      }))
+    const versions: ProcessVersionRow[] = []
+    // Records may still sit on older versions; read every version of these Processes.
+    for (let i = 0; i < processes.length; i += TIMELINE_ID_CHUNK) {
+      const ids = processes.slice(i, i + TIMELINE_ID_CHUNK).map((p) => `_vibe_processid_value eq ${guid(p.id)}`)
+      const rows = await this.all(this.client.processVersions, ids.join(" or "), ["createdon asc"])
+      for (const row of rows) {
+        const definition = parseProcessDefinition(row.vibe_definition)
+        if (definition && row._vibe_processid_value) {
+          versions.push({ id: row.vibe_processversionid, processId: row._vibe_processid_value, definition })
+        }
+      }
+    }
+    return { engineEnabled, processes, versions }
+  }
+
+  /** The kill switch environment variable; missing or unreadable means on, as in the plug-in. */
+  private async engineEnabled(): Promise<boolean> {
+    try {
+      const [definition] = (
+        await this.client.environmentVariableDefinitions.list({ filter: `schemaname eq ${text("vibe_ProcessEngineEnabled")}`, pageSize: 1 })
+      ).rows
+      if (!definition) return true
+      const [current] = (
+        await this.client.environmentVariableValues.list({ filter: `_environmentvariabledefinitionid_value eq ${guid(definition.environmentvariabledefinitionid)}`, pageSize: 1 })
+      ).rows
+      const value = (current?.value?.trim() ? current.value : definition.defaultvalue)?.trim().toLowerCase()
+      return !["no", "false", "off", "0"].includes(value ?? "")
+    } catch {
+      return true
+    }
+  }
+
+  async moveStep(record: RecordRef, stepId: string): Promise<void> {
+    const { client } = this
+    if (record.type === "lead") {
+      await this.call(() => client.leads.update(guid(record.id), { vibe_currentstep: stepId }))
+    } else if (record.type === "opportunity") {
+      // The plug-in sets the Stage from the Step; like a Stage change in v1, a new Stage also resets Probability and Forecast category.
+      const current = toOpportunity(await this.call(() => client.opportunities.get(guid(record.id))))
+      const version = current.processVersionId ? await this.call(() => client.processVersions.get(guid(current.processVersionId!))) : undefined
+      const stage = parseProcessDefinition(version?.vibe_definition)?.steps.find((step) => step.id === stepId)?.mapsTo
+      const change = stage && stage !== current.stage && isOpenStage(stage as Stage) ? rule(() => changeStage(current, stage as OpenStage)) : undefined
+      await this.call(() =>
+        client.opportunities.update(guid(record.id), {
+          vibe_currentstep: stepId,
+          ...(change && {
+            vibe_stage: toChoice(STAGES, change.stage),
+            vibe_probability: change.probability,
+            vibe_forecastcategory: toChoice(FORECAST_CATEGORIES, change.forecastCategory),
+          }),
+        }),
+      )
+    } else {
+      throw new GatewayError("invalid", "Only Leads and Opportunities follow a Process.")
+    }
+  }
+
+  async switchProcess(record: RecordRef, processVersionId: Id | null): Promise<void> {
+    const fieldsToWrite = bind(PROCESS_VERSION_NAVIGATION, "vibe_processversions", processVersionId)
+    if (record.type === "lead") await this.call(() => this.client.leads.update(guid(record.id), fieldsToWrite))
+    else if (record.type === "opportunity") await this.call(() => this.client.opportunities.update(guid(record.id), fieldsToWrite))
+    else throw new GatewayError("invalid", "Only Leads and Opportunities follow a Process.")
+  }
+
   // ---- Products -----------------------------------------------------------------
   // Organisation-owned: Dataverse lets everyone read and only the Catalogue Manager role write.
 
@@ -1054,7 +1174,7 @@ export class DataverseSalesGateway implements SalesGateway {
       opportunity,
       account: account && toAccount(account),
       contact: contact && toContact(contact),
-      owner: owner ? toUser(owner) : { id: quote.ownerId, fullName: quote.ownerName, email: "", managerId: null, isSalesperson: true, isCatalogueManager: false },
+      owner: owner ? toUser(owner) : { id: quote.ownerId, fullName: quote.ownerName, email: "", managerId: null, isSalesperson: true, isCatalogueManager: false, isProcessBuilder: false },
       products,
       canEdit,
     }
@@ -2042,6 +2162,7 @@ export function toTask(row: ActivityRow, record?: RecordRef): Task | undefined {
     dueDate: fromMoment(row.scheduledend),
     completed,
     completedOn: completed ? optional(row.actualend) : undefined,
+    actionId: optional(row.vibe_actionid),
   }
 }
 

@@ -108,6 +108,9 @@ export type LeadRow = Row & {
   vibe_disqualifycomment?: string | null
   vibe_disqualifiedon?: string | null
   _vibe_disqualifiedby_value?: Id | null
+  _vibe_processversionid_value?: Id | null
+  vibe_currentstep?: string | null
+  vibe_stepenteredon?: string | null
   _ownerid_value?: Id | null
   createdon?: string | null
 }
@@ -128,6 +131,9 @@ export const LEAD_COLUMNS = [
   "vibe_disqualifycomment",
   "vibe_disqualifiedon",
   "_vibe_disqualifiedby_value",
+  "_vibe_processversionid_value",
+  "vibe_currentstep",
+  "vibe_stepenteredon",
   "_ownerid_value",
   "createdon",
 ] as const
@@ -152,6 +158,9 @@ export type OpportunityRow = Row & {
   vibe_lostreason?: number | null
   vibe_lostcomment?: string | null
   _vibe_closedby_value?: Id | null
+  _vibe_processversionid_value?: Id | null
+  vibe_currentstep?: string | null
+  vibe_stepenteredon?: string | null
   _ownerid_value?: Id | null
   createdon?: string | null
 }
@@ -175,6 +184,9 @@ export const OPPORTUNITY_COLUMNS = [
   "vibe_lostreason",
   "vibe_lostcomment",
   "_vibe_closedby_value",
+  "_vibe_processversionid_value",
+  "vibe_currentstep",
+  "vibe_stepenteredon",
   "_ownerid_value",
   "createdon",
 ] as const
@@ -429,6 +441,8 @@ export type ActivityRow = Row & {
   _regardingobjectid_value?: Id | null
   _ownerid_value?: Id | null
   createdon?: string | null
+  /** Tasks only: the Process Action that created it. */
+  vibe_actionid?: string | null
 }
 
 const ACTIVITY_COLUMNS = [
@@ -443,7 +457,54 @@ const ACTIVITY_COLUMNS = [
   "createdon",
 ] as const
 
-export const TASK_COLUMNS = ACTIVITY_COLUMNS
+/** A Task also carries the Process Action that created it. */
+export const TASK_COLUMNS = [...ACTIVITY_COLUMNS, "vibe_actionid"] as const
+
+/** A Process: its published definition lives on the Process version it points to. */
+export type ProcessRow = Row & {
+  vibe_processid: Id
+  vibe_name?: string | null
+  vibe_tablechoice?: number | null
+  vibe_priority?: number | null
+  vibe_isfallback?: boolean | null
+  vibe_retired?: boolean | null
+  _vibe_latestversionid_value?: Id | null
+}
+
+export const PROCESS_COLUMNS = [
+  "vibe_processid",
+  "vibe_name",
+  "vibe_tablechoice",
+  "vibe_priority",
+  "vibe_isfallback",
+  "vibe_retired",
+  "_vibe_latestversionid_value",
+] as const
+
+export type ProcessVersionRow = Row & {
+  vibe_processversionid: Id
+  _vibe_processid_value?: Id | null
+  /** The definition as JSON text. */
+  vibe_definition?: string | null
+}
+
+export const PROCESS_VERSION_COLUMNS = ["vibe_processversionid", "_vibe_processid_value", "vibe_definition"] as const
+
+export type EnvironmentVariableDefinitionRow = Row & {
+  environmentvariabledefinitionid: Id
+  schemaname?: string | null
+  defaultvalue?: string | null
+}
+
+export const ENVIRONMENT_VARIABLE_DEFINITION_COLUMNS = ["environmentvariabledefinitionid", "schemaname", "defaultvalue"] as const
+
+export type EnvironmentVariableValueRow = Row & {
+  environmentvariablevalueid: Id
+  _environmentvariabledefinitionid_value?: Id | null
+  value?: string | null
+}
+
+export const ENVIRONMENT_VARIABLE_VALUE_COLUMNS = ["environmentvariablevalueid", "_environmentvariabledefinitionid_value", "value"] as const
 
 export type PhoneCallRow = ActivityRow & {
   /** true: outgoing. */
@@ -499,6 +560,10 @@ export interface DataverseClient {
   quoteLines: TableClient<QuoteLineRow>
   quoteTemplates: TableClient<QuoteTemplateRow>
   quoteSettings: TableClient<QuoteSettingsRow>
+  processes: TableClient<ProcessRow>
+  processVersions: TableClient<ProcessVersionRow>
+  environmentVariableDefinitions: TableClient<EnvironmentVariableDefinitionRow>
+  environmentVariableValues: TableClient<EnvironmentVariableValueRow>
   /** Puts a file in a Quote's file column. */
   uploadQuotePdf(quoteId: Id, fileName: string, bytes: Uint8Array): Promise<void>
   downloadQuotePdf(quoteId: Id): Promise<Uint8Array>
@@ -510,6 +575,9 @@ export interface DataverseClient {
 
 /** A Lead's Disqualified by lookup (to systemuser), as a navigation property. */
 export const LEAD_DISQUALIFIED_BY_NAVIGATION = "vibe_DisqualifiedBy"
+
+/** A Lead's or Opportunity's Process version lookup, for `@odata.bind` writes. */
+export const PROCESS_VERSION_NAVIGATION = "vibe_ProcessVersionId"
 
 /** A Contact's company lookup as an Account: the per-target navigation property (#12). */
 export const CONTACT_ACCOUNT_NAVIGATION = "parentcustomerid_account"

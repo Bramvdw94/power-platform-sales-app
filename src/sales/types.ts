@@ -16,6 +16,8 @@ export type User = {
   isSalesperson: boolean
   /** Holds the SalesApp Catalogue Manager role: creates, edits and retires Products. */
   isCatalogueManager: boolean
+  /** Holds the SalesApp Process Builder role: builds Processes and Business rules, and may Switch Process. */
+  isProcessBuilder: boolean
   /** The business phone on the user's record, printed on a Quote PDF. */
   phone?: string
 }
@@ -123,6 +125,14 @@ export type Contact = Owned & {
   mobile?: string
 }
 
+/** Where a Lead or Opportunity stands in its Process; all blank when it follows none. */
+export type ProcessState = {
+  /** The Process version the record started on. */
+  processVersionId?: Id
+  currentStepId?: string
+  stepEnteredOn?: Timestamp
+}
+
 export type Lead = Owned & {
   firstName?: string
   lastName: string
@@ -138,7 +148,7 @@ export type Lead = Owned & {
   disqualifyComment?: string
   disqualifiedOn?: Timestamp
   disqualifiedById?: Id
-}
+} & ProcessState
 
 export type Opportunity = Owned & {
   name: string
@@ -166,7 +176,7 @@ export type Opportunity = Owned & {
   closedById?: Id
   /** Display name of who closed it, as Dataverse returns it in formatted values. */
   closedByName?: string
-}
+} & ProcessState
 
 type ActivityBase = {
   id: Id
@@ -191,6 +201,8 @@ export type Task = ActivityBase & {
   dueDate?: DateOnly
   completed: boolean
   completedOn?: Timestamp
+  /** The Process Action that created this Task, if one did. */
+  actionId?: string
 }
 
 export type PhoneCallDirection = "incoming" | "outgoing"

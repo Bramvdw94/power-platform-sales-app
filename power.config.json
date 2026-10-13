@@ -102,6 +102,26 @@
           "entitySetName": "vibe_quotesettingses",
           "logicalName": "vibe_quotesettings",
           "isHidden": false
+        },
+        "processes": {
+          "entitySetName": "vibe_processes",
+          "logicalName": "vibe_process",
+          "isHidden": false
+        },
+        "processversions": {
+          "entitySetName": "vibe_processversions",
+          "logicalName": "vibe_processversion",
+          "isHidden": false
+        },
+        "environmentvariabledefinitions": {
+          "entitySetName": "environmentvariabledefinitions",
+          "logicalName": "environmentvariabledefinition",
+          "isHidden": false
+        },
+        "environmentvariablevalues": {
+          "entitySetName": "environmentvariablevalues",
+          "logicalName": "environmentvariablevalue",
+          "isHidden": false
         }
       },
       "environmentVariableName": ""

@@ -8,11 +8,11 @@ import type { InMemoryData } from "./store"
 // Siciliani is a salesperson outside her team.
 
 export const SEED_USERS = {
-  megan: { id: "user-megan", fullName: "Megan Bowen", email: "megan@contoso.example", managerId: null, isSalesperson: true, isCatalogueManager: true },
-  adele: { id: "user-adele", fullName: "Adele Vance", email: "adele@contoso.example", managerId: "user-megan", isSalesperson: true, isCatalogueManager: false },
-  alex: { id: "user-alex", fullName: "Alex Wilber", email: "alex@contoso.example", managerId: "user-megan", isSalesperson: true, isCatalogueManager: false },
-  diego: { id: "user-diego", fullName: "Diego Siciliani", email: "diego@contoso.example", managerId: null, isSalesperson: true, isCatalogueManager: false },
-  bram: { id: "user-bram", fullName: "Bram (admin)", email: "bram@contoso.example", managerId: null, isSalesperson: false, isCatalogueManager: false },
+  megan: { id: "user-megan", fullName: "Megan Bowen", email: "megan@contoso.example", managerId: null, isSalesperson: true, isCatalogueManager: true, isProcessBuilder: true },
+  adele: { id: "user-adele", fullName: "Adele Vance", email: "adele@contoso.example", managerId: "user-megan", isSalesperson: true, isCatalogueManager: false, isProcessBuilder: false },
+  alex: { id: "user-alex", fullName: "Alex Wilber", email: "alex@contoso.example", managerId: "user-megan", isSalesperson: true, isCatalogueManager: false, isProcessBuilder: false },
+  diego: { id: "user-diego", fullName: "Diego Siciliani", email: "diego@contoso.example", managerId: null, isSalesperson: true, isCatalogueManager: false, isProcessBuilder: false },
+  bram: { id: "user-bram", fullName: "Bram (admin)", email: "bram@contoso.example", managerId: null, isSalesperson: false, isCatalogueManager: false, isProcessBuilder: false },
 } satisfies Record<string, User>
 
 /** Fixed IDs of the seeded records, for tests. */

@@ -8,5 +8,5 @@ import { useQueryClient } from "@tanstack/react-query"
  */
 export function useInvalidateRecords() {
   const queryClient = useQueryClient()
-  return () => queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "currentUser" })
+  return () => queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "currentUser" && query.queryKey[0] !== "processes" })
 }

@@ -1100,6 +1100,7 @@
   "leads": [
     {
       "key": "lead-waddenzee",
+      "process": {"version": "procver-lead-starter-1", "step": "make-contact", "enteredDaysAgo": 2},
       "firstName": "Jelle",
       "lastName": "Bouma",
       "company": "Waddenzee Veerdiensten BV",
@@ -1115,6 +1116,7 @@
     },
     {
       "key": "lead-hageland",
+      "process": {"version": "procver-lead-starter-1", "step": "make-contact", "enteredDaysAgo": 1},
       "firstName": "Joke",
       "lastName": "Vermeiren",
       "company": "Hageland Fruit NV",
@@ -1129,6 +1131,7 @@
     },
     {
       "key": "lead-zeeuwse",
+      "process": {"version": "procver-lead-starter-1", "step": "make-contact", "enteredDaysAgo": 2},
       "firstName": "Bas",
       "lastName": "Oosterhout",
       "company": "Zeeuwse Mosselhandel BV",
@@ -1143,6 +1146,7 @@
     },
     {
       "key": "lead-amstel",
+      "process": {"version": "procver-lead-starter-1", "step": "make-contact", "enteredDaysAgo": 0},
       "firstName": "Merel",
       "lastName": "Kramer",
       "company": "Amstel Architecten",
@@ -1158,6 +1162,7 @@
     },
     {
       "key": "lead-twentse",
+      "process": {"version": "procver-lead-starter-1", "step": "make-contact", "enteredDaysAgo": 2},
       "firstName": "Rik",
       "lastName": "Nijhuis",
       "company": "Twentse Drukkerij BV",
@@ -1214,6 +1219,7 @@
     },
     {
       "key": "lead-haarlem",
+      "process": {"version": "procver-lead-starter-1", "step": "judge-fit", "enteredDaysAgo": 9},
       "firstName": "Dennis",
       "lastName": "Vos",
       "company": "Haarlemse Brouwerij BV",
@@ -1229,6 +1235,7 @@
     },
     {
       "key": "lead-scheldepoort",
+      "process": {"version": "procver-lead-starter-1", "step": "ready-to-qualify", "enteredDaysAgo": 4},
       "firstName": "Ruben",
       "lastName": "Aerts",
       "company": "Scheldepoort Shipping",
@@ -1243,6 +1250,7 @@
     },
     {
       "key": "lead-utrechtse",
+      "process": {"version": "procver-lead-starter-1", "step": "judge-fit", "enteredDaysAgo": 15},
       "firstName": "Eva",
       "lastName": "Smits",
       "company": "Utrechtse Woningstichting",
@@ -1257,6 +1265,7 @@
     },
     {
       "key": "lead-lindeboom",
+      "process": {"version": "procver-lead-starter-1", "step": "ready-to-qualify", "enteredDaysAgo": 6},
       "firstName": "Bart",
       "lastName": "Verhoeven",
       "company": "Lindeboom Accountants",
@@ -1272,6 +1281,7 @@
     },
     {
       "key": "lead-friesland",
+      "process": {"version": "procver-lead-starter-1", "step": "judge-fit", "enteredDaysAgo": 12},
       "firstName": "Marten",
       "lastName": "de Jong",
       "company": "Friese Zuivel Coöperatie",
@@ -1286,6 +1296,7 @@
     },
     {
       "key": "lead-vught",
+      "process": {"version": "procver-lead-starter-1", "step": "ready-to-qualify", "enteredDaysAgo": 22},
       "firstName": "Saskia",
       "lastName": "van Rooij",
       "company": "Vughtse Revalidatiekliniek",
@@ -1300,6 +1311,7 @@
     },
     {
       "key": "lead-hasselt",
+      "process": {"version": "procver-lead-starter-1", "step": "judge-fit", "enteredDaysAgo": 8},
       "firstName": "Jonas",
       "lastName": "Claeys",
       "company": "Hasseltse Jeneverstokerij NV",
@@ -1314,6 +1326,7 @@
     },
     {
       "key": "lead-enschede",
+      "process": {"version": "procver-lead-starter-1", "step": "ready-to-qualify", "enteredDaysAgo": 4},
       "firstName": "Lisa",
       "lastName": "Hoogland",
       "company": "Enschedese Kinderopvang",
@@ -1386,6 +1399,7 @@
     },
     {
       "key": "lead-devries",
+      "process": {"version": "procver-lead-starter-1", "step": "ready-to-qualify", "enteredDaysAgo": 5},
       "firstName": "Sander",
       "lastName": "Hendriks",
       "company": "De Vries Bouwgroep BV",
@@ -1401,6 +1415,7 @@
     },
     {
       "key": "lead-hoekstra",
+      "process": {"version": "procver-lead-starter-1", "step": "ready-to-qualify", "enteredDaysAgo": 5},
       "firstName": "Sjoerd",
       "lastName": "Hoekstra",
       "company": "Hoekstra Agri BV",
@@ -1416,6 +1431,7 @@
     },
     {
       "key": "lead-rijnmond",
+      "process": {"version": "procver-lead-starter-1", "step": "ready-to-qualify", "enteredDaysAgo": 5},
       "firstName": "Gerard",
       "lastName": "Visser",
       "company": "Rijnmond Havendiensten BV",
@@ -1550,6 +1566,7 @@
   "opportunities": [
     {
       "key": "opp-devries",
+      "process": {"version": "procver-opportunity-starter-1", "step": "make-offer", "enteredDaysAgo": 25},
       "name": "De Vries Bouwgroep BV - Managed workplace for site teams",
       "account": "acc-devries",
       "primaryContact": "con-sander-hendriks",
@@ -1566,6 +1583,7 @@
     },
     {
       "key": "opp-hoekstra",
+      "process": {"version": "procver-opportunity-starter-1", "step": "find-need", "enteredDaysAgo": 17},
       "name": "Hoekstra Agri BV - Microsoft 365 migration",
       "account": "acc-hoekstra",
       "primaryContact": "con-sjoerd-hoekstra",
@@ -1581,6 +1599,7 @@
     },
     {
       "key": "opp-rijnmond",
+      "process": {"version": "procver-opportunity-starter-1", "step": "close-deal", "enteredDaysAgo": 13},
       "name": "Rijnmond Havendiensten BV - 24/7 monitoring of dispatch systems",
       "account": "acc-rijnmond",
       "primaryContact": "con-gerard-visser",
@@ -1597,6 +1616,7 @@
     },
     {
       "key": "opp-maasvallei",
+      "process": {"version": "procver-opportunity-starter-1", "step": "qualify-deal", "enteredDaysAgo": 11},
       "name": "Maasvallei Transport NV - File server replacement",
       "account": "acc-maasvallei",
       "primaryContact": "con-tom-vermeulen",
@@ -1612,6 +1632,7 @@
     },
     {
       "key": "opp-veluwe",
+      "process": {"version": "procver-opportunity-starter-1", "step": "close-deal", "enteredDaysAgo": 5},
       "name": "Veluwe Recreatie BV - Booking platform hosting",
       "account": "acc-veluwe",
       "primaryContact": "con-martijn-vanbeek",
@@ -1628,6 +1649,7 @@
     },
     {
       "key": "opp-ijsselstroom",
+      "process": {"version": "procver-opportunity-starter-1", "step": "find-need", "enteredDaysAgo": 9},
       "name": "IJsselstroom Energie BV - Power Platform apps for installers",
       "account": "acc-ijsselstroom",
       "primaryContact": "con-niels-kok",
@@ -1643,6 +1665,7 @@
     },
     {
       "key": "opp-vandijk-erp",
+      "process": {"version": "procver-opportunity-starter-1", "step": "make-offer", "enteredDaysAgo": 18},
       "name": "Van Dijk Logistiek BV - ERP integration with warehouse scanners",
       "account": "acc-vandijk",
       "primaryContact": "con-ingrid-smit",
@@ -1656,6 +1679,7 @@
     },
     {
       "key": "opp-vandijk-backup",
+      "process": {"version": "procver-opportunity-starter-1", "step": "qualify-deal", "enteredDaysAgo": 3},
       "name": "Van Dijk Logistiek BV - Backup and disaster recovery",
       "account": "acc-vandijk",
       "primaryContact": "con-ingrid-smit",
@@ -1668,6 +1692,7 @@
     },
     {
       "key": "opp-brouwer-tablets",
+      "process": {"version": "procver-opportunity-starter-1", "step": "close-deal", "enteredDaysAgo": 30},
       "name": "Brouwer & Zonen Installatietechniek BV - Field engineer tablets",
       "account": "acc-brouwer",
       "primaryContact": "con-marco-brouwer",
@@ -1682,6 +1707,7 @@
     },
     {
       "key": "opp-meulenhof-iam",
+      "process": {"version": "procver-opportunity-starter-1", "step": "make-offer", "enteredDaysAgo": 23},
       "name": "Meulenhof Zorggroep - Identity and access management",
       "account": "acc-meulenhof",
       "primaryContact": "con-ruud-kuipers",
@@ -1694,6 +1720,7 @@
     },
     {
       "key": "opp-meulenhof-wifi",
+      "process": {"version": "procver-opportunity-starter-1", "step": "qualify-deal", "enteredDaysAgo": 4},
       "name": "Meulenhof Zorggroep - Wi-Fi upgrade for nine locations",
       "account": "acc-meulenhof",
       "primaryContact": "con-annemiek-bos",
@@ -1706,6 +1733,7 @@
     },
     {
       "key": "opp-kempenland-ot",
+      "process": {"version": "procver-opportunity-starter-1", "step": "find-need", "enteredDaysAgo": 11},
       "name": "Kempenland Metaal NV - OT network segmentation",
       "account": "acc-kempenland",
       "primaryContact": "con-els-wouters",
@@ -1742,6 +1770,7 @@
     },
     {
       "key": "opp-voedingsunie-data",
+      "process": {"version": "procver-opportunity-starter-1", "step": "close-deal", "enteredDaysAgo": 40},
       "name": "Vlaamse Voedingsunie NV - Data platform and BI",
       "account": "acc-voedingsunie",
       "primaryContact": "con-pieter-desmet",
@@ -1828,6 +1857,7 @@
     },
     {
       "key": "opp-kaasmakerij-laptops",
+      "process": {"version": "procver-opportunity-starter-1", "step": "close-deal", "enteredDaysAgo": 5},
       "name": "Hollandse Kaasmakerij BV - Laptop rollout",
       "account": "acc-kaasmakerij",
       "primaryContact": "con-lotte-jansen",
@@ -1893,6 +1923,7 @@
     },
     {
       "key": "opp-peelland-mes",
+      "process": {"version": "procver-opportunity-starter-1", "step": "close-deal", "enteredDaysAgo": 5},
       "name": "Peelland Kunststoffen BV - MES integration",
       "account": "acc-peelland",
       "primaryContact": "con-rob-vanasten",
@@ -1907,6 +1938,7 @@
     },
     {
       "key": "opp-mechelse-webshop",
+      "process": {"version": "procver-opportunity-starter-1", "step": "close-deal", "enteredDaysAgo": 5},
       "name": "Mechelse Meubelfabriek NV - Web shop replatforming",
       "account": "acc-mechelse",
       "primaryContact": "con-griet-vandamme",
