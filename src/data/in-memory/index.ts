@@ -5,6 +5,7 @@ import { InMemorySalesStore } from "./store"
 
 export { InMemorySalesGateway, type InMemoryGatewayOptions } from "./in-memory-gateway"
 export { InMemorySalesStore, type InMemoryData } from "./store"
+export { STARTER_PROCESSES, STARTER_PROCESS_IDS, STARTER_VERSIONS, addStarterProcesses } from "./seed-processes"
 export { SEED_IDS, SEED_SETTINGS, SEED_TEMPLATES, SEED_USERS, createSeedData } from "./seed"
 
 /** A store filled with the seed data, dated relative to `now`. */

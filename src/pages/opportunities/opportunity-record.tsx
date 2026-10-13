@@ -5,15 +5,21 @@ import { Check, Pencil, RotateCcw, Trophy } from "lucide-react"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
 import { ReassignButton } from "@/components/records/reassign-dialog"
+import { ProcessBar } from "@/components/records/process/process-bar"
+import { SwitchProcessButton } from "@/components/records/process/switch-process"
 import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
 import { Button } from "@/components/ui/button"
 import { useGateway } from "@/hooks/use-gateway"
+import { useCurrentUser } from "@/hooks/use-current-user"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
+import { useRecordProcess } from "@/hooks/use-process"
 import { FORECAST_CATEGORY_LABELS, LEAD_SOURCE_LABELS, LOST_REASON_LABELS, STAGE_LABELS, formatDate, formatEuro } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import {
   OPEN_STAGES,
+  canSwitchProcess,
   fullName,
+  opportunityParents,
   isOpenStage,
   type OpenStage,
   type Opportunity,
@@ -32,11 +38,35 @@ export default function OpportunityRecordPage() {
   const [closing, setClosing] = useState(false)
   const [reopening, setReopening] = useState(false)
   const { data, error, isPending } = useQuery({ queryKey: ["Opportunity", id], queryFn: () => gateway.getOpportunity(id) })
+  const me = useCurrentUser().data
 
   if (isPending) return <RecordLoading />
   if (error) return <RecordError error={error} />
 
+  return <OpportunityRecord data={data} editing={editing} setEditing={setEditing} closing={closing} setClosing={setClosing} reopening={reopening} setReopening={setReopening} canSwitch={!!me && canSwitchProcess(me.user, data.opportunity.ownerId, me.directReports)} />
+}
+
+function OpportunityRecord({
+  data,
+  editing,
+  setEditing,
+  closing,
+  setClosing,
+  reopening,
+  setReopening,
+  canSwitch,
+}: {
+  data: OpportunityDetails
+  editing: boolean
+  setEditing: (value: boolean) => void
+  closing: boolean
+  setClosing: (value: boolean) => void
+  reopening: boolean
+  setReopening: (value: boolean) => void
+  canSwitch: boolean
+}) {
   const { opportunity, account, canEdit } = data
+  const process = useRecordProcess("opportunity", opportunity)
   const isOpen = isOpenStage(opportunity.stage)
   const accountLink = (
     <Link to={`/accounts/${account.id}`} className="text-primary hover:underline">
@@ -88,7 +118,28 @@ export default function OpportunityRecordPage() {
       actions={actions || undefined}
       activity={<ActivityTimeline record={{ type: "opportunity", id: opportunity.id }} canAdd={canEdit} />}
     >
-      <StagePath opportunity={opportunity} canChange={canEdit && !editing} />
+      {process.status === "following" ? (
+        <ProcessBar
+          table="opportunity"
+          record={opportunity}
+          process={process}
+          canEdit={canEdit && !editing}
+          canSwitch={canSwitch}
+          parents={opportunityParents({ account, primaryContact: data.primaryContact, originatingLead: data.originatingLead })}
+          productLines={data.productLines}
+          quotes={data.quotes}
+          onClose={() => setClosing(true)}
+        />
+      ) : process.status === "none" ? (
+        <>
+          <StagePath opportunity={opportunity} canChange={canEdit && !editing} />
+          {canSwitch && isOpen && (
+            <div className="flex justify-end">
+              <SwitchProcessButton table="opportunity" record={opportunity} label="Follow a Process" />
+            </div>
+          )}
+        </>
+      ) : null}
 
       {!isOpen && (
         <RecordSection title="Close">

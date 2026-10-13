@@ -1560,3 +1560,74 @@ describe("DataverseSalesGateway, Quotes", () => {
     expect(won.quotes.update).not.toHaveBeenCalled()
   })
 })
+
+describe("DataverseSalesGateway, Processes", () => {
+  const PROCESS = "11111111-0000-0000-0000-000000000001"
+  const VERSION = "22222222-0000-0000-0000-000000000001"
+  const definition = {
+    schemaVersion: 1,
+    table: "opportunity",
+    steps: [
+      { id: "s1", name: "Qualify", mapsTo: "qualification" },
+      { id: "s2", name: "Propose", mapsTo: "proposal", gate: { checks: [{ field: "nextStep", op: "isNotEmpty" }] } },
+    ],
+  }
+  const processRows: ProcessRow[] = [
+    { vibe_processid: PROCESS, vibe_name: "Starter", vibe_tablechoice: 841200001, vibe_priority: 1, vibe_isfallback: true, vibe_retired: false, _vibe_latestversionid_value: VERSION },
+    { vibe_processid: "11111111-0000-0000-0000-000000000002", vibe_name: "Draft", vibe_tablechoice: 841200001, vibe_priority: 2, _vibe_latestversionid_value: null },
+  ]
+  const versionRows: ProcessVersionRow[] = [
+    { vibe_processversionid: VERSION, _vibe_processid_value: PROCESS, vibe_definition: JSON.stringify(definition) },
+    { vibe_processversionid: "22222222-0000-0000-0000-000000000002", _vibe_processid_value: PROCESS, vibe_definition: "not json" },
+  ]
+
+  it("reads the published Processes and their versions of a table", async () => {
+    const client = fakeClient(ADELE, [], [], [], [], processRows, versionRows)
+    const result = await new DataverseSalesGateway(client).getProcessDefinitions("opportunity")
+    expect(result.engineEnabled).toBe(true)
+    expect(result.processes).toEqual([{ id: PROCESS, name: "Starter", table: "opportunity", priority: 1, isFallback: true, retired: false, latestVersionId: VERSION }])
+    expect(result.versions).toEqual([{ id: VERSION, processId: PROCESS, definition }])
+    expect(client.processes.list.mock.calls[0][0].filter).toContain("vibe_tablechoice eq 841200001")
+  })
+
+  it("is off when the kill switch environment variable says off", async () => {
+    const def = "33333333-0000-0000-0000-000000000001"
+    const client = fakeClient(ADELE, [], [], [], [], processRows, versionRows, [{ environmentvariabledefinitionid: def, schemaname: "vibe_ProcessEngineEnabled", defaultvalue: "on" }], [{ environmentvariablevalueid: "x", _environmentvariabledefinitionid_value: def, value: "off" }])
+    expect((await new DataverseSalesGateway(client).getProcessDefinitions("opportunity")).engineEnabled).toBe(false)
+  })
+
+  it("reads a Lead's and an Opportunity's Process state", async () => {
+    const state = { _vibe_processversionid_value: VERSION, vibe_currentstep: "s2", vibe_stepenteredon: "2026-10-10T09:00:00Z" }
+    const client = fakeClient(ADELE)
+    client.opportunities.get.mockResolvedValueOnce({ ...opportunityRows[0], ...state })
+    const details = await new DataverseSalesGateway(client).getOpportunity(OPP)
+    expect(details.opportunity).toMatchObject({ processVersionId: VERSION, currentStepId: "s2", stepEnteredOn: "2026-10-10T09:00:00Z" })
+  })
+
+  it("moves a Step by writing the new Step and leaving the Stage to the plug-in", async () => {
+    const client = fakeClient(ADELE, [], [], [], [], processRows, versionRows)
+    client.opportunities.get.mockResolvedValueOnce({ ...opportunityRows[0], vibe_stage: 841200000, vibe_probability: 10, _vibe_processversionid_value: VERSION })
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.moveStep({ type: "opportunity", id: OPP }, "s2")
+    expect(client.opportunities.update).toHaveBeenCalledWith(OPP, { vibe_currentstep: "s2", vibe_stage: 841200002, vibe_probability: 50, vibe_forecastcategory: expect.any(Number) })
+    await gateway.moveStep({ type: "lead", id: SANNE }, "s9")
+    expect(client.leads.update).toHaveBeenCalledWith(SANNE, { vibe_currentstep: "s9" })
+  })
+
+  it("switches Process by binding a Process version, or clears it", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.switchProcess({ type: "opportunity", id: OPP }, VERSION)
+    expect(client.opportunities.update).toHaveBeenCalledWith(OPP, { "vibe_ProcessVersionId@odata.bind": `/vibe_processversions(${VERSION})` })
+    await gateway.switchProcess({ type: "lead", id: SANNE }, null)
+    expect(client.leads.update).toHaveBeenCalledWith(SANNE, { vibe_ProcessVersionId: null })
+  })
+
+  it("sees a Process builder", async () => {
+    const megan = await new DataverseSalesGateway(fakeClient(MEGAN)).getCurrentUser()
+    expect(megan.user.isProcessBuilder).toBe(true)
+    const adele = await new DataverseSalesGateway(fakeClient(ADELE)).getCurrentUser()
+    expect(adele.user.isProcessBuilder).toBe(false)
+  })
+})
+

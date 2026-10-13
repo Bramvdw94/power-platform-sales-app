@@ -5,13 +5,17 @@ import { Ban, BadgeCheck, Pencil, PhoneCall, RotateCcw, Undo2 } from "lucide-rea
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
 import { ReassignButton } from "@/components/records/reassign-dialog"
+import { ProcessBar } from "@/components/records/process/process-bar"
+import { SwitchProcessButton } from "@/components/records/process/switch-process"
 import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
 import { Button } from "@/components/ui/button"
 import type { LeadDetails } from "@/data/gateway"
 import { useGateway } from "@/hooks/use-gateway"
+import { useCurrentUser } from "@/hooks/use-current-user"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
+import { useRecordProcess } from "@/hooks/use-process"
 import { DISQUALIFY_REASON_LABELS, LEAD_SOURCE_LABELS, formatDate, opportunitySummary } from "@/lib/format"
-import { allowedLeadActions, fullName, isLeadReadOnly, type Lead } from "@/sales"
+import { allowedLeadActions, canSwitchProcess, fullName, isLeadReadOnly, type Lead } from "@/sales"
 import { DisqualifyDialog } from "./disqualify-dialog"
 import { EditLeadForm } from "./lead-form"
 import { QualifyDialog } from "./qualify-dialog"
@@ -21,12 +25,43 @@ export default function LeadRecordPage() {
   const { id = "" } = useParams()
   const gateway = useGateway()
   const [editing, setEditing] = useState(false)
+  const [qualifying, setQualifying] = useState(false)
   const { data, error, isPending } = useQuery({ queryKey: ["Lead", id], queryFn: () => gateway.getLead(id) })
+  const me = useCurrentUser().data
 
   if (isPending) return <RecordLoading />
   if (error) return <RecordError error={error} />
 
+  return (
+    <LeadRecord
+      data={data}
+      editing={editing}
+      setEditing={setEditing}
+      qualifying={qualifying}
+      setQualifying={setQualifying}
+      canSwitch={!!me && canSwitchProcess(me.user, data.lead.ownerId, me.directReports)}
+    />
+  )
+}
+
+function LeadRecord({
+  data,
+  editing,
+  setEditing,
+  qualifying,
+  setQualifying,
+  canSwitch,
+}: {
+  data: LeadDetails
+  editing: boolean
+  setEditing: (value: boolean) => void
+  qualifying: boolean
+  setQualifying: (value: boolean) => void
+  canSwitch: boolean
+}) {
   const { lead, opportunity, canEdit } = data
+  const process = useRecordProcess("lead", lead)
+  const followsProcess = process.status === "following"
   return (
     <RecordPage
       kind="Lead"
@@ -37,9 +72,29 @@ export default function LeadRecordPage() {
         { label: "Email", value: lead.email },
         { label: "Owner", value: lead.ownerName },
       ]}
-      actions={canEdit && !editing && <LeadActions lead={lead} onEdit={() => setEditing(true)} />}
+      actions={canEdit && !editing && <LeadActions lead={lead} followsProcess={followsProcess} onEdit={() => setEditing(true)} />}
       activity={<ActivityTimeline record={{ type: "lead", id: lead.id }} canAdd={canEdit} />}
     >
+      {process.status === "following" ? (
+        <ProcessBar
+          table="lead"
+          record={lead}
+          process={process}
+          canEdit={canEdit && !editing}
+          canSwitch={canSwitch}
+          onQualify={() => setQualifying(true)}
+        />
+      ) : (
+        process.status === "none" &&
+        canSwitch &&
+        (lead.status === "notContacted" || lead.status === "working") && (
+          <div className="flex justify-end">
+            <SwitchProcessButton table="lead" record={lead} label="Follow a Process" />
+          </div>
+        )
+      )}
+      {followsProcess && qualifying && <QualifyDialog lead={lead} open={qualifying} onOpenChange={setQualifying} />}
+
       {lead.status === "disqualified" && <DisqualifiedNotice lead={lead} />}
 
       <RecordSection title="Details">
@@ -56,12 +111,13 @@ export default function LeadRecordPage() {
  * manager: Edit and the status moves while the Lead is open, Reopen once it is
  * Disqualified, and Reassign whatever the status (the only one once Qualified).
  */
-function LeadActions({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
+function LeadActions({ lead, followsProcess, onEdit }: { lead: Lead; followsProcess: boolean; onEdit: () => void }) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
   const [disqualifying, setDisqualifying] = useState(false)
   const [qualifying, setQualifying] = useState(false)
-  const actions = allowedLeadActions(lead.status)
+  // On a Process the Lead status follows the Step, and Qualify is the last Step's button on the process bar.
+  const actions = allowedLeadActions(lead.status).filter((a) => !followsProcess || !["qualify", "markWorking", "markNotContacted"].includes(a))
 
   const move = useMutation({
     mutationFn: (action: "markWorking" | "markNotContacted" | "reopen") =>

@@ -994,7 +994,21 @@ export class DataverseSalesGateway implements SalesGateway {
     if (record.type === "lead") {
       await this.call(() => client.leads.update(guid(record.id), { vibe_currentstep: stepId }))
     } else if (record.type === "opportunity") {
-      await this.call(() => client.opportunities.update(guid(record.id), { vibe_currentstep: stepId }))
+      // The plug-in sets the Stage from the Step; like a Stage change in v1, a new Stage also resets Probability and Forecast category.
+      const current = toOpportunity(await this.call(() => client.opportunities.get(guid(record.id))))
+      const version = current.processVersionId ? await this.call(() => client.processVersions.get(guid(current.processVersionId!))) : undefined
+      const stage = parseProcessDefinition(version?.vibe_definition)?.steps.find((step) => step.id === stepId)?.mapsTo
+      const change = stage && stage !== current.stage && isOpenStage(stage as Stage) ? rule(() => changeStage(current, stage as OpenStage)) : undefined
+      await this.call(() =>
+        client.opportunities.update(guid(record.id), {
+          vibe_currentstep: stepId,
+          ...(change && {
+            vibe_stage: toChoice(STAGES, change.stage),
+            vibe_probability: change.probability,
+            vibe_forecastcategory: toChoice(FORECAST_CATEGORIES, change.forecastCategory),
+          }),
+        }),
+      )
     } else {
       throw new GatewayError("invalid", "Only Leads and Opportunities follow a Process.")
     }

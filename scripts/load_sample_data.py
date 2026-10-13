@@ -85,6 +85,9 @@ def load(dv, records):
     closing = [r for r in records if r.final_state]
     for rec in closing:
         set_state(dv, rec, rec.final_state)
+    for rec in records:
+        if rec.after:
+            patch(dv, rec, rec.after)
     for table in sd.TABLES:
         print(f"  {table.section:14} created {done[(table.section, 'created')]:3}"
               f"   updated {done[(table.section, 'updated')]:3}")

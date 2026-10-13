@@ -1,0 +1,135 @@
+{
+  "processes": [
+    {
+      "id": "proc-lead-starter",
+      "versionId": "procver-lead-starter-1",
+      "name": "Starter Lead process",
+      "table": "lead",
+      "priority": 1,
+      "isFallback": true,
+      "definition": {
+        "schemaVersion": 1,
+        "table": "lead",
+        "steps": [
+          {
+            "id": "make-contact",
+            "name": "Make first contact",
+            "mapsTo": "notContacted",
+            "keyFields": ["leadSource", "phone"],
+            "guidance": "Reach out within two working days. Log the call or note so the team sees the Lead is being worked.",
+            "gate": {
+              "checks": [
+                { "id": "has-source", "field": "leadSource", "op": "isNotEmpty" },
+                { "id": "has-call", "related": "phoneCalls", "atLeast": 1 }
+              ]
+            },
+            "actions": [
+              { "id": "first-contact-task", "type": "createTask", "subject": "Make first contact", "description": "Call or email the Lead and log what happened.", "dueInDays": 2, "assignTo": "owner" }
+            ]
+          },
+          {
+            "id": "judge-fit",
+            "name": "Judge the fit",
+            "mapsTo": "working",
+            "keyFields": ["jobTitle", "description"],
+            "guidance": "Find out whether this Lead has a budget, a need and the authority to decide. Note what you learn in the description.",
+            "gate": {
+              "checks": [
+                { "id": "has-job-title", "field": "jobTitle", "op": "isNotEmpty" },
+                { "id": "has-description", "field": "description", "op": "isNotEmpty" }
+              ]
+            }
+          },
+          {
+            "id": "ready-to-qualify",
+            "name": "Ready to qualify",
+            "mapsTo": "working",
+            "keyFields": ["email"],
+            "guidance": "The Lead is a good fit. Check the contact details, then Qualify to turn it into an Opportunity.",
+            "gate": {
+              "checks": [
+                { "id": "has-email", "field": "email", "op": "isNotEmpty" }
+              ]
+            },
+            "actions": [
+              { "id": "qualify-task", "type": "createTask", "subject": "Qualify this Lead", "dueInDays": 3, "assignTo": "owner" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "proc-opportunity-starter",
+      "versionId": "procver-opportunity-starter-1",
+      "name": "Starter Opportunity process",
+      "table": "opportunity",
+      "priority": 1,
+      "isFallback": true,
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "steps": [
+          {
+            "id": "qualify-deal",
+            "name": "Qualify the deal",
+            "mapsTo": "qualification",
+            "keyFields": ["primaryContactId", "expectedCloseDate"],
+            "guidance": "Confirm who decides, what they need and when they want it. Name a Primary Contact.",
+            "gate": {
+              "checks": [
+                { "id": "has-contact", "field": "primaryContactId", "op": "isNotEmpty" }
+              ]
+            },
+            "actions": [
+              { "id": "discovery-task", "type": "createTask", "subject": "Plan a discovery call", "dueInDays": 3, "assignTo": "owner" }
+            ]
+          },
+          {
+            "id": "find-need",
+            "name": "Find the need",
+            "mapsTo": "needsAnalysis",
+            "keyFields": ["description", "nextStep"],
+            "guidance": "Write down the customer's problem in their words and what happens next.",
+            "gate": {
+              "checks": [
+                { "id": "has-description", "field": "description", "op": "isNotEmpty" },
+                { "id": "has-call", "related": "phoneCalls", "atLeast": 1 }
+              ]
+            }
+          },
+          {
+            "id": "make-offer",
+            "name": "Make an offer",
+            "mapsTo": "proposal",
+            "keyFields": ["estimatedValue", "expectedCloseDate"],
+            "guidance": "Add Product lines so the Estimated value is built from what you sell, then make a Quote.",
+            "gate": {
+              "checks": [
+                { "id": "has-value", "field": "estimatedValue", "op": "greaterThan", "value": 0 }
+              ]
+            },
+            "actions": [
+              { "id": "follow-up-task", "type": "createTask", "subject": "Follow up on the proposal", "dueInDays": 5, "assignTo": "owner" }
+            ]
+          },
+          {
+            "id": "close-deal",
+            "name": "Close the deal",
+            "mapsTo": "negotiation",
+            "keyFields": ["nextStep"],
+            "guidance": "Agree the final terms. The Quote must be Sent before you can Close as won.",
+            "gate": {
+              "checks": [
+                { "id": "has-next-step", "field": "nextStep", "op": "isNotEmpty" },
+                { "id": "quote-sent", "related": "quotes", "atLeast": 1, "where": [{ "field": "status", "op": "isOneOf", "value": ["sent", "accepted"] }] }
+              ]
+            },
+            "actions": [
+              { "id": "review-terms-task", "type": "createTask", "subject": "Review the final terms with your manager", "dueInDays": 2, "assignTo": "ownersManager" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

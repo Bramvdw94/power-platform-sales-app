@@ -375,5 +375,52 @@ class Payloads(unittest.TestCase):
         self.assertLess(first["quotes"], first["quoteLines"])
 
 
+class StarterProcesses(unittest.TestCase):
+    """The two starter Processes of data/processes.json and the records on them (#95)."""
+
+    def test_both_starter_processes_are_loaded_with_one_version_each(self):
+        self.assertEqual([p["table"] for p in DATA["processes"]], ["lead", "opportunity"])
+        recs = records()
+        for process in DATA["processes"]:
+            body = recs[process["key"]].body
+            self.assertTrue(body["vibe_isfallback"])
+            self.assertEqual(body["vibe_tablechoice"], sd.CHOICE_BASE + sd.PROCESS_TABLES.index(process["table"]))
+            self.assertIn(process["latestVersion"], recs)
+            self.assertIn("nav_process_latestversion@odata.bind", recs[process["key"]].after)
+
+    def test_versions_hold_the_definition_as_json(self):
+        version = records()["procver-opportunity-starter-1"]
+        self.assertEqual([s["id"] for s in json.loads(version.body["vibe_definition"])["steps"]], ["qualify-deal", "find-need", "make-offer", "close-deal"])
+        self.assertEqual(version.body["vibe_versionnumber"], 1)
+
+    def test_some_records_follow_a_process_and_the_rest_do_not(self):
+        on = [r for section in ("leads", "opportunities") for r in DATA[section] if "process" in r]
+        off = [r for section in ("leads", "opportunities") for r in DATA[section] if "process" not in r]
+        self.assertGreater(len(on), 10)
+        self.assertGreater(len(off), 10)
+        body = records()[on[0]["key"]].body
+        self.assertEqual(body["vibe_currentstep"], on[0]["process"]["step"])
+        self.assertTrue(any(k.endswith("processversion@odata.bind") for k in body))
+
+    def test_a_step_must_map_to_the_records_stage_and_a_closed_record_stays_on_the_last_step(self):
+        def wrong_stage(data):
+            next(o for o in data["opportunities"] if o.get("process") and o["stage"] == "proposal")["process"]["step"] = "qualify-deal"
+        self.assertTrue(any("maps to qualification" in e for e in broken(wrong_stage)))
+
+        def closed_not_last(data):
+            next(o for o in data["opportunities"] if o.get("process") and o["stage"] == "closedWon")["process"]["step"] = "make-offer"
+        self.assertTrue(any("last Step" in e for e in broken(closed_not_last)))
+
+        def unknown_step(data):
+            next(l for l in data["leads"] if l.get("process"))["process"]["step"] = "nope"
+        self.assertTrue(any("is not a Step" in e for e in broken(unknown_step)))
+
+    def test_processes_load_before_the_records_that_follow_them(self):
+        order = [r.table.section for r in sd.build_records(DATA, USERS, NAV, CLOCK)]
+        first = {s: order.index(s) for s in set(order)}
+        self.assertLess(first["processes"], first["processVersions"])
+        self.assertLess(first["processVersions"], first["leads"])
+
+
 if __name__ == "__main__":
     unittest.main()
