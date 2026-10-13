@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Name>vibe_salesapp_65562</Name>
-  <AppVersion>2026-10-13T17:08:24Z</AppVersion>
+  <AppVersion>2026-10-13T17:31:34Z</AppVersion>
   <Status>Ready</Status>
   <CreatedByClientVersion>0.0.0.0</CreatedByClientVersion>
   <MinClientVersion>0.0.0.0</MinClientVersion>
@@ -28,8 +28,8 @@
   <IsCustomizable>1</IsCustomizable>
   <CodeAppPackageUris>
     <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-CGhAFBzf.js_ContentType_application/javascript</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-oq4EFRo-.css_ContentType_text/css</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-BALcBHwx.css_ContentType_text/css</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-D-aoHfGx.js_ContentType_application/javascript</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/power-apps.svg_ContentType_image/svg+xml</CodeAppPackageUri>
   </CodeAppPackageUris>
 </CanvasApp>

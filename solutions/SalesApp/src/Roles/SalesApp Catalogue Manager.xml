@@ -7,6 +7,7 @@
     <RolePrivilege name="prvCreatevibe_Product" level="Global" />
     <RolePrivilege name="prvCreatevibe_QuoteSettings" level="Global" />
     <RolePrivilege name="prvCreatevibe_QuoteTemplate" level="Global" />
+    <RolePrivilege name="prvDeletevibe_QuoteTemplate" level="Global" />
     <RolePrivilege name="prvReadSharePointData" level="Global" />
     <RolePrivilege name="prvReadSharePointDocument" level="Global" />
     <RolePrivilege name="prvReadvibe_Product" level="Global" />

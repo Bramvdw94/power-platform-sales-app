@@ -85,11 +85,12 @@ for _t in QUOTE_TABLES:
 
 # Quote templates and Quote settings (#102) are organisation-owned like Products: everyone reads
 # them (the PDF is drawn in the salesperson's browser), only the Catalogue Manager role creates and
-# changes them, and nobody deletes. Pointing a Quote at a template needs Append To on the template.
+# changes them, and only a template can be deleted (#103, from the template list). Pointing a Quote at a template needs Append To on the template.
 QUOTE_PDF_TABLES = ["vibe_QuoteTemplate", "vibe_QuoteSettings"]
 QUOTE_PDF_READ = {f"prvRead{t}": GLOBAL for t in QUOTE_PDF_TABLES}
 QUOTE_PDF_READ["prvAppendTovibe_QuoteTemplate"] = GLOBAL
 QUOTE_PDF_MANAGE = {f"prv{verb}{t}": GLOBAL for t in QUOTE_PDF_TABLES for verb in ("Create", "Write")}
+QUOTE_PDF_MANAGE["prvDeletevibe_QuoteTemplate"] = GLOBAL
 
 # Quota (#104) is owned by the salesperson it is for. Everyone reads their own
 # row (a manager reads and writes direct reports' rows through the hierarchy);
