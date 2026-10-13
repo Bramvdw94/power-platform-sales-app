@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { GatewayError, QualifyError } from "@/data/gateway"
+import { PublishRefused } from "@/sales"
 import type {
   AccountRow,
   ActivityRow,
@@ -23,8 +24,9 @@ import type {
   ProcessRow,
   ProcessVersionRow,
   EnvironmentVariableDefinitionRow,
-  BusinessRuleRowData,
   EnvironmentVariableValueRow,
+  BusinessRuleRow,
+  EngineErrorRow,
 } from "./client"
 import { DataverseSalesGateway, toAccount, toMoment } from "./dataverse-gateway"
 
@@ -181,7 +183,141 @@ const productRows: ProductRow[] = [
 ]
 
 /** A fake Dataverse that understands the one filter the gateway sends for direct reports. */
-function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = [], processRows: ProcessRow[] = [], processVersionRows: ProcessVersionRow[] = [], envDefinitionRows: EnvironmentVariableDefinitionRow[] = [], envValueRows: EnvironmentVariableValueRow[] = [], businessRuleRows: BusinessRuleRowData[] = []) {
+describe("DataverseSalesGateway, Process administration", () => {
+  const P1 = "11111111-0000-0000-0000-000000000001"
+  const P2 = "11111111-0000-0000-0000-000000000002"
+  const V1 = "22222222-0000-0000-0000-000000000001"
+  const definition = {
+    schemaVersion: 1,
+    table: "opportunity",
+    steps: [
+      { id: "s1", name: "Qualify", mapsTo: "qualification" },
+      { id: "s2", name: "Propose", mapsTo: "proposal" },
+    ],
+  }
+  const rows = (): ProcessRow[] => [
+    { vibe_processid: P1, vibe_name: "Starter", vibe_tablechoice: 841200001, vibe_priority: 1, vibe_isfallback: true, vibe_retired: false, _vibe_latestversionid_value: V1, vibe_draftdefinition: JSON.stringify(definition) },
+    { vibe_processid: P2, vibe_name: "Draft", vibe_tablechoice: 841200001, vibe_priority: 2, vibe_isfallback: false, vibe_retired: false, _vibe_latestversionid_value: null, vibe_draftdefinition: JSON.stringify({ ...definition, steps: [] }) },
+  ]
+  const versions = (): ProcessVersionRow[] => [
+    { vibe_processversionid: V1, _vibe_processid_value: P1, vibe_definition: JSON.stringify(definition), vibe_versionnumber: 1, vibe_publishedon: "2026-10-01T09:00:00Z" },
+  ]
+
+  it("lists a table's Processes with their draft, version number and unpublished changes", async () => {
+    const client = fakeClient(MEGAN, [], [], [], [], rows(), versions())
+    const list = await new DataverseSalesGateway(client).listProcessAdmin("opportunity")
+    expect(list.map((p) => [p.name, p.latestVersionNumber, p.hasUnpublishedChanges])).toEqual([["Starter", 1, false], ["Draft", null, false]])
+    expect(list[0].versions).toEqual([{ id: V1, number: 1, openRecords: 0, publishedOn: "2026-10-01T09:00:00Z" }])
+  })
+
+  it("flags a draft that differs from the latest version", async () => {
+    const changed = rows()
+    changed[0].vibe_draftdefinition = JSON.stringify({ ...definition, steps: [...definition.steps, { id: "s3", name: "Close", mapsTo: "negotiation" }] })
+    const [first] = await new DataverseSalesGateway(fakeClient(MEGAN, [], [], [], [], changed, versions())).listProcessAdmin("opportunity")
+    expect(first.hasUnpublishedChanges).toBe(true)
+  })
+
+  it("creates a draft Process last in the priority order", async () => {
+    const client = fakeClient(MEGAN, [], [], [], [], rows(), versions())
+    await new DataverseSalesGateway(client).createProcess("opportunity", "  Partner deals ")
+    expect(client.processes.create).toHaveBeenCalledWith({
+      vibe_name: "Partner deals",
+      vibe_tablechoice: 841200001,
+      vibe_priority: 3,
+      vibe_isfallback: false,
+      vibe_retired: false,
+      vibe_draftdefinition: JSON.stringify({ schemaVersion: 1, table: "opportunity", steps: [] }),
+    })
+  })
+
+  it("publishes the draft as the next Process version and points the Process at it", async () => {
+    const client = fakeClient(MEGAN, [], [], [], [], rows(), versions())
+    const edited = { ...definition, steps: [...definition.steps, { id: "s3", name: "Close", mapsTo: "negotiation" }] }
+    client.processes.get.mockResolvedValueOnce({ ...rows()[0], vibe_draftdefinition: JSON.stringify(edited) })
+    await new DataverseSalesGateway(client).publishProcess(P1)
+    expect(client.processVersions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vibe_name: "Starter v2",
+        vibe_versionnumber: 2,
+        vibe_definition: JSON.stringify(edited),
+        "vibe_ProcessId@odata.bind": `/vibe_processes(${P1})`,
+        "vibe_PublishedById@odata.bind": `/systemusers(${MEGAN})`,
+      }),
+    )
+    expect(client.processes.update).toHaveBeenCalledWith(P1, { "vibe_LatestVersionId@odata.bind": expect.stringMatching(/^\/vibe_processversions\(/) })
+  })
+
+  it("refuses to publish Steps out of Stage order and writes nothing", async () => {
+    const client = fakeClient(MEGAN, [], [], [], [], rows(), versions())
+    const backwards = { ...definition, steps: [definition.steps[1], definition.steps[0]] }
+    client.processes.get.mockResolvedValueOnce({ ...rows()[0], vibe_draftdefinition: JSON.stringify(backwards) })
+    await expect(new DataverseSalesGateway(client).publishProcess(P1)).rejects.toBeInstanceOf(PublishRefused)
+    expect(client.processVersions.create).not.toHaveBeenCalled()
+  })
+
+  it("makes a Process the only fallback and drops its Entry criteria from the draft", async () => {
+    const client = fakeClient(MEGAN, [], [], [], [], rows(), versions())
+    const withCriteria = { ...definition, steps: [], entryCriteria: { match: "all", conditions: [{ field: "account.accountType", op: "equals", value: "partner" }] } }
+    client.processes.get.mockResolvedValueOnce({ ...rows()[1], vibe_draftdefinition: JSON.stringify(withCriteria) })
+    await new DataverseSalesGateway(client).saveProcessDraft(P2, { isFallback: true })
+    expect(client.processes.update).toHaveBeenCalledWith(P1, { vibe_isfallback: false })
+    expect(client.processes.update).toHaveBeenCalledWith(P2, { vibe_isfallback: true, vibe_draftdefinition: JSON.stringify({ ...definition, steps: [] }) })
+  })
+
+  it("swaps the priority of two Processes", async () => {
+    const client = fakeClient(MEGAN, [], [], [], [], rows(), versions())
+    await new DataverseSalesGateway(client).moveProcessPriority(P2, "up")
+    expect(client.processes.update).toHaveBeenCalledWith(P2, { vibe_priority: 1 })
+    expect(client.processes.update).toHaveBeenCalledWith(P1, { vibe_priority: 2 })
+  })
+
+  it("retires a Process and clears its fallback flag", async () => {
+    const client = fakeClient(MEGAN, [], [], [], [], rows(), versions())
+    await new DataverseSalesGateway(client).retireProcess(P1)
+    expect(client.processes.update).toHaveBeenCalledWith(P1, { vibe_retired: true, vibe_isfallback: false })
+  })
+
+  it("moves open records on an older version onto the latest and counts them", async () => {
+    const V2 = "22222222-0000-0000-0000-000000000002"
+    const latest: ProcessRow[] = [{ ...rows()[0], _vibe_latestversionid_value: V2 }]
+    const twoVersions: ProcessVersionRow[] = [...versions(), { vibe_processversionid: V2, _vibe_processid_value: P1, vibe_definition: JSON.stringify(definition), vibe_versionnumber: 2 }]
+    const client = fakeClient(MEGAN, [], [], [], [], latest, twoVersions)
+    client.opportunities.list.mockResolvedValue({
+      rows: [
+        { ...opportunityRows[0], vibe_stage: 841200000, _vibe_processversionid_value: V1, vibe_currentstep: "s1" },
+        { ...opportunityRows[1], vibe_stage: 841200000, _vibe_processversionid_value: V2, vibe_currentstep: "s1" },
+        { ...opportunityRows[1], vibe_opportunityid: "99999999-0000-0000-0000-000000000009", vibe_stage: 841200004, _vibe_processversionid_value: V1, vibe_currentstep: "s2" },
+      ],
+      skipToken: undefined,
+      count: 3,
+    })
+    const moved = await new DataverseSalesGateway(client).moveToLatestVersion(P1)
+    expect(moved).toBe(1)
+    expect(client.opportunities.update).toHaveBeenCalledTimes(1)
+    expect(client.opportunities.update).toHaveBeenCalledWith(opportunityRows[0].vibe_opportunityid, { "vibe_ProcessVersionId@odata.bind": `/vibe_processversions(${V2})` })
+  })
+
+  it("lists Processes for someone who may not read Engine errors, without an error count", async () => {
+    const client = fakeClient(ADELE, [], [], [], [], rows(), versions())
+    client.engineErrors.list.mockRejectedValue(new Error("principal user is missing prvReadvibe_EngineError privilege (0x80040220)"))
+    const list = await new DataverseSalesGateway(client).listProcessAdmin("opportunity")
+    expect(list.map((p) => p.engineErrorCount)).toEqual([0, 0])
+  })
+
+  it("reads Engine errors", async () => {
+    const client = fakeClient(MEGAN)
+    client.engineErrors.list.mockResolvedValueOnce({
+      rows: [{ vibe_engineerrorid: "e1", _vibe_processid_value: P1, vibe_actionid: "a1", vibe_code: "noManager", vibe_message: "The Owner has no manager.", vibe_occurredon: "2026-10-12T10:00:00Z" }],
+      skipToken: undefined,
+      count: 1,
+    })
+    expect(await new DataverseSalesGateway(client).listEngineErrors(P1)).toEqual([
+      { id: "e1", processId: P1, actionId: "a1", code: "noManager", message: "The Owner has no manager.", occurredOn: "2026-10-12T10:00:00Z" },
+    ])
+  })
+})
+
+function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = [], processRows: ProcessRow[] = [], processVersionRows: ProcessVersionRow[] = [], envDefinitionRows: EnvironmentVariableDefinitionRow[] = [], envValueRows: EnvironmentVariableValueRow[] = [], businessRuleRows: BusinessRuleRow[] = []) {
   return {
     accounts: fakeTable("accountid", accountRows),
     contacts: fakeTable("contactid", contactRows),
@@ -197,6 +333,7 @@ function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRow
     processes: fakeTable("vibe_processid", processRows),
     processVersions: fakeTable("vibe_processversionid", processVersionRows),
     businessRules: fakeTable("vibe_businessruleid", businessRuleRows),
+    engineErrors: fakeTable("vibe_engineerrorid", [] as EngineErrorRow[]),
     environmentVariableDefinitions: fakeTable("environmentvariabledefinitionid", envDefinitionRows),
     environmentVariableValues: fakeTable("environmentvariablevalueid", envValueRows),
     uploadQuotePdf: vi.fn(async () => undefined),
@@ -1594,7 +1731,7 @@ describe("DataverseSalesGateway, Processes", () => {
 
   it("reads the Business rules of a table and skips one whose definition can't be read", async () => {
     const good = { schemaVersion: 1, table: "contact", when: { match: "all", conditions: [{ field: "email", op: "isEmpty" }] }, effects: [{ type: "blockSave", message: "Add an email." }] }
-    const rows: BusinessRuleRowData[] = [
+    const rows: BusinessRuleRow[] = [
       { vibe_businessruleid: "44444444-0000-0000-0000-000000000001", vibe_name: "Reachable", vibe_tablechoice: 841200003, vibe_enabled: true, vibe_definition: JSON.stringify(good) },
       { vibe_businessruleid: "44444444-0000-0000-0000-000000000002", vibe_name: "Off", vibe_tablechoice: 841200003, vibe_enabled: false, vibe_definition: JSON.stringify(good) },
       { vibe_businessruleid: "44444444-0000-0000-0000-000000000003", vibe_name: "Broken", vibe_tablechoice: 841200003, vibe_enabled: true, vibe_definition: "not json" },

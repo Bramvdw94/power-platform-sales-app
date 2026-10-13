@@ -123,6 +123,11 @@
           "logicalName": "environmentvariablevalue",
           "isHidden": false
         },
+        "engineerrors": {
+          "entitySetName": "vibe_engineerrors",
+          "logicalName": "vibe_engineerror",
+          "isHidden": false
+        },
         "businessrules": {
           "entitySetName": "vibe_businessrules",
           "logicalName": "vibe_businessrule",

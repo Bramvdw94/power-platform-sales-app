@@ -5428,6 +5428,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "vibe_engineerrors": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "vibe_engineerrorid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "vibe_leads": {
     "tableId": "",
     "version": "",

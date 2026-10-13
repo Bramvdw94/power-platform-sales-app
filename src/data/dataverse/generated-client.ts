@@ -16,6 +16,7 @@ import {
   EnvironmentvariabledefinitionsService,
   EnvironmentvariablevaluesService,
   Vibe_businessrulesService,
+  Vibe_engineerrorsService,
   Vibe_leadsService,
   Vibe_opportunitiesService,
   Vibe_processesService,
@@ -36,6 +37,7 @@ import {
   ENVIRONMENT_VARIABLE_DEFINITION_COLUMNS,
   ENVIRONMENT_VARIABLE_VALUE_COLUMNS,
   BUSINESS_RULE_COLUMNS,
+  ENGINE_ERROR_COLUMNS,
   PROCESS_COLUMNS,
   PROCESS_VERSION_COLUMNS,
   CONTACT_COLUMNS,
@@ -155,6 +157,7 @@ export function createGeneratedClient(): DataverseClient {
     processes: table(Vibe_processesService, "vibe_process", PROCESS_COLUMNS),
     processVersions: table(Vibe_processversionsService, "vibe_processversion", PROCESS_VERSION_COLUMNS),
     businessRules: table(Vibe_businessrulesService, "vibe_businessrule", BUSINESS_RULE_COLUMNS),
+    engineErrors: table(Vibe_engineerrorsService, "vibe_engineerror", ENGINE_ERROR_COLUMNS),
     environmentVariableDefinitions: table(EnvironmentvariabledefinitionsService, "environmentvariabledefinition", ENVIRONMENT_VARIABLE_DEFINITION_COLUMNS),
     environmentVariableValues: table(EnvironmentvariablevaluesService, "environmentvariablevalue", ENVIRONMENT_VARIABLE_VALUE_COLUMNS),
 

@@ -468,6 +468,8 @@ export type ProcessRow = Row & {
   vibe_priority?: number | null
   vibe_isfallback?: boolean | null
   vibe_retired?: boolean | null
+  /** The definition being edited, as JSON text. */
+  vibe_draftdefinition?: string | null
   _vibe_latestversionid_value?: Id | null
 }
 
@@ -478,6 +480,7 @@ export const PROCESS_COLUMNS = [
   "vibe_priority",
   "vibe_isfallback",
   "vibe_retired",
+  "vibe_draftdefinition",
   "_vibe_latestversionid_value",
 ] as const
 
@@ -486,21 +489,54 @@ export type ProcessVersionRow = Row & {
   _vibe_processid_value?: Id | null
   /** The definition as JSON text. */
   vibe_definition?: string | null
+  vibe_versionnumber?: number | null
+  vibe_publishedon?: string | null
 }
 
-export const PROCESS_VERSION_COLUMNS = ["vibe_processversionid", "_vibe_processid_value", "vibe_definition"] as const
+export const PROCESS_VERSION_COLUMNS = [
+  "vibe_processversionid",
+  "_vibe_processid_value",
+  "vibe_definition",
+  "vibe_versionnumber",
+  "vibe_publishedon",
+] as const
 
-/** A Business rule: table-wide effects whose condition and effects are the definition JSON. */
-export type BusinessRuleRowData = Row & {
+/** A table-wide Business rule; the Business rules builder (#98) writes them, Publish checks read them. */
+export type BusinessRuleRow = Row & {
   vibe_businessruleid: Id
   vibe_name?: string | null
   vibe_tablechoice?: number | null
   vibe_enabled?: boolean | null
-  /** The definition as JSON text. */
+  /** The condition and effects as JSON text. */
   vibe_definition?: string | null
 }
 
 export const BUSINESS_RULE_COLUMNS = ["vibe_businessruleid", "vibe_name", "vibe_tablechoice", "vibe_enabled", "vibe_definition"] as const
+
+/** A rule or Action the engine could not run. The save went through without it. */
+export type EngineErrorRow = Row & {
+  vibe_engineerrorid: Id
+  _vibe_processid_value?: Id | null
+  _vibe_ruleid_value?: Id | null
+  vibe_actionid?: string | null
+  vibe_code?: string | null
+  vibe_message?: string | null
+  vibe_recordtable?: string | null
+  vibe_recordid?: string | null
+  vibe_occurredon?: string | null
+}
+
+export const ENGINE_ERROR_COLUMNS = [
+  "vibe_engineerrorid",
+  "_vibe_processid_value",
+  "_vibe_ruleid_value",
+  "vibe_actionid",
+  "vibe_code",
+  "vibe_message",
+  "vibe_recordtable",
+  "vibe_recordid",
+  "vibe_occurredon",
+] as const
 
 export type EnvironmentVariableDefinitionRow = Row & {
   environmentvariabledefinitionid: Id
@@ -574,7 +610,8 @@ export interface DataverseClient {
   quoteSettings: TableClient<QuoteSettingsRow>
   processes: TableClient<ProcessRow>
   processVersions: TableClient<ProcessVersionRow>
-  businessRules: TableClient<BusinessRuleRowData>
+  businessRules: TableClient<BusinessRuleRow>
+  engineErrors: TableClient<EngineErrorRow>
   environmentVariableDefinitions: TableClient<EnvironmentVariableDefinitionRow>
   environmentVariableValues: TableClient<EnvironmentVariableValueRow>
   /** Puts a file in a Quote's file column. */
@@ -588,6 +625,11 @@ export interface DataverseClient {
 
 /** A Lead's Disqualified by lookup (to systemuser), as a navigation property. */
 export const LEAD_DISQUALIFIED_BY_NAVIGATION = "vibe_DisqualifiedBy"
+
+/** A Process version's Process, a Process's latest version and a version's publisher, for `@odata.bind` writes. */
+export const PROCESS_NAVIGATION = "vibe_ProcessId"
+export const PROCESS_LATEST_VERSION_NAVIGATION = "vibe_LatestVersionId"
+export const PROCESS_VERSION_PUBLISHED_BY_NAVIGATION = "vibe_PublishedById"
 
 /** A Lead's or Opportunity's Process version lookup, for `@odata.bind` writes. */
 export const PROCESS_VERSION_NAVIGATION = "vibe_ProcessVersionId"

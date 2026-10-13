@@ -21,6 +21,8 @@ import {
   type PhoneCallInput,
   type BusinessRules,
   type ProcessDefinitions,
+  type ProcessDraftUpdate,
+  type PublishPreview,
   type ProductListQuery,
   type ProductUpdate,
   QualifyError,
@@ -35,7 +37,23 @@ import {
   type SearchResults,
   type TaskInput,
 } from "@/data/gateway"
-import type { BusinessRuleDefinition, BusinessRuleRow, EngineTable, ProcessDefinition, ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
+import type { BusinessRuleDefinition, BusinessRuleRow as EngineRuleRow, EngineTable, ProcessDefinition, ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
+import {
+  PublishRefused,
+  activityRelated,
+  checkDraft,
+  definitionKey,
+  emptyDraft,
+  impactOf,
+  opportunityParents,
+  opportunityRelated,
+  reorderedIds,
+  setEntryCriteria,
+  toEngineRecord,
+  type EngineErrorEntry,
+  type ImpactRecord,
+  type ProcessAdmin,
+} from "@/sales"
 import {
   DISQUALIFY_REASONS,
   FORECAST_CATEGORIES,
@@ -153,6 +171,12 @@ import {
 } from "@/sales"
 import {
   CONTACT_ACCOUNT_NAVIGATION,
+  PROCESS_LATEST_VERSION_NAVIGATION,
+  PROCESS_NAVIGATION,
+  PROCESS_VERSION_PUBLISHED_BY_NAVIGATION,
+  type EngineErrorRow,
+  type ProcessRow as ProcessRecord,
+  type ProcessVersionRow as ProcessVersionRecord,
   QUOTA_SALESPERSON_NAVIGATION,
   LEAD_DISQUALIFIED_BY_NAVIGATION,
   OPPORTUNITY_NAVIGATION,
@@ -419,6 +443,27 @@ function parseProcessDefinition(json: string | null | undefined): ProcessDefinit
     return parsed && Array.isArray(parsed.steps) ? parsed : undefined
   } catch {
     return undefined
+  }
+}
+
+function tableOfProcess(row: ProcessRecord): ProcessTable {
+  return row.vibe_tablechoice === PROCESS_TABLE_CHOICE.lead ? "lead" : "opportunity"
+}
+
+const IMPACT_LIMIT = 200
+const ERROR_LIMIT = 200
+
+function toEngineError(row: EngineErrorRow): EngineErrorEntry {
+  return {
+    id: row.vibe_engineerrorid,
+    processId: optional(row._vibe_processid_value),
+    ruleId: optional(row._vibe_ruleid_value),
+    actionId: optional(row.vibe_actionid),
+    code: row.vibe_code ?? "",
+    message: row.vibe_message ?? "",
+    recordTable: optional(row.vibe_recordtable),
+    recordId: optional(row.vibe_recordid),
+    occurredOn: row.vibe_occurredon ?? "",
   }
 }
 
@@ -995,7 +1040,7 @@ export class DataverseSalesGateway implements SalesGateway {
       this.engineEnabled(),
       this.all(this.client.businessRules, `${ACTIVE} and vibe_tablechoice eq ${ENGINE_TABLE_CHOICE[table]}`, ["createdon asc"]),
     ])
-    const rules: BusinessRuleRow[] = []
+    const rules: EngineRuleRow[] = []
     for (const row of rows) {
       // A definition that can't be read is skipped: a broken rule never stops anyone's work.
       const definition = parseRuleDefinition(row.vibe_definition)
@@ -1051,6 +1096,262 @@ export class DataverseSalesGateway implements SalesGateway {
     if (record.type === "lead") await this.call(() => this.client.leads.update(guid(record.id), fieldsToWrite))
     else if (record.type === "opportunity") await this.call(() => this.client.opportunities.update(guid(record.id), fieldsToWrite))
     else throw new GatewayError("invalid", "Only Leads and Opportunities follow a Process.")
+  }
+
+  // ---- Process administration ---------------------------------------------------
+  // A Process builder's edits go to the Process row's draft; Publish writes an immutable Process version
+  // and points the Process at it. The role's privileges decide who may write; the app hides the controls.
+
+  private async processRows(table: ProcessTable): Promise<ProcessRecord[]> {
+    return this.all(this.client.processes, `${ACTIVE} and vibe_tablechoice eq ${PROCESS_TABLE_CHOICE[table]}`, ["vibe_priority asc"])
+  }
+
+  private async processRow(id: Id): Promise<ProcessRecord> {
+    return this.call(() => this.client.processes.get(guid(id)))
+  }
+
+  private async versionRowsOf(processIds: Id[]): Promise<ProcessVersionRecord[]> {
+    const rows: ProcessVersionRecord[] = []
+    for (let i = 0; i < processIds.length; i += TIMELINE_ID_CHUNK) {
+      const filter = processIds.slice(i, i + TIMELINE_ID_CHUNK).map((p) => `_vibe_processid_value eq ${guid(p)}`).join(" or ")
+      rows.push(...(await this.all(this.client.processVersions, filter, ["vibe_versionnumber asc"])))
+    }
+    return rows
+  }
+
+  /** Open Leads or Opportunities on any of the given Process versions. */
+  private async openRecordsOn(table: ProcessTable, versionIds: Id[]): Promise<(Lead | Opportunity)[]> {
+    const found: (Lead | Opportunity)[] = []
+    for (let i = 0; i < versionIds.length; i += TIMELINE_ID_CHUNK) {
+      const filter = `${ACTIVE} and (${versionIds.slice(i, i + TIMELINE_ID_CHUNK).map((v) => `_vibe_processversionid_value eq ${guid(v)}`).join(" or ")})`
+      if (table === "lead") found.push(...(await this.all(this.client.leads, filter, ["createdon asc"])).map(toLead).filter((l) => !isLeadReadOnly(l)))
+      else found.push(...(await this.all(this.client.opportunities, filter, ["createdon asc"])).map(toOpportunity).filter((o) => isOpenStage(o.stage)))
+    }
+    return found
+  }
+
+  /** Engine errors are the builders' to read: for anyone else the read is refused, and nothing is counted. */
+  private async errorCounts(processIds: Id[]): Promise<Map<Id, number>> {
+    const counts = new Map<Id, number>()
+    try {
+      for (let i = 0; i < processIds.length; i += TIMELINE_ID_CHUNK) {
+        const filter = processIds.slice(i, i + TIMELINE_ID_CHUNK).map((p) => `_vibe_processid_value eq ${guid(p)}`).join(" or ")
+        for (const row of await this.all(this.client.engineErrors, filter, ["vibe_occurredon desc"])) {
+          if (row._vibe_processid_value) counts.set(row._vibe_processid_value, (counts.get(row._vibe_processid_value) ?? 0) + 1)
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof GatewayError && error.code === "forbidden")) throw error
+    }
+    return counts
+  }
+
+  private toProcessAdmin(
+    row: ProcessRecord,
+    table: ProcessTable,
+    versionRows: ProcessVersionRecord[],
+    open: (Lead | Opportunity)[],
+    errors: Map<Id, number>,
+  ): ProcessAdmin {
+    const own = versionRows.filter((v) => v._vibe_processid_value === row.vibe_processid)
+    const latest = own.find((v) => v.vibe_processversionid === row._vibe_latestversionid_value)
+    const published = latest && parseProcessDefinition(latest.vibe_definition)
+    const draft = parseProcessDefinition(row.vibe_draftdefinition) ?? published ?? emptyDraft(table)
+    return {
+      id: row.vibe_processid,
+      name: row.vibe_name ?? "",
+      table,
+      priority: row.vibe_priority ?? 0,
+      isFallback: row.vibe_isfallback === true,
+      retired: row.vibe_retired === true,
+      latestVersionId: row._vibe_latestversionid_value ?? null,
+      draft,
+      versions: own
+        .map((v, index) => ({
+          id: v.vibe_processversionid,
+          number: v.vibe_versionnumber ?? index + 1,
+          openRecords: open.filter((r) => r.processVersionId === v.vibe_processversionid).length,
+          publishedOn: optional(v.vibe_publishedon),
+        }))
+        .sort((a, b) => b.number - a.number),
+      latestVersionNumber: latest ? (latest.vibe_versionnumber ?? own.indexOf(latest) + 1) : null,
+      hasUnpublishedChanges: !!published && definitionKey(draft) !== definitionKey(published),
+      engineErrorCount: errors.get(row.vibe_processid) ?? 0,
+    }
+  }
+
+  private async adminView(rows: ProcessRecord[], table: ProcessTable): Promise<ProcessAdmin[]> {
+    const ids = rows.map((r) => r.vibe_processid)
+    const versionRows = await this.versionRowsOf(ids)
+    const [open, errors] = await Promise.all([this.openRecordsOn(table, versionRows.map((v) => v.vibe_processversionid)), this.errorCounts(ids)])
+    return rows.map((r) => this.toProcessAdmin(r, table, versionRows, open, errors))
+  }
+
+  async listProcessAdmin(table: ProcessTable): Promise<ProcessAdmin[]> {
+    return this.adminView(await this.processRows(table), table)
+  }
+
+  async getProcessAdmin(id: Id): Promise<ProcessAdmin> {
+    const row = await this.processRow(id)
+    const [admin] = await this.adminView([row], tableOfProcess(row))
+    return admin
+  }
+
+  async createProcess(table: ProcessTable, name: string): Promise<ProcessAdmin> {
+    const trimmed = name.trim()
+    if (!trimmed) throw new GatewayError("invalid", "Give the Process a name.", { name: "Enter a name." })
+    const priority = Math.max(0, ...(await this.processRows(table)).map((p) => p.vibe_priority ?? 0)) + 1
+    const row = await this.call(() =>
+      this.client.processes.create({
+        vibe_name: trimmed,
+        vibe_tablechoice: PROCESS_TABLE_CHOICE[table],
+        vibe_priority: priority,
+        vibe_isfallback: false,
+        vibe_retired: false,
+        vibe_draftdefinition: JSON.stringify(emptyDraft(table)),
+      }),
+    )
+    return this.getProcessAdmin(row.vibe_processid)
+  }
+
+  async saveProcessDraft(id: Id, update: ProcessDraftUpdate): Promise<ProcessAdmin> {
+    const row = await this.processRow(id)
+    const table = tableOfProcess(row)
+    const fields: Fields = {}
+    if (update.name !== undefined) {
+      if (!update.name.trim()) throw new GatewayError("invalid", "Give the Process a name.", { name: "Enter a name." })
+      fields.vibe_name = update.name.trim()
+    }
+    const isFallback = update.isFallback ?? row.vibe_isfallback === true
+    if (update.isFallback !== undefined) {
+      fields.vibe_isfallback = update.isFallback
+      if (update.isFallback) {
+        for (const other of await this.processRows(table)) {
+          if (other.vibe_processid !== id && other.vibe_isfallback) await this.call(() => this.client.processes.update(other.vibe_processid, { vibe_isfallback: false }))
+        }
+      }
+    }
+    if (update.definition || update.isFallback) {
+      const current = update.definition ?? parseProcessDefinition(row.vibe_draftdefinition) ?? emptyDraft(table)
+      // The fallback matches everything, so it has no Entry criteria.
+      fields.vibe_draftdefinition = JSON.stringify(isFallback ? setEntryCriteria(current, undefined) : current)
+    }
+    if (Object.keys(fields).length > 0) await this.call(() => this.client.processes.update(guid(id), fields))
+    return this.getProcessAdmin(id)
+  }
+
+  async moveProcessPriority(id: Id, direction: "up" | "down"): Promise<void> {
+    const row = await this.processRow(id)
+    const ordered = await this.processRows(tableOfProcess(row))
+    const ids = reorderedIds(ordered.map((p) => ({ id: p.vibe_processid })), id, direction)
+    if (!ids) return
+    for (const [index, processId] of ids.entries()) {
+      const wanted = index + 1
+      if (ordered.find((p) => p.vibe_processid === processId)?.vibe_priority !== wanted) {
+        await this.call(() => this.client.processes.update(guid(processId), { vibe_priority: wanted }))
+      }
+    }
+  }
+
+  /** The table's Business rules as the engine reads them; one that cannot be read is left out. */
+  private async engineRules(table: ProcessTable): Promise<EngineRuleRow[]> {
+    const rows = await this.all(this.client.businessRules, `${ACTIVE} and vibe_tablechoice eq ${PROCESS_TABLE_CHOICE[table]}`, ["createdon asc"])
+    return rows.flatMap((r): EngineRuleRow[] => {
+      try {
+        const definition = JSON.parse(r.vibe_definition ?? "") as EngineRuleRow["definition"]
+        return [{ id: r.vibe_businessruleid, name: r.vibe_name ?? "", enabled: r.vibe_enabled !== false, definition }]
+      } catch {
+        return []
+      }
+    })
+  }
+
+  /** Open records of a Process as the engine sees them, for the impact of a draft (the first 200). */
+  private async impactRecords(table: ProcessTable, versionIds: Id[]): Promise<{ total: number; records: ImpactRecord[] }> {
+    const open = await this.openRecordsOn(table, versionIds)
+    const records = await Promise.all(
+      open.slice(0, IMPACT_LIMIT).map(async (record): Promise<ImpactRecord> => {
+        if (table === "lead") {
+          const lead = record as Lead
+          const related = activityRelated(await this.listActivities({ type: "lead", id: lead.id }))
+          return { id: lead.id, table, name: fullName(lead) || lead.company, stepId: lead.currentStepId, scope: { table, record: toEngineRecord(lead), related } }
+        }
+        const opportunity = record as Opportunity
+        const [details, activities] = await Promise.all([this.getOpportunity(opportunity.id), this.listActivities({ type: "opportunity", id: opportunity.id })])
+        return {
+          id: opportunity.id,
+          table,
+          name: opportunity.name,
+          stepId: opportunity.currentStepId,
+          scope: {
+            table,
+            record: toEngineRecord(opportunity),
+            related: opportunityRelated(activities, details.productLines, details.quotes),
+            parents: opportunityParents(details),
+          },
+        }
+      }),
+    )
+    return { total: open.length, records }
+  }
+
+  async previewPublish(id: Id): Promise<PublishPreview> {
+    const process = await this.getProcessAdmin(id)
+    const { errors, warnings } = checkDraft(process.draft, await this.engineRules(process.table))
+    const { total, records } = await this.impactRecords(process.table, process.versions.map((v) => v.id))
+    return { errors, warnings, impact: { ...impactOf(process.draft, records), openRecords: total } }
+  }
+
+  async publishProcess(id: Id): Promise<ProcessAdmin> {
+    const process = await this.getProcessAdmin(id)
+    const { errors } = checkDraft(process.draft, await this.engineRules(process.table))
+    if (errors.length > 0) throw new PublishRefused(errors)
+    const number = Math.max(0, ...process.versions.map((v) => v.number)) + 1
+    const me = (await this.getCurrentUser()).user.id
+    const version = await this.call(() =>
+      this.client.processVersions.create({
+        vibe_name: `${process.name} v${number}`,
+        vibe_versionnumber: number,
+        vibe_definition: JSON.stringify(process.draft),
+        vibe_publishedon: new Date().toISOString(),
+        ...bind(PROCESS_NAVIGATION, "vibe_processes", id),
+        ...bind(PROCESS_VERSION_PUBLISHED_BY_NAVIGATION, "systemusers", me),
+      }),
+    )
+    await this.call(() =>
+      this.client.processes.update(guid(id), bind(PROCESS_LATEST_VERSION_NAVIGATION, "vibe_processversions", version.vibe_processversionid)),
+    )
+    return this.getProcessAdmin(id)
+  }
+
+  async retireProcess(id: Id): Promise<ProcessAdmin> {
+    await this.call(() => this.client.processes.update(guid(id), { vibe_retired: true, vibe_isfallback: false }))
+    return this.getProcessAdmin(id)
+  }
+
+  async moveToLatestVersion(id: Id): Promise<number> {
+    const process = await this.getProcessAdmin(id)
+    if (!process.latestVersionId) throw new GatewayError("invalid", "Publish the Process before moving records onto it.")
+    const stale = (await this.openRecordsOn(process.table, process.versions.map((v) => v.id))).filter((r) => r.processVersionId !== process.latestVersionId)
+    for (const record of stale) await this.switchProcess({ type: process.table, id: record.id }, process.latestVersionId)
+    return stale.length
+  }
+
+  async switchAllRecords(id: Id, targetProcessId: Id | null): Promise<number> {
+    const process = await this.getProcessAdmin(id)
+    const target = targetProcessId ? await this.getProcessAdmin(targetProcessId) : null
+    if (target && (target.table !== process.table || !target.latestVersionId || target.retired)) {
+      throw new GatewayError("invalid", "Pick a published Process of the same table that isn't retired.")
+    }
+    const records = await this.openRecordsOn(process.table, process.versions.map((v) => v.id))
+    for (const record of records) await this.switchProcess({ type: process.table, id: record.id }, target?.latestVersionId ?? null)
+    return records.length
+  }
+
+  async listEngineErrors(processId?: Id): Promise<EngineErrorEntry[]> {
+    const filter = processId ? `_vibe_processid_value eq ${guid(processId)}` : undefined
+    const rows = await this.all(this.client.engineErrors, filter, ["vibe_occurredon desc"], ERROR_LIMIT)
+    return rows.map(toEngineError)
   }
 
   // ---- Products -----------------------------------------------------------------

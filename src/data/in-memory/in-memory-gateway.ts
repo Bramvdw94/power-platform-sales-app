@@ -53,6 +53,16 @@ import {
   toDateOnly,
   toEngineRecord,
   activityRelated,
+  PublishRefused,
+  checkDraft,
+  definitionKey,
+  emptyDraft,
+  impactOf,
+  reorderedIds,
+  setEntryCriteria,
+  type EngineErrorEntry,
+  type ImpactRecord,
+  type ProcessAdmin,
   opportunityParents,
   opportunityRelated,
   type Account,
@@ -93,7 +103,7 @@ import {
   type Task,
   type User,
 } from "@/sales"
-import { evaluateSave, type EngineRecord, type EngineTable, type ProcessTable } from "@/sales/engine"
+import { evaluateSave, type EngineRecord, type EngineTable, type Parents, type ProcessRow, type ProcessTable, type Related } from "@/sales/engine"
 import {
   GatewayError,
   QualifyError,
@@ -118,6 +128,8 @@ import {
   type PhoneCallInput,
   type BusinessRules,
   type ProcessDefinitions,
+  type ProcessDraftUpdate,
+  type PublishPreview,
   type QuoteDetails,
   type SendQuoteInput,
   type QualifyInput,
@@ -380,6 +392,180 @@ export class InMemorySalesGateway implements SalesGateway {
     const step = version.definition.steps.find((s) => s.id === stepId)
     if (!step) throw new GatewayError("invalid", "That Step isn't part of this Process.")
     return step
+  }
+
+  // ---- Process administration -------------------------------------------------------
+
+  private requireBuilder() {
+    if (!this.user(this.userId).isProcessBuilder) throw new GatewayError("forbidden", "Only a Process builder can change Processes.")
+  }
+
+  private processRow(id: Id): ProcessRow {
+    const row = this.store.processes.find((p) => p.id === id)
+    if (!row) throw new GatewayError("notFound", `Process ${id} not found.`)
+    return row
+  }
+
+  /** The versions of a Process in the order they were published; the position is the version number. */
+  private versionsOf(processId: Id) {
+    return this.store.processVersions.filter((v) => v.processId === processId)
+  }
+
+  private isOpen(row: LeadRow | OpportunityRow, table: ProcessTable): boolean {
+    return table === "lead" ? !isLeadReadOnly(row as LeadRow) : isOpenStage((row as OpportunityRow).stage)
+  }
+
+  /** Open Leads or Opportunities that follow any version of the Process. */
+  private openRecordsOf(process: ProcessRow): (LeadRow | OpportunityRow)[] {
+    const versionIds = new Set(this.versionsOf(process.id).map((v) => v.id))
+    const rows: (LeadRow | OpportunityRow)[] = process.table === "lead" ? [...this.store.leads.values()] : [...this.store.opportunities.values()]
+    return rows.filter((r) => r.processVersionId && versionIds.has(r.processVersionId) && this.isOpen(r, process.table))
+  }
+
+  private toProcessAdmin(row: ProcessRow): ProcessAdmin {
+    const versions = this.versionsOf(row.id)
+    const latest = versions.find((v) => v.id === row.latestVersionId)
+    const draft = this.store.processDrafts.get(row.id) ?? latest?.definition ?? emptyDraft(row.table)
+    const open = this.openRecordsOf(row)
+    return clone({
+      ...row,
+      draft,
+      versions: versions
+        .map((v, index) => ({
+          id: v.id,
+          number: index + 1,
+          openRecords: open.filter((r) => r.processVersionId === v.id).length,
+          publishedOn: this.store.processVersionPublishedOn.get(v.id),
+        }))
+        .reverse(),
+      latestVersionNumber: latest ? versions.indexOf(latest) + 1 : null,
+      hasUnpublishedChanges: !!latest && definitionKey(draft) !== definitionKey(latest.definition),
+      engineErrorCount: this.store.engineErrors.filter((e) => e.processId === row.id).length,
+    })
+  }
+
+  async listProcessAdmin(table: ProcessTable): Promise<ProcessAdmin[]> {
+    return this.store.processes
+      .filter((p) => p.table === table)
+      .sort((a, b) => a.priority - b.priority)
+      .map((p) => this.toProcessAdmin(p))
+  }
+
+  async getProcessAdmin(id: Id): Promise<ProcessAdmin> {
+    return this.toProcessAdmin(this.processRow(id))
+  }
+
+  async createProcess(table: ProcessTable, name: string): Promise<ProcessAdmin> {
+    this.requireBuilder()
+    const trimmed = name.trim()
+    if (!trimmed) throw new GatewayError("invalid", "Give the Process a name.", { name: "Enter a name." })
+    const priority = Math.max(0, ...this.store.processes.filter((p) => p.table === table).map((p) => p.priority)) + 1
+    const row: ProcessRow = { id: this.store.newId("proc"), name: trimmed, table, priority, isFallback: false, retired: false, latestVersionId: null }
+    this.store.processes.push(row)
+    this.store.processDrafts.set(row.id, emptyDraft(table))
+    return this.toProcessAdmin(row)
+  }
+
+  async saveProcessDraft(id: Id, update: ProcessDraftUpdate): Promise<ProcessAdmin> {
+    this.requireBuilder()
+    const row = this.processRow(id)
+    if (update.name !== undefined) {
+      if (!update.name.trim()) throw new GatewayError("invalid", "Give the Process a name.", { name: "Enter a name." })
+      row.name = update.name.trim()
+    }
+    let definition = update.definition ?? this.store.processDrafts.get(id) ?? this.versionsOf(id).find((v) => v.id === row.latestVersionId)?.definition ?? emptyDraft(row.table)
+    if (update.isFallback !== undefined) {
+      if (update.isFallback) for (const other of this.store.processes) if (other.table === row.table) other.isFallback = false
+      row.isFallback = update.isFallback
+    }
+    // The fallback matches everything, so it has no Entry criteria.
+    if (row.isFallback) definition = setEntryCriteria(definition, undefined)
+    this.store.processDrafts.set(id, structuredClone(definition))
+    return this.toProcessAdmin(row)
+  }
+
+  async moveProcessPriority(id: Id, direction: "up" | "down"): Promise<void> {
+    this.requireBuilder()
+    const row = this.processRow(id)
+    const ordered = this.store.processes.filter((p) => p.table === row.table).sort((a, b) => a.priority - b.priority)
+    const ids = reorderedIds(ordered, id, direction)
+    if (!ids) return
+    ids.forEach((processId, index) => {
+      this.processRow(processId).priority = index + 1
+    })
+  }
+
+  /** Open records of the Process as the engine sees them, for the impact of a draft. */
+  private impactRecords(process: ProcessRow): ImpactRecord[] {
+    return this.openRecordsOf(process).map((row) => {
+      const { related, parents } = this.engineScope(process.table, row)
+      return {
+        id: row.id,
+        table: process.table,
+        name: process.table === "lead" ? fullName(row as LeadRow) || (row as LeadRow).company : (row as OpportunityRow).name,
+        stepId: row.currentStepId,
+        scope: { table: process.table, record: toEngineRecord(row), related, parents },
+      }
+    })
+  }
+
+  async previewPublish(id: Id): Promise<PublishPreview> {
+    const process = this.processRow(id)
+    const draft = this.toProcessAdmin(process).draft
+    const { errors, warnings } = checkDraft(draft, this.store.businessRules)
+    return { errors, warnings, impact: impactOf(draft, this.impactRecords(process)) }
+  }
+
+  async publishProcess(id: Id): Promise<ProcessAdmin> {
+    this.requireBuilder()
+    const process = this.processRow(id)
+    const draft = this.toProcessAdmin(process).draft
+    const { errors } = checkDraft(draft, this.store.businessRules)
+    if (errors.length > 0) throw new PublishRefused(errors)
+    const version = { id: this.store.newId("procver"), processId: id, definition: structuredClone(draft) }
+    this.store.processVersions.push(version)
+    this.store.processVersionPublishedOn.set(version.id, this.now().toISOString())
+    process.latestVersionId = version.id
+    return this.toProcessAdmin(process)
+  }
+
+  async retireProcess(id: Id): Promise<ProcessAdmin> {
+    this.requireBuilder()
+    const process = this.processRow(id)
+    process.retired = true
+    process.isFallback = false
+    return this.toProcessAdmin(process)
+  }
+
+  async moveToLatestVersion(id: Id): Promise<number> {
+    this.requireBuilder()
+    const process = this.processRow(id)
+    if (!process.latestVersionId) throw new GatewayError("invalid", "Publish the Process before moving records onto it.")
+    const stale = this.openRecordsOf(process).filter((r) => r.processVersionId !== process.latestVersionId)
+    for (const row of stale) {
+      await this.switchProcess({ type: process.table, id: row.id }, process.latestVersionId)
+    }
+    return stale.length
+  }
+
+  async switchAllRecords(id: Id, targetProcessId: Id | null): Promise<number> {
+    this.requireBuilder()
+    const process = this.processRow(id)
+    const target = targetProcessId ? this.processRow(targetProcessId) : null
+    if (target && (target.table !== process.table || !target.latestVersionId || target.retired)) {
+      throw new GatewayError("invalid", "Pick a published Process of the same table that isn't retired.")
+    }
+    const rows = this.openRecordsOf(process)
+    for (const row of rows) await this.switchProcess({ type: process.table, id: row.id }, target?.latestVersionId ?? null)
+    return rows.length
+  }
+
+  async listEngineErrors(processId?: Id): Promise<EngineErrorEntry[]> {
+    return clone(
+      this.store.engineErrors
+        .filter((e) => !processId || e.processId === processId)
+        .sort((a, b) => b.occurredOn.localeCompare(a.occurredOn)),
+    )
   }
 
   // ---- Products -----------------------------------------------------------------
@@ -1152,35 +1338,7 @@ export class InMemorySalesGateway implements SalesGateway {
       if (!before || (before as Record<string, unknown>)[key] !== value) change[key] = value
     }
     const recordId = next.id
-    const activities = [...store.activities.values()].filter((a) => a.regarding.type === table && a.regarding.id === recordId)
-    const toActivities = activities.map((a) => this.toActivity(a))
-    let related, parents
-    if (table === "account") {
-      const contacts = [...this.store.contacts.values()].filter((c) => c.accountId === recordId)
-      const opportunities = [...this.store.opportunities.values()].filter((o) => o.accountId === recordId)
-      related = {
-        ...activityRelated(toActivities),
-        contacts: contacts.map((c) => toEngineRecord(this.toContact(c))),
-        opportunities: opportunities.map((o) => toEngineRecord(this.toOpportunity(o))),
-      }
-    } else if (table === "contact") {
-      related = activityRelated(toActivities)
-      const account = (next as ContactRow).accountId ? this.store.accounts.get((next as ContactRow).accountId!) : undefined
-      parents = { account: account ? toEngineRecord(this.toAccount(account)) : null }
-    } else if (table === "opportunity") {
-      const row = next as OpportunityRow
-      related = opportunityRelated(toActivities, this.linesOf(recordId), this.quotesOf(recordId))
-      const account = store.accounts.get(row.accountId)
-      const contact = row.primaryContactId ? store.contacts.get(row.primaryContactId) : undefined
-      const lead = row.originatingLeadId ? store.leads.get(row.originatingLeadId) : undefined
-      parents = opportunityParents({
-        account: account && this.toAccount(account),
-        primaryContact: contact && this.toContact(contact),
-        originatingLead: lead && this.toLead(lead),
-      })
-    } else {
-      related = activityRelated(toActivities)
-    }
+    const { related, parents } = this.engineScope(table, next)
     const me = this.user(this.userId)
     const outcome = evaluateSave({
       table,
@@ -1196,6 +1354,9 @@ export class InMemorySalesGateway implements SalesGateway {
       rules: store.businessRules.filter((r) => r.definition.table === table),
     })
     if (!outcome.allowed) throw new GatewayError("invalid", outcome.rejection?.message ?? "The record cannot be saved.")
+    for (const report of outcome.engineErrors) {
+      store.engineErrors.push({ id: store.newId("err"), ...report, recordTable: table, recordId, occurredOn: this.now().toISOString() })
+    }
     const final = { ...next, ...outcome.changes } as Record<string, unknown>
     for (const key of Object.keys(final)) if (final[key] === null || final[key] === undefined) delete final[key]
     if (createTasks) {
@@ -1216,6 +1377,43 @@ export class InMemorySalesGateway implements SalesGateway {
       }
     }
     return final as R
+  }
+
+  /** The related lists and parents a Gate or rule reads for a Lead or Opportunity as it is now. */
+  private engineScope(table: EngineTable, row: LeadRow | OpportunityRow | AccountRow | ContactRow): { related: Related; parents?: Parents } {
+    const store = this.store
+    const activities = [...store.activities.values()]
+      .filter((a) => a.regarding.type === table && a.regarding.id === row.id)
+      .map((a) => this.toActivity(a))
+    if (table === "opportunity") {
+      const opp = row as OpportunityRow
+      const account = store.accounts.get(opp.accountId)
+      const contact = opp.primaryContactId ? store.contacts.get(opp.primaryContactId) : undefined
+      const lead = opp.originatingLeadId ? store.leads.get(opp.originatingLeadId) : undefined
+      return {
+        related: opportunityRelated(activities, this.linesOf(row.id), this.quotesOf(row.id)),
+        parents: opportunityParents({
+          account: account && this.toAccount(account),
+          primaryContact: contact && this.toContact(contact),
+          originatingLead: lead && this.toLead(lead),
+        }),
+      }
+    }
+    if (table === "account") {
+      return {
+        related: {
+          ...activityRelated(activities),
+          contacts: [...store.contacts.values()].filter((c) => c.accountId === row.id).map((c) => toEngineRecord(this.toContact(c))),
+          opportunities: [...store.opportunities.values()].filter((o) => o.accountId === row.id).map((o) => toEngineRecord(this.toOpportunity(o))),
+        },
+      }
+    }
+    if (table === "contact") {
+      const accountId = (row as ContactRow).accountId
+      const account = accountId ? store.accounts.get(accountId) : undefined
+      return { related: activityRelated(activities), parents: { account: account ? toEngineRecord(this.toAccount(account)) : null } }
+    }
+    return { related: activityRelated(activities) }
   }
 
   private page<T extends { ownerId: Id; createdOn: string }>(
