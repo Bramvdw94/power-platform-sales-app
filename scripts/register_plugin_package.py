@@ -3,10 +3,14 @@ register_plugin_package.py -- push the SalesApp plug-in package to dev-salesapp 
 
 Builds plugins/SalesApp.Plugins and creates (first run) or updates the plug-in
 package row vibe_SalesApp.Plugins in the SalesApp solution. Then registers the
-QuotaGuardPlugin steps (#104): pre-operation, synchronous, Create and Update
-of vibe_quota.
+steps, all synchronous:
+  * QuotaGuardPlugin (#104): pre-operation, Create and Update of vibe_quota
+  * ProcessEnginePlugin (#94): pre-operation, Create and Update of vibe_lead,
+    vibe_opportunity, account and contact; post-operation (the Action Tasks, in
+    the same transaction), Create and Update of vibe_lead and vibe_opportunity
 
 Run:  python scripts/register_plugin_package.py
+      (PLUGIN_PROJECT=<dir> builds another copy of the project, e.g. to push two unmerged branches together)
 """
 
 import base64
@@ -25,7 +29,7 @@ load_env()
 BASE = os.environ["DATAVERSE_URL"].rstrip("/") + "/api/data/v9.2/"
 SOLUTION = os.environ.get("SOLUTION_NAME") or "SalesApp"
 NAME = "vibe_SalesApp.Plugins"
-PROJECT = os.path.join(HERE, "..", "plugins", "SalesApp.Plugins")
+PROJECT = os.environ.get("PLUGIN_PROJECT") or os.path.join(HERE, "..", "plugins", "SalesApp.Plugins")
 H = {"Authorization": "Bearer " + get_token(), "Accept": "application/json", "Content-Type": "application/json"}
 
 subprocess.run(["dotnet", "build", PROJECT, "-c", "Release"], check=True, stdout=subprocess.DEVNULL)
@@ -43,21 +47,28 @@ else:
 if not r.ok:
     sys.exit(1)
 
+# (type, message, table, filtering attributes, stage: 20 pre-operation / 40 post-operation)
 STEPS = [
-    ("QuotaGuardPlugin", "Create", "vibe_quota", None),
-    ("QuotaGuardPlugin", "Update", "vibe_quota", "vibe_salespersonid,vibe_month,vibe_amount,ownerid"),
+    ("QuotaGuardPlugin", "Create", "vibe_quota", None, 20),
+    ("QuotaGuardPlugin", "Update", "vibe_quota", "vibe_salespersonid,vibe_month,vibe_amount,ownerid", 20),
 ]
+for _table in ("vibe_lead", "vibe_opportunity", "account", "contact"):
+    for _message in ("Create", "Update"):
+        STEPS.append(("ProcessEnginePlugin", _message, _table, None, 20))
+for _table in ("vibe_lead", "vibe_opportunity"):
+    for _message in ("Create", "Update"):
+        STEPS.append(("ProcessEnginePlugin", _message, _table, None, 40))
 S = {**H, "MSCRM.SolutionUniqueName": SOLUTION}
-for typename, message, table, attrs in STEPS:
+for typename, message, table, attrs, stage in STEPS:
     t = requests.get(BASE + f"plugintypes?$select=plugintypeid&$filter=endswith(typename,'.{typename}')", headers=H).json()["value"]
     if not t:
         sys.exit(f"plug-in type {typename} not found; wait a minute and re-run")
     tid = t[0]["plugintypeid"]
     mid = requests.get(BASE + f"sdkmessages?$select=sdkmessageid&$filter=name eq '{message}'", headers=H).json()["value"][0]["sdkmessageid"]
     fid = requests.get(BASE + f"sdkmessagefilters?$select=sdkmessagefilterid&$filter=primaryobjecttypecode eq '{table}' and _sdkmessageid_value eq {mid}", headers=H).json()["value"][0]["sdkmessagefilterid"]
-    name = f"{typename}: {message} of {table}"
+    name = f"{typename}: {message} of {table}" + (" (post)" if stage == 40 else "")
     body = {
-        "name": name, "stage": 20, "mode": 0, "rank": 1, "supporteddeployment": 0,
+        "name": name, "stage": stage, "mode": 0, "rank": 1, "supporteddeployment": 0,
         "plugintypeid@odata.bind": f"/plugintypes({tid})",
         "sdkmessageid@odata.bind": f"/sdkmessages({mid})",
         "sdkmessagefilterid@odata.bind": f"/sdkmessagefilters({fid})",
@@ -72,3 +83,18 @@ for typename, message, table, attrs in STEPS:
     print("+ step" if r.ok else r.text, name)
     if not r.ok:
         sys.exit(1)
+
+# After an update, switch every step of this package off and on again. Without it users hit
+# "missing prvReadPluginType" on unrelated creates until Dataverse rebuilds its plug-in cache.
+types = requests.get(BASE + "plugintypes?$select=plugintypeid&$filter=startswith(typename,'SalesApp.Plugins.')", headers=H).json()["value"]
+refreshed = 0
+for t in types:
+    steps = requests.get(BASE + f"sdkmessageprocessingsteps?$select=sdkmessageprocessingstepid&$filter=_plugintypeid_value eq {t['plugintypeid']}", headers=H).json()["value"]
+    for step in steps:
+        url = BASE + f"sdkmessageprocessingsteps({step['sdkmessageprocessingstepid']})"
+        for state, status in ((1, 2), (0, 1)):
+            r = requests.patch(url, headers=H, json={"statecode": state, "statuscode": status})
+            if not r.ok:
+                sys.exit(r.text)
+        refreshed += 1
+print(f"refreshed {refreshed} steps")

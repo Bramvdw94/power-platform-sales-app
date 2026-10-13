@@ -96,3 +96,29 @@ Outcomes:
   outsider get `0x80048306`, Megan gets 204). Account and Contact keep
   Organization, so anyone can still put their Opportunity or Contact on an
   Account someone else owns (story 33; checked as Alex and Diego).
+
+## Process engine (#94)
+
+Definitions live in `vibe_Process`, `vibe_ProcessVersion`, `vibe_BusinessRule` and
+`vibe_EngineError` (`scripts/setup_process_engine.py`). One plug-in,
+`ProcessEnginePlugin`, runs synchronously: pre-operation on create and update of
+Lead, Opportunity, Account and Contact, and post-operation on Lead and Opportunity
+for the Action Tasks (same transaction). It runs the engine in
+`plugins/SalesApp.Plugins/Engine`, which `plugins/SalesApp.Plugins.Tests` holds to
+the shared cases in `process-engine/cases` (the TypeScript engine runs the same files).
+
+- **Kill switch:** environment variable `vibe_ProcessEngineEnabled`, `on` (default) or
+  `off`. Set a current value in the environment to switch the engine off at once.
+- **Bypass:** `MSCRM.BypassCustomPluginExecution: true` skips the engine (the sample-data
+  loader sends it).
+- **Fails open:** a rule or Action the engine can't run is skipped and a `vibe_EngineError`
+  row says why. A rejection (Gate, required, read-only, block save, Switch Process) comes back
+  as an ordinary plug-in error with the message the app shows.
+- **Roles:** Salesperson reads definitions; **SalesApp Process Builder** (Megan) writes them,
+  reads Engine errors and has Write on all Leads and Opportunities, so Switch Process, Move to
+  latest version and the bulk switch work on any record (spec #91).
+- **One package:** all plug-ins ship in one package, `vibe_SalesApp.Plugins`. A push replaces
+  the whole package, so rebase on main before pushing, and switch the steps off and on
+  afterwards (`register_plugin_package.py` does) or users hit `missing prvReadPluginType`.
+- `scripts/engine_check.py` (also run by `security_check.py`) proves it end to end as the
+  demo users.

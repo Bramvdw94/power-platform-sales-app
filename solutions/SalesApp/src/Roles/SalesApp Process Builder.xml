@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Role id="{10079eb6-b2c6-f111-b377-7c1e5253a39d}" name="SalesApp Process Builder" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <IsCustomizable>1</IsCustomizable>
+  <IsAutoAssigned>0</IsAutoAssigned>
+  <RolePrivileges>
+    <RolePrivilege name="prvAppendTovibe_BusinessRule" level="Global" />
+    <RolePrivilege name="prvAppendTovibe_Process" level="Global" />
+    <RolePrivilege name="prvAppendTovibe_ProcessVersion" level="Global" />
+    <RolePrivilege name="prvAppendvibe_BusinessRule" level="Global" />
+    <RolePrivilege name="prvAppendvibe_Process" level="Global" />
+    <RolePrivilege name="prvAppendvibe_ProcessVersion" level="Global" />
+    <RolePrivilege name="prvCreateSharePointData" level="Global" />
+    <RolePrivilege name="prvCreatevibe_BusinessRule" level="Global" />
+    <RolePrivilege name="prvCreatevibe_Process" level="Global" />
+    <RolePrivilege name="prvCreatevibe_ProcessVersion" level="Global" />
+    <RolePrivilege name="prvDeletevibe_BusinessRule" level="Global" />
+    <RolePrivilege name="prvDeletevibe_Process" level="Global" />
+    <RolePrivilege name="prvDeletevibe_ProcessVersion" level="Global" />
+    <RolePrivilege name="prvReadSharePointData" level="Global" />
+    <RolePrivilege name="prvReadSharePointDocument" level="Global" />
+    <RolePrivilege name="prvReadvibe_EngineError" level="Global" />
+    <RolePrivilege name="prvWriteSharePointData" level="Global" />
+    <RolePrivilege name="prvWritevibe_BusinessRule" level="Global" />
+    <RolePrivilege name="prvWritevibe_Lead" level="Global" />
+    <RolePrivilege name="prvWritevibe_Opportunity" level="Global" />
+    <RolePrivilege name="prvWritevibe_Process" level="Global" />
+    <RolePrivilege name="prvWritevibe_ProcessVersion" level="Global" />
+  </RolePrivileges>
+</Role>

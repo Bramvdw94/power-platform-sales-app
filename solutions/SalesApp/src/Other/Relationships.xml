@@ -2,33 +2,50 @@
 <EntityRelationships xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <EntityRelationship Name="business_unit_vibe_lead" />
   <EntityRelationship Name="business_unit_vibe_opportunity" />
+  <EntityRelationship Name="business_unit_vibe_productline" />
   <EntityRelationship Name="business_unit_vibe_quota" />
   <EntityRelationship Name="contact_customer_accounts" />
+  <EntityRelationship Name="lk_vibe_businessrule_createdby" />
+  <EntityRelationship Name="lk_vibe_businessrule_modifiedby" />
+  <EntityRelationship Name="lk_vibe_engineerror_createdby" />
+  <EntityRelationship Name="lk_vibe_engineerror_modifiedby" />
   <EntityRelationship Name="lk_vibe_lead_createdby" />
   <EntityRelationship Name="lk_vibe_lead_modifiedby" />
   <EntityRelationship Name="lk_vibe_opportunity_createdby" />
   <EntityRelationship Name="lk_vibe_opportunity_modifiedby" />
+  <EntityRelationship Name="lk_vibe_process_createdby" />
+  <EntityRelationship Name="lk_vibe_process_modifiedby" />
   <EntityRelationship Name="lk_vibe_processversion_createdby" />
   <EntityRelationship Name="lk_vibe_processversion_modifiedby" />
   <EntityRelationship Name="lk_vibe_product_createdby" />
   <EntityRelationship Name="lk_vibe_product_modifiedby" />
+  <EntityRelationship Name="lk_vibe_productline_createdby" />
+  <EntityRelationship Name="lk_vibe_productline_modifiedby" />
   <EntityRelationship Name="lk_vibe_quota_createdby" />
   <EntityRelationship Name="lk_vibe_quota_modifiedby" />
+  <EntityRelationship Name="organization_vibe_businessrule" />
+  <EntityRelationship Name="organization_vibe_engineerror" />
+  <EntityRelationship Name="organization_vibe_process" />
   <EntityRelationship Name="organization_vibe_processversion" />
   <EntityRelationship Name="organization_vibe_product" />
   <EntityRelationship Name="owner_vibe_lead" />
   <EntityRelationship Name="owner_vibe_opportunity" />
+  <EntityRelationship Name="owner_vibe_productline" />
   <EntityRelationship Name="owner_vibe_quota" />
   <EntityRelationship Name="team_vibe_lead" />
   <EntityRelationship Name="team_vibe_opportunity" />
+  <EntityRelationship Name="team_vibe_productline" />
   <EntityRelationship Name="team_vibe_quota" />
   <EntityRelationship Name="TransactionCurrency_vibe_Opportunity" />
   <EntityRelationship Name="TransactionCurrency_vibe_Product" />
+  <EntityRelationship Name="TransactionCurrency_vibe_ProductLine" />
   <EntityRelationship Name="TransactionCurrency_vibe_Quota" />
   <EntityRelationship Name="user_vibe_lead" />
   <EntityRelationship Name="user_vibe_opportunity" />
+  <EntityRelationship Name="user_vibe_productline" />
   <EntityRelationship Name="user_vibe_quota" />
   <EntityRelationship Name="vibe_account_vibe_opportunity_accountid" />
+  <EntityRelationship Name="vibe_businessrule_engineerror" />
   <EntityRelationship Name="vibe_contact_vibe_opportunity_primarycontactid" />
   <EntityRelationship Name="vibe_lead_ActivityPointers" unmodified="1" />
   <EntityRelationship Name="vibe_lead_Appointments" unmodified="1" />
@@ -48,11 +65,17 @@
   <EntityRelationship Name="vibe_opportunity_Faxes" unmodified="1" />
   <EntityRelationship Name="vibe_opportunity_Letters" unmodified="1" />
   <EntityRelationship Name="vibe_opportunity_PhoneCalls" unmodified="1" />
+  <EntityRelationship Name="vibe_opportunity_productline" />
   <EntityRelationship Name="vibe_opportunity_RecurringAppointmentMasters" unmodified="1" />
   <EntityRelationship Name="vibe_opportunity_SocialActivities" unmodified="1" />
   <EntityRelationship Name="vibe_opportunity_Tasks" unmodified="1" />
+  <EntityRelationship Name="vibe_process_engineerror" />
+  <EntityRelationship Name="vibe_process_processversion" />
   <EntityRelationship Name="vibe_processversion_lead" />
   <EntityRelationship Name="vibe_processversion_opportunity" />
+  <EntityRelationship Name="vibe_processversion_process_latest" />
+  <EntityRelationship Name="vibe_processversion_publishedby" />
+  <EntityRelationship Name="vibe_product_productline" />
   <EntityRelationship Name="vibe_systemuser_quota" />
   <EntityRelationship Name="vibe_systemuser_vibe_lead_disqualifiedby" />
   <EntityRelationship Name="vibe_systemuser_vibe_opportunity_closedby" />

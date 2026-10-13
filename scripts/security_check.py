@@ -300,13 +300,18 @@ def run(dv, report, created):
     diego_lead = track("vibe_leads", dv.create("vibe_leads", {
         "vibe_lastname": f"{TAG} Diego Lead", "vibe_company": f"{TAG} Company", "vibe_name": f"{TAG} Diego Lead",
     }, as_user=diego))
-    report.expect_status("Megan updates Diego's Lead", dv.call(
-        "PATCH", f"vibe_leads({diego_lead})", {"vibe_jobtitle": "Updated by Megan"}, as_user=megan), 403)
+    # Megan is also a Process builder (#94): her role writes any Lead and Opportunity so Switch Process works anywhere.
+    report.expect_status("Megan (Process builder) updates Diego's Lead", dv.call(
+        "PATCH", f"vibe_leads({diego_lead})", {"vibe_jobtitle": "Updated by Megan"}, as_user=megan), 204)
     report.expect_status("Megan reassigns Diego's Lead", dv.call(
-        "PATCH", f"vibe_leads({diego_lead})", {"ownerid@odata.bind": f"/systemusers({megan})"}, as_user=megan), 403)
+        "PATCH", f"vibe_leads({diego_lead})", {"ownerid@odata.bind": f"/systemusers({megan})"}, as_user=megan), 204)
+    report.expect_status("Adele (no builder role) can't update Diego's Lead", dv.call(
+        "PATCH", f"vibe_leads({diego_lead})", {"vibe_jobtitle": "Updated by Adele"}, as_user=adele), 403)
 
     products(dv, report, users, track)
     run_quota(dv, report, track, users)
+    import engine_check  # imported here: it imports this module
+    engine_check.run(dv, report, users, track)
 
 
 def products(dv, report, users, track):
