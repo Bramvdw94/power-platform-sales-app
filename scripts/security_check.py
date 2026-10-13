@@ -307,6 +307,8 @@ def run(dv, report, created):
 
     products(dv, report, users, track)
     run_quota(dv, report, track, users)
+    import engine_check  # imported here: it imports this module
+    engine_check.run(dv, report, users, track)
 
 
 def products(dv, report, users, track):

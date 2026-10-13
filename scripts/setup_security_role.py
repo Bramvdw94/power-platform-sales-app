@@ -66,6 +66,24 @@ PRODUCT_MANAGE = {"prvCreatevibe_Product": GLOBAL, "prvWritevibe_Product": GLOBA
 # QuotaGuardPlugin, not by these depths.
 QUOTA = "prvReadvibe_Quota"
 
+# Process engine (#94). Definitions are organisation-owned, so Global is the only depth.
+# Everyone reads Processes and Business rules (story 45); only the Process Builder role
+# writes them. Engine errors are the builders' to read. AppendTo on Process version lets
+# the plug-in's pick (and a Switch Process) set the lookup on a salesperson's own Lead or
+# Opportunity, which Dataverse checks against the caller.
+ENGINE_READ = {f"prvRead{t}": GLOBAL for t in ["vibe_Process", "vibe_ProcessVersion", "vibe_BusinessRule"]}
+ENGINE_APPEND_TO = {"prvAppendTovibe_ProcessVersion": GLOBAL}
+ENGINE_MANAGE = {
+    f"prv{verb}{t}": GLOBAL
+    for t in ["vibe_Process", "vibe_ProcessVersion", "vibe_BusinessRule"]
+    for verb in ["Create", "Write", "Delete", "Append", "AppendTo"]
+}
+ENGINE_ERRORS = {"prvReadvibe_EngineError": GLOBAL}
+# Switch Process needs Write on the record, and v1's contract is that a manager has no reach
+# outside their team (security_check.py), so the Process Builder role does not widen Write:
+# a builder switches the records they can already write. Records of people outside their team
+# need a decision (story 31, 66); see issue #94.
+
 # Privileges beyond the spec, each proven necessary by security_check.py or a
 # real call. name -> (depth, why).
 EXTRAS = {
@@ -96,7 +114,7 @@ PLATFORM = {
 
 ROLES = {
     "SalesApp Salesperson": {
-        "privileges": {**SPEC, **PRODUCT_READ, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
+        "privileges": {**SPEC, **PRODUCT_READ, **ENGINE_READ, **ENGINE_APPEND_TO, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
         "users": ["Megan Bowen", "Adele Vance", "Alex Wilber", "Diego Siciliani"],
     },
     # Fallback from #21: Manager hierarchy gives a manager Write on a direct
@@ -118,6 +136,12 @@ ROLES = {
     # keeps reading everything through Salesperson.
     "SalesApp Catalogue Manager": {
         "privileges": {**PRODUCT_READ, **PRODUCT_MANAGE, **PLATFORM},
+        "users": ["Megan Bowen"],
+    },
+    # Megan in the demo (#94). Holds only what Salesperson lacks; she keeps reading
+    # everything through Salesperson.
+    "SalesApp Process Builder": {
+        "privileges": {**ENGINE_MANAGE, **ENGINE_ERRORS, **PLATFORM},
         "users": ["Megan Bowen"],
     },
 }
