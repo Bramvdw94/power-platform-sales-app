@@ -293,6 +293,19 @@ describe("DataverseSalesGateway, Reassign", () => {
 describe("DataverseSalesGateway, activities", () => {
   const opportunity = { type: "opportunity" as const, id: OPP }
 
+  it("queries an Account's timeline across its Account, Contacts, Opportunities and their Leads", async () => {
+    const client = fakeClient(DIEGO)
+    await new DataverseSalesGateway(client).listAccountTimeline(TAILWIND)
+
+    const contactIds = (await client.contacts.list.mock.results[0].value).rows.map((r: { contactid: string }) => r.contactid)
+    const filter = client.tasks.list.mock.calls[0][0].filter as string
+    expect(filter).toContain(`_regardingobjectid_value eq ${TAILWIND}`)
+    expect(filter).toContain(`_regardingobjectid_value eq ${OPP}`)
+    for (const id of contactIds) expect(filter).toContain(`_regardingobjectid_value eq ${id}`)
+    expect(client.notes.list.mock.calls[0][0].filter).toContain(`_objectid_value eq ${TAILWIND}`)
+    expect(client.phoneCalls.list.mock.calls[0][0].filter).toContain(`_regardingobjectid_value eq ${OPP}`)
+  })
+
   it("lists a record's Notes, Tasks and Phone Calls with open Tasks on top", async () => {
     const client = fakeClient(DIEGO)
     const timeline = await new DataverseSalesGateway(client).listActivities(opportunity)

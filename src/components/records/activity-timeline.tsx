@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { Link } from "react-router-dom"
 import { CheckCircle2, CircleCheck, ListTodo, Phone, PhoneIncoming, PhoneOutgoing, StickyNote } from "lucide-react"
 import { FormAlert, FormField } from "@/components/records/fields"
 import { RecordSection } from "@/components/records/record-page"
@@ -16,15 +17,19 @@ import { describeError, fieldErrorsOf } from "@/lib/errors"
 import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import {
+  filterTimeline,
   isTaskOverdue,
   noteErrors,
   phoneCallErrors,
   taskErrors,
+  TIMELINE_PAGE_SIZE,
   toDateOnly,
   type Activity,
   type FieldErrors,
   type PhoneCallDirection,
   type RecordRef,
+  type RecordType,
+  type TimelineSource,
   type Task,
 } from "@/sales"
 
@@ -35,15 +40,22 @@ const ADD_LABELS: Record<ActivityKind, string> = { note: "New Note", task: "New 
 /**
  * The activity timeline of a Lead, Opportunity, Account or Contact: its own
  * Notes, Tasks and Phone Calls, open Tasks pinned on top, then newest first.
- * The Owner and the Owner's manager get quick-add buttons.
+ * An Account's also gathers those of its Contacts, Opportunities and their
+ * originating Leads, labelled by source and filterable. The Owner and the
+ * Owner's manager get quick-add buttons, which always create on this record.
  */
 export function ActivityTimeline({ record, canAdd }: { record: RecordRef; canAdd: boolean }) {
   const gateway = useGateway()
   const [adding, setAdding] = useState<ActivityKind | undefined>()
-  const { data, error, isPending } = useQuery({
-    queryKey: ["activities", record.type, record.id],
-    queryFn: () => gateway.listActivities(record),
+  const [filter, setFilter] = useState<{ kinds: ActivityKind[]; sources: TimelineSource[] }>({ kinds: [], sources: [] })
+  const [shown, setShown] = useState(TIMELINE_PAGE_SIZE)
+  const related = record.type === "account"
+  const { data: all, error, isPending } = useQuery({
+    queryKey: related ? ["account-timeline", record.id] : ["activities", record.type, record.id],
+    queryFn: () => (related ? gateway.listAccountTimeline(record.id) : gateway.listActivities(record)),
   })
+  const data = all && filterTimeline(all, filter)
+  const toggle = <T,>(list: T[], value: T) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value])
 
   return (
     <RecordSection
@@ -73,21 +85,103 @@ export function ActivityTimeline({ record, canAdd }: { record: RecordRef; canAdd
         <p role="alert" className="text-sm text-destructive">
           {describeError(error)}
         </p>
-      ) : data.length === 0 ? (
+      ) : all.length === 0 ? (
         <p className="text-sm text-muted-foreground">No activities yet.</p>
       ) : (
-        <ol aria-label="Activity timeline" className="divide-y">
-          {data.map((activity) => (
-            <TimelineItem key={activity.id} activity={activity} />
-          ))}
-        </ol>
+        <>
+          {related && (
+            <div className="mb-3 space-y-2">
+              <FilterChips
+                label="Type"
+                options={KIND_FILTERS}
+                selected={filter.kinds}
+                onToggle={(kind) => {
+                  setFilter((f) => ({ ...f, kinds: toggle(f.kinds, kind) }))
+                  setShown(TIMELINE_PAGE_SIZE)
+                }}
+              />
+              <FilterChips
+                label="Source"
+                options={SOURCE_FILTERS}
+                selected={filter.sources}
+                onToggle={(source) => {
+                  setFilter((f) => ({ ...f, sources: toggle(f.sources, source) }))
+                  setShown(TIMELINE_PAGE_SIZE)
+                }}
+              />
+            </div>
+          )}
+          {data!.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No activities match these filters.</p>
+          ) : (
+            <ol aria-label="Activity timeline" className="divide-y">
+              {data!.slice(0, shown).map((activity) => (
+                <TimelineItem key={activity.id} activity={activity} showSource={related && !isOwnActivity(activity, record)} />
+              ))}
+            </ol>
+          )}
+          {data!.length > shown && (
+            <Button variant="ghost" size="sm" className="mt-2" onClick={() => setShown((n) => n + TIMELINE_PAGE_SIZE)}>
+              Show more
+            </Button>
+          )}
+        </>
       )}
       {adding && <AddActivityDialog record={record} kind={adding} onClose={() => setAdding(undefined)} />}
     </RecordSection>
   )
 }
 
-function TimelineItem({ activity }: { activity: Activity }) {
+const KIND_FILTERS: { value: ActivityKind; label: string }[] = [
+  { value: "note", label: "Notes" },
+  { value: "task", label: "Tasks" },
+  { value: "phoneCall", label: "Calls" },
+]
+
+const SOURCE_FILTERS: { value: TimelineSource; label: string }[] = [
+  { value: "account", label: "This Account" },
+  { value: "contact", label: "Contacts" },
+  { value: "opportunity", label: "Opportunities" },
+  { value: "lead", label: "Leads" },
+]
+
+const SOURCE_NAMES: Record<RecordType, string> = { account: "Account", contact: "Contact", opportunity: "Opportunity", lead: "Lead" }
+const SOURCE_PATHS: Record<RecordType, string> = { account: "accounts", contact: "contacts", opportunity: "opportunities", lead: "leads" }
+
+function isOwnActivity(activity: Activity, record: RecordRef) {
+  return activity.regarding.type === record.type && activity.regarding.id === record.id
+}
+
+function FilterChips<T extends string>({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string
+  options: { value: T; label: string }[]
+  selected: readonly T[]
+  onToggle: (value: T) => void
+}) {
+  return (
+    <div role="group" aria-label={`Filter by ${label.toLowerCase()}`} className="flex flex-wrap items-center gap-1">
+      <span className="mr-1 text-xs text-muted-foreground">{label}</span>
+      {options.map((option) => (
+        <Button
+          key={option.value}
+          size="sm"
+          variant={selected.includes(option.value) ? "secondary" : "outline"}
+          aria-pressed={selected.includes(option.value)}
+          onClick={() => onToggle(option.value)}
+        >
+          {option.label}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+function TimelineItem({ activity, showSource = false }: { activity: Activity; showSource?: boolean }) {
   const today = toDateOnly(new Date())
   const title = activity.kind === "note" ? activity.title || "Note" : activity.subject
   return (
@@ -107,6 +201,16 @@ function TimelineItem({ activity }: { activity: Activity }) {
           {activity.kind === "phoneCall" && !activity.completed && <Badge variant="outline">Planned</Badge>}
         </div>
         <p className="text-xs text-muted-foreground">{describeMeta(activity)}</p>
+        {showSource && (
+          <p className="text-xs">
+            <Link
+              to={`/${SOURCE_PATHS[activity.regarding.type]}/${activity.regarding.id}`}
+              className="text-primary hover:underline"
+            >
+              {SOURCE_NAMES[activity.regarding.type]} · {activity.regardingName}
+            </Link>
+          </p>
+        )}
         {activityText(activity) && <p className="text-sm break-words whitespace-pre-line">{activityText(activity)}</p>}
       </div>
       {activity.kind === "task" && !activity.completed && <CompleteTaskButton task={activity} />}

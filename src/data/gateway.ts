@@ -246,6 +246,13 @@ export interface SalesGateway {
   // Activities
   /** Open Tasks first, then the rest newest first. */
   listActivities(record: RecordRef): Promise<Activity[]>
+  /**
+   * An Account's timeline: the Notes, Tasks and Phone Calls of the Account, its
+   * current Contacts, its Opportunities (open and closed) and the Leads those
+   * were qualified from. Each carries its source in `regarding` and
+   * `regardingName`. Open Tasks first, then the rest newest first.
+   */
+  listAccountTimeline(accountId: Id): Promise<Activity[]>
   addNote(record: RecordRef, input: NoteInput): Promise<Note>
   addTask(record: RecordRef, input: TaskInput): Promise<Task>
   addPhoneCall(record: RecordRef, input: PhoneCallInput): Promise<PhoneCall>

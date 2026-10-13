@@ -616,6 +616,21 @@ export class InMemorySalesGateway implements SalesGateway {
     return orderTimeline(activities)
   }
 
+  async listAccountTimeline(accountId: Id): Promise<Activity[]> {
+    this.accountRow(accountId)
+    const opportunities = [...this.store.opportunities.values()].filter((o) => o.accountId === accountId)
+    const sources: RecordRef[] = [
+      { type: "account", id: accountId },
+      ...[...this.store.contacts.values()].filter((c) => c.accountId === accountId).map((c): RecordRef => ({ type: "contact", id: c.id })),
+      ...opportunities.map((o): RecordRef => ({ type: "opportunity", id: o.id })),
+      ...opportunities.flatMap((o): RecordRef[] => (o.originatingLeadId ? [{ type: "lead", id: o.originatingLeadId }] : [])),
+    ]
+    const activities = [...this.store.activities.values()]
+      .filter((a) => sources.some((s) => sameRecord(a.regarding, s)))
+      .map((a) => this.toActivity(a))
+    return orderTimeline(activities)
+  }
+
   async addNote(record: RecordRef, input: NoteInput): Promise<Note> {
     this.requireEdit(this.ownedRow(record).ownerId)
     invalid("The Note cannot be saved.", noteErrors(input))
