@@ -10,6 +10,7 @@ import { useGateway } from "@/hooks/use-gateway"
 import { describeError } from "@/lib/errors"
 import { formatDate, formatEuro, LEAD_SOURCE_LABELS, recordHref, STAGE_LABELS } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { MyNumbersRow } from "./my-numbers-tiles"
 import { fullName, isTaskOverdue, toDateOnly } from "@/sales"
 
 /** "My work": my open Tasks (overdue first), my Opportunities closing this month, my Leads still Not Contacted. */
@@ -26,6 +27,7 @@ export default function HomePage() {
         <h1 className="text-2xl font-semibold tracking-tight">My work</h1>
         {firstName && <p className="text-sm text-muted-foreground">Welcome, {firstName}. Here is what needs your attention.</p>}
       </div>
+      <MyNumbersRow />
       {isPending ? (
         <div className="grid gap-4 lg:grid-cols-3" aria-busy="true">
           <Skeleton className="h-48" />
