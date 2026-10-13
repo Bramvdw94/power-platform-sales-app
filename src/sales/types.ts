@@ -276,3 +276,62 @@ export type ProductLineInput = {
 
 /** A blank description clears it. The Product never changes: remove the line and add another. */
 export type ProductLineUpdate = Partial<Pick<ProductLine, "description" | "quantity" | "unitPrice" | "discountPercent">>
+
+export const QUOTE_STATUSES = ["draft", "sent", "accepted", "rejected", "revised"] as const
+export type QuoteStatus = (typeof QUOTE_STATUSES)[number]
+
+/**
+ * A priced offer to a customer, made from an Opportunity. Amounts are in euros.
+ * The Owner is always the Opportunity's Owner. Only a Draft can change.
+ */
+export type Quote = {
+  id: Id
+  opportunityId: Id
+  /** Q-00001: kept by every Revision of the Quote. */
+  number: string
+  /** 0 for a new Quote; Revise keeps the number and adds 1. */
+  revision: number
+  status: QuoteStatus
+  accountId: Id
+  accountName: string
+  contactId?: Id
+  contactName?: string
+  validUntil?: DateOnly
+  /** The lines' amounts added up, excluding VAT. */
+  netTotal: number
+  /** VAT at 21 % and 9 % on the net total of the lines at that rate, rounded to cents. 0 % adds none. */
+  vat21: number
+  vat9: number
+  grossTotal: number
+  sentOn?: Timestamp
+  sentById?: Id
+  sentByName?: string
+  ownerId: Id
+  ownerName: string
+  createdOn: Timestamp
+}
+
+/** One Product on a Quote. Amounts are in euros excluding VAT. */
+export type QuoteLine = {
+  id: Id
+  quoteId: Id
+  productId: Id
+  productName: string
+  description?: string
+  quantity: number
+  unitPrice: number
+  /** Percentage 0-100. */
+  discountPercent: number
+  /** The Product's VAT rate when the line was added. */
+  vatRate: VatRate
+  /** Quantity x unit price x (1 - discount %), rounded to cents. */
+  lineAmount: number
+  createdOn: Timestamp
+}
+
+/** The unit price and description default to the Product's; the discount to 0. */
+export type QuoteLineInput = ProductLineInput
+export type QuoteLineUpdate = ProductLineUpdate
+
+/** A Contact change and a new Valid until, while the Quote is a Draft. A blank Contact clears it. */
+export type QuoteUpdate = { contactId?: Id | ""; validUntil?: DateOnly }

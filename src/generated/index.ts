@@ -16,6 +16,8 @@ export * as Vibe_opportunitiesModel from './models/Vibe_opportunitiesModel';
 export * as Vibe_productlinesModel from './models/Vibe_productlinesModel';
 export * as Vibe_productsModel from './models/Vibe_productsModel';
 export * as Vibe_quotasModel from './models/Vibe_quotasModel';
+export * as Vibe_quotelinesModel from './models/Vibe_quotelinesModel';
+export * as Vibe_quotesModel from './models/Vibe_quotesModel';
 export * as WhoAmIModel from './models/WhoAmIModel';
 
 // Services
@@ -30,4 +32,6 @@ export * from './services/Vibe_opportunitiesService';
 export * from './services/Vibe_productlinesService';
 export * from './services/Vibe_productsService';
 export * from './services/Vibe_quotasService';
+export * from './services/Vibe_quotelinesService';
+export * from './services/Vibe_quotesService';
 export * from './services/WhoAmIService';

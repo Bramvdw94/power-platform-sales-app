@@ -71,6 +71,18 @@ PRODUCT_LINE = {
     "prvAssignvibe_ProductLine": BASIC, "prvAppendTovibe_Product": GLOBAL,
 }
 
+# Quotes (#101) follow their Opportunity the same way: everyone reads them, and the plug-in
+# gives a Quote and its lines the Opportunity's Owner, so User-level create, write and delete
+# reach the Owner and, through the hierarchy, the Owner's manager. Adding a Quote also needs
+# Append To on the Opportunity (User level) and, for the lines, on the Quote.
+QUOTE_TABLES = ["vibe_Quote", "vibe_QuoteLine"]
+QUOTES = {"prvReadvibe_Quote": GLOBAL, "prvReadvibe_QuoteLine": GLOBAL}
+for _t in QUOTE_TABLES:
+    QUOTES.update({
+        f"prvCreate{_t}": BASIC, f"prvWrite{_t}": BASIC, f"prvDelete{_t}": BASIC,
+        f"prvAppend{_t}": BASIC, f"prvAppendTo{_t}": BASIC, f"prvAssign{_t}": BASIC,
+    })
+
 # Quota (#104) is owned by the salesperson it is for. Everyone reads their own
 # row (a manager reads and writes direct reports' rows through the hierarchy);
 # only the Sales Manager role writes them. Who may write which row is decided by
@@ -125,7 +137,7 @@ PLATFORM = {
 
 ROLES = {
     "SalesApp Salesperson": {
-        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **ENGINE_READ, **ENGINE_APPEND_TO, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
+        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **QUOTES, **ENGINE_READ, **ENGINE_APPEND_TO, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
         "users": ["Megan Bowen", "Adele Vance", "Alex Wilber", "Diego Siciliani"],
     },
     # Fallback from #21: Manager hierarchy gives a manager Write on a direct
@@ -143,6 +155,8 @@ ROLES = {
             # A manager adding a line to a report's Opportunity: the plug-in gives the line the
             # report as Owner, and creating a record for another owner needs Create at that depth.
             "prvCreatevibe_ProductLine": LOCAL, "prvDeletevibe_ProductLine": LOCAL,
+            # The same for a Quote and its lines on a report's Opportunity (#101).
+            **{f"prv{verb}{t}": LOCAL for t in QUOTE_TABLES for verb in ("Create", "Delete")},
         },
         "users": ["Megan Bowen"],
     },

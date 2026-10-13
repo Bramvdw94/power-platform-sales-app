@@ -25,7 +25,7 @@ const AMOUNTS: TextFieldSpec<"quantity" | "unitPrice" | "discountPercent">[] = [
   { name: "discountPercent", label: "Discount (%)", type: "number" },
 ]
 
-function valuesOf(line?: ProductLine): LineValues {
+function valuesOf(line?: LineToEdit): LineValues {
   return {
     description: line?.description ?? "",
     quantity: line ? String(line.quantity) : "1",
@@ -129,29 +129,64 @@ export function ProductLinesPanel({ opportunityId, lines, canEdit }: { opportuni
         </div>
       )}
       {remove.isError && <FormAlert error={remove.error} className="mt-2" />}
-      {dialog && <ProductLineDialog opportunityId={opportunityId} line={dialog.line} onClose={() => setDialog(null)} />}
+      {dialog && (
+        <LineDialog
+          noun="Product line"
+          idPrefix="product-line"
+          line={dialog.line}
+          onClose={() => setDialog(null)}
+          onSave={({ productId, ...values }) =>
+            dialog.line ? gateway.updateProductLine(dialog.line.id, values) : gateway.addProductLine(opportunityId, { ...values, productId })
+          }
+        />
+      )}
     </RecordSection>
   )
 }
 
-function ProductLineDialog({ opportunityId, line, onClose }: { opportunityId: string; line?: ProductLine; onClose: () => void }) {
+/** What the dialog edits: a Product line or a Quote line, which have the same values. */
+export type LineToEdit = {
+  productId: string
+  productName: string
+  description?: string
+  quantity: number
+  unitPrice: number
+  discountPercent: number
+  /** Only Product lines keep the List price they started from. */
+  listPriceAtAdd?: number
+}
+
+export type LineSave = { productId: string; description: string; quantity: number; unitPrice: number; discountPercent: number }
+
+/** Adds a line or changes one: the Product (only when adding), description, quantity, unit price and discount. */
+export function LineDialog({
+  noun,
+  idPrefix,
+  line,
+  onSave,
+  onClose,
+}: {
+  /** "Product line" or "Quote line". */
+  noun: string
+  idPrefix: string
+  line?: LineToEdit
+  onSave: (values: LineSave) => Promise<unknown>
+  onClose: () => void
+}) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
   const [product, setProduct] = useState<RecordChoice | null>(line ? { id: line.productId, name: line.productName } : null)
   const [values, setValues] = useState<LineValues>(() => valuesOf(line))
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  const numbers = () => ({
+    quantity: toNumber(values.quantity),
+    unitPrice: toNumber(values.unitPrice),
+    discountPercent: values.discountPercent.trim() === "" ? 0 : toNumber(values.discountPercent),
+  })
+
   const save = useMutation({
-    mutationFn: () => {
-      const numbers = {
-        quantity: toNumber(values.quantity),
-        unitPrice: toNumber(values.unitPrice),
-        discountPercent: values.discountPercent.trim() === "" ? 0 : toNumber(values.discountPercent),
-      }
-      return line
-        ? gateway.updateProductLine(line.id, { ...numbers, description: values.description })
-        : gateway.addProductLine(opportunityId, { ...numbers, productId: product!.id, description: values.description })
-    },
+    mutationFn: () => onSave({ ...numbers(), productId: product!.id, description: values.description }),
     onSuccess: async () => {
       await invalidate()
       onClose()
@@ -169,18 +204,14 @@ function ProductLineDialog({ opportunityId, line, onClose }: { opportunityId: st
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    const found: Record<string, string> = { ...productLineErrors({
-      quantity: toNumber(values.quantity),
-      unitPrice: toNumber(values.unitPrice),
-      discountPercent: values.discountPercent.trim() === "" ? 0 : toNumber(values.discountPercent),
-    }) }
+    const found: Record<string, string> = { ...productLineErrors(numbers()) }
     if (!product) found.productId = "Pick a Product."
     setErrors(found)
     if (Object.keys(found).length === 0) save.mutate()
   }
 
   const onChange = (name: LineField, value: string) => setValues((v) => ({ ...v, [name]: value }))
-  const title = line ? "Edit Product line" : "Add Product line"
+  const title = `${line ? "Edit" : "Add"} ${noun}`
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -188,17 +219,19 @@ function ProductLineDialog({ opportunityId, line, onClose }: { opportunityId: st
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
-              {line
+              {line?.listPriceAtAdd !== undefined
                 ? `The list price when this line was added was ${formatPrice(line.listPriceAtAdd)}.`
-                : "The description and unit price start from the Product; change them for this line if you need to."}
+                : line
+                  ? "Change the description, quantity, unit price or discount."
+                  : "The description and unit price start from the Product; change them for this line if you need to."}
             </DialogDescription>
           </DialogHeader>
-          <FormField id="product-line-product" label="Product" required error={errors.productId}>
+          <FormField id={`${idPrefix}-product`} label="Product" required error={errors.productId}>
             {line ? (
-              <Input id="product-line-product" value={line.productName} readOnly />
+              <Input id={`${idPrefix}-product`} value={line.productName} readOnly />
             ) : (
               <RecordPicker
-                id="product-line-product"
+                id={`${idPrefix}-product`}
                 value={product}
                 onChange={pickProduct}
                 invalid={!!errors.productId}
@@ -210,9 +243,9 @@ function ProductLineDialog({ opportunityId, line, onClose }: { opportunityId: st
               />
             )}
           </FormField>
-          <TextFields idPrefix="product-line" specs={DESCRIPTION} values={values} errors={errors} onChange={onChange} />
+          <TextFields idPrefix={idPrefix} specs={DESCRIPTION} values={values} errors={errors} onChange={onChange} />
           <div className="grid gap-4 sm:grid-cols-3">
-            <TextFields idPrefix="product-line" specs={AMOUNTS} values={values} errors={errors} onChange={onChange} />
+            <TextFields idPrefix={idPrefix} specs={AMOUNTS} values={values} errors={errors} onChange={onChange} />
           </div>
           {save.isError && !Object.keys(fieldErrorsOf(save.error)).length && <FormAlert error={save.error} />}
           <DialogFooter>

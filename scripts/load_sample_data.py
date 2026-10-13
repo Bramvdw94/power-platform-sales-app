@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sample_data as sd  # noqa: E402
 
 
-# Sample data skips custom plug-ins (QuotaGuardPlugin now, the process engine later):
+# Sample data skips custom plug-ins (the Quota, Product line and Quote plug-ins, the process engine):
 # the loader is not a manager, and demo data must always load.
 BYPASS = {"MSCRM.BypassCustomPluginExecution": "true"}
 
@@ -133,6 +133,13 @@ def check(dv, data, users):
         if got != expected:
             print(f"  FAIL {data['users'][key]} reads {got} Quotas, expected {expected}")
             ok = False
+    # Everyone reads every Quote and its lines (Read is Organization-wide).
+    for label, entity_set, expected in (("Quotes", "vibe_quotes", len(data.get("quotes", []))), ("Quote lines", "vibe_quotelines", len(data.get("quoteLines", [])))):
+        for key, user in users.items():
+            got = len(dv.get(f"{entity_set}?$select=statecode&$top=500", as_user=user)["value"])
+            if got != expected:
+                print(f"  FAIL {data['users'][key]} reads {got} {label}, expected {expected}")
+                ok = False
     for label, entity_set, attribute, values in (
         ("Products", "vibe_products", "vibe_productcode", [r["code"] for r in data["products"]]),
         ("Accounts", "accounts", "name", [r["name"] for r in data["accounts"]]),

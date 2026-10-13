@@ -234,6 +234,82 @@ export const PRODUCT_LINE_COLUMNS = [
 /** A Product line's lookups, as navigation properties for `@odata.bind` writes. */
 export const PRODUCT_LINE_NAVIGATION = { opportunity: "vibe_OpportunityId", product: "vibe_ProductId" } as const
 
+/** The vibe_quote columns the app reads. */
+export type QuoteRow = Row & {
+  vibe_quoteid: Id
+  /** The Quote number, Q-00001 (an autonumber). */
+  vibe_name?: string | null
+  vibe_revision?: number | null
+  /** Status: 1 Draft (the Active state), 2 Sent, 3 Accepted, 4 Rejected, 5 Revised (Inactive state). */
+  statuscode?: number | null
+  _vibe_opportunityid_value?: Id | null
+  _vibe_accountid_value?: Id | null
+  _vibe_contactid_value?: Id | null
+  vibe_validuntil?: string | null
+  vibe_nettotal?: number | null
+  vibe_vat21?: number | null
+  vibe_vat9?: number | null
+  vibe_grosstotal?: number | null
+  vibe_senton?: string | null
+  _vibe_sentby_value?: Id | null
+  _ownerid_value?: Id | null
+  createdon?: string | null
+}
+
+export const QUOTE_COLUMNS = [
+  "vibe_quoteid",
+  "vibe_name",
+  "vibe_revision",
+  "statuscode",
+  "_vibe_opportunityid_value",
+  "_vibe_accountid_value",
+  "_vibe_contactid_value",
+  "vibe_validuntil",
+  "vibe_nettotal",
+  "vibe_vat21",
+  "vibe_vat9",
+  "vibe_grosstotal",
+  "vibe_senton",
+  "_vibe_sentby_value",
+  "_ownerid_value",
+  "createdon",
+] as const
+
+/** A Quote's lookups, as navigation properties for `@odata.bind` writes. */
+export const QUOTE_NAVIGATION = { opportunity: "vibe_OpportunityId", account: "vibe_AccountId", contact: "vibe_ContactId", sentBy: "vibe_SentBy" } as const
+
+/** The vibe_quoteline columns the app reads. */
+export type QuoteLineRow = Row & {
+  vibe_quotelineid: Id
+  _vibe_quoteid_value?: Id | null
+  _vibe_productid_value?: Id | null
+  vibe_name?: string | null
+  vibe_description?: string | null
+  vibe_quantity?: number | null
+  vibe_unitprice?: number | null
+  vibe_discountpercent?: number | null
+  vibe_vatrate?: number | null
+  vibe_lineamount?: number | null
+  createdon?: string | null
+}
+
+export const QUOTE_LINE_COLUMNS = [
+  "vibe_quotelineid",
+  "_vibe_quoteid_value",
+  "_vibe_productid_value",
+  "vibe_name",
+  "vibe_description",
+  "vibe_quantity",
+  "vibe_unitprice",
+  "vibe_discountpercent",
+  "vibe_vatrate",
+  "vibe_lineamount",
+  "createdon",
+] as const
+
+/** A Quote line's lookups, as navigation properties for `@odata.bind` writes. */
+export const QUOTE_LINE_NAVIGATION = { quote: "vibe_QuoteId", product: "vibe_ProductId" } as const
+
 /** The vibe_quota columns the app reads. */
 export type QuotaRow = Row & {
   vibe_quotaid: Id
@@ -325,7 +401,7 @@ export interface TableClient<T> {
   list(options: ListOptions): Promise<RowPage<T>>
   create(fields: Fields): Promise<T>
   update(id: Id, fields: Fields): Promise<T>
-  /** Only Product lines are removed; every other table is deactivated instead. */
+  /** Only Product lines, Quote lines and Draft Quotes are removed; every other table is deactivated instead. */
   delete(id: Id): Promise<void>
 }
 
@@ -342,6 +418,8 @@ export interface DataverseClient {
   products: TableClient<ProductRow>
   productLines: TableClient<ProductLineRow>
   quotas: TableClient<QuotaRow>
+  quotes: TableClient<QuoteRow>
+  quoteLines: TableClient<QuoteLineRow>
   notes: TableClient<NoteRow>
   tasks: TableClient<ActivityRow>
   phoneCalls: TableClient<PhoneCallRow>

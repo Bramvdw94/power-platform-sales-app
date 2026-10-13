@@ -14,9 +14,13 @@
     <RolePrivilege name="prvAppendTovibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvAppendTovibe_ProcessVersion" level="Global" />
     <RolePrivilege name="prvAppendTovibe_Product" level="Global" />
+    <RolePrivilege name="prvAppendTovibe_Quote" level="Basic" />
+    <RolePrivilege name="prvAppendTovibe_QuoteLine" level="Basic" />
     <RolePrivilege name="prvAppendvibe_Lead" level="Basic" />
     <RolePrivilege name="prvAppendvibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvAppendvibe_ProductLine" level="Basic" />
+    <RolePrivilege name="prvAppendvibe_Quote" level="Basic" />
+    <RolePrivilege name="prvAppendvibe_QuoteLine" level="Basic" />
     <RolePrivilege name="prvAssignAccount" level="Basic" />
     <RolePrivilege name="prvAssignActivity" level="Basic" />
     <RolePrivilege name="prvAssignContact" level="Basic" />
@@ -24,6 +28,8 @@
     <RolePrivilege name="prvAssignvibe_Lead" level="Basic" />
     <RolePrivilege name="prvAssignvibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvAssignvibe_ProductLine" level="Basic" />
+    <RolePrivilege name="prvAssignvibe_Quote" level="Basic" />
+    <RolePrivilege name="prvAssignvibe_QuoteLine" level="Basic" />
     <RolePrivilege name="prvCreateAccount" level="Basic" />
     <RolePrivilege name="prvCreateActivity" level="Basic" />
     <RolePrivilege name="prvCreateContact" level="Basic" />
@@ -32,7 +38,11 @@
     <RolePrivilege name="prvCreatevibe_Lead" level="Basic" />
     <RolePrivilege name="prvCreatevibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvCreatevibe_ProductLine" level="Basic" />
+    <RolePrivilege name="prvCreatevibe_Quote" level="Basic" />
+    <RolePrivilege name="prvCreatevibe_QuoteLine" level="Basic" />
     <RolePrivilege name="prvDeletevibe_ProductLine" level="Basic" />
+    <RolePrivilege name="prvDeletevibe_Quote" level="Basic" />
+    <RolePrivilege name="prvDeletevibe_QuoteLine" level="Basic" />
     <RolePrivilege name="prvReadAccount" level="Global" />
     <RolePrivilege name="prvReadActivity" level="Global" />
     <RolePrivilege name="prvReadAsyncOperation" level="Basic" />
@@ -50,6 +60,8 @@
     <RolePrivilege name="prvReadvibe_Product" level="Global" />
     <RolePrivilege name="prvReadvibe_ProductLine" level="Global" />
     <RolePrivilege name="prvReadvibe_Quota" level="Basic" />
+    <RolePrivilege name="prvReadvibe_Quote" level="Global" />
+    <RolePrivilege name="prvReadvibe_QuoteLine" level="Global" />
     <RolePrivilege name="prvWriteAccount" level="Basic" />
     <RolePrivilege name="prvWriteActivity" level="Basic" />
     <RolePrivilege name="prvWriteContact" level="Basic" />
@@ -58,5 +70,7 @@
     <RolePrivilege name="prvWritevibe_Lead" level="Basic" />
     <RolePrivilege name="prvWritevibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvWritevibe_ProductLine" level="Basic" />
+    <RolePrivilege name="prvWritevibe_Quote" level="Basic" />
+    <RolePrivilege name="prvWritevibe_QuoteLine" level="Basic" />
   </RolePrivileges>
 </Role>

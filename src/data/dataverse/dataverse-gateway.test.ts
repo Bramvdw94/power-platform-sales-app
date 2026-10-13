@@ -14,6 +14,8 @@ import type {
   ProductLineRow,
   ProductRow,
   QuotaRow,
+  QuoteLineRow,
+  QuoteRow,
   SystemUserRow,
   TableClient,
 } from "./client"
@@ -172,7 +174,7 @@ const productRows: ProductRow[] = [
 ]
 
 /** A fake Dataverse that understands the one filter the gateway sends for direct reports. */
-function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = []) {
+function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = []) {
   return {
     accounts: fakeTable("accountid", accountRows),
     contacts: fakeTable("contactid", contactRows),
@@ -181,6 +183,8 @@ function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRow
     products: fakeTable("vibe_productid", productRows),
     productLines: fakeTable("vibe_productlineid", productLineRows),
     quotas: fakeTable("vibe_quotaid", quotaRows),
+    quotes: fakeTable("vibe_quoteid", quoteRows),
+    quoteLines: fakeTable("vibe_quotelineid", quoteLineRows),
     notes: fakeTable("annotationid", noteRows),
     tasks: fakeTable("activityid", taskRows),
     phoneCalls: fakeTable("activityid", phoneCallRows),
@@ -1310,5 +1314,195 @@ describe("DataverseSalesGateway, Product lines", () => {
     const client = fakeClient(ADELE)
     await new DataverseSalesGateway(client).updateOpportunity(OPP, { estimatedValue: 50000 })
     expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, { vibe_estimatedvalue: 50000 })
+  })
+})
+
+describe("DataverseSalesGateway, Quotes", () => {
+  const SENT = "99999999-3333-0000-0000-000000000001"
+  const OTHER_SENT = "99999999-3333-0000-0000-000000000002"
+  const DRAFT = "99999999-3333-0000-0000-000000000003"
+  const QLINE = "99999999-4444-0000-0000-000000000001"
+  const quote = (id: string, status: number, extra: Partial<QuoteRow> = {}): QuoteRow => ({
+    vibe_quoteid: id,
+    vibe_name: "Q-00001",
+    vibe_revision: 0,
+    statuscode: status,
+    _vibe_opportunityid_value: OPP,
+    _vibe_accountid_value: TAILWIND,
+    "_vibe_accountid_value@OData.Community.Display.V1.FormattedValue": "Tailwind Traders",
+    _vibe_contactid_value: LOTTE,
+    "_vibe_contactid_value@OData.Community.Display.V1.FormattedValue": "Lotte de Groot",
+    vibe_validuntil: "2026-11-12",
+    vibe_nettotal: 216,
+    vibe_vat21: 45.36,
+    vibe_vat9: 0,
+    vibe_grosstotal: 261.36,
+    _ownerid_value: ADELE,
+    [OWNER_NAME]: "Adele Vance",
+    createdon: "2026-10-13T09:00:00Z",
+    ...extra,
+  })
+  const quoteRows = () => [quote(SENT, 2), quote(OTHER_SENT, 2, { vibe_name: "Q-00002" }), quote(DRAFT, 1, { vibe_name: "Q-00003" })]
+  const quoteLine: QuoteLineRow = {
+    vibe_quotelineid: QLINE,
+    _vibe_quoteid_value: SENT,
+    _vibe_productid_value: PRODUCT,
+    vibe_name: "Consulting",
+    vibe_description: "Per hour",
+    vibe_quantity: 2,
+    vibe_unitprice: 120,
+    vibe_discountpercent: 10,
+    vibe_vatrate: 841200000,
+    vibe_lineamount: 216,
+    createdon: "2026-10-13T09:00:00Z",
+  }
+  const productLine: ProductLineRow = {
+    vibe_productlineid: "99999999-2222-0000-0000-000000000009",
+    _vibe_opportunityid_value: OPP,
+    _vibe_productid_value: PRODUCT,
+    vibe_name: "Consulting",
+    vibe_description: "Per hour",
+    vibe_quantity: 2,
+    vibe_unitprice: 120,
+    vibe_listpriceatadd: 125,
+    vibe_discountpercent: 10,
+    vibe_lineamount: 216,
+    createdon: "2026-10-01T09:00:00Z",
+  }
+
+  it("reads the Quotes of an Opportunity with its details, newest first, and a Quote with its lines", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows(), [quoteLine])
+    const gateway = new DataverseSalesGateway(client)
+    const details = await gateway.getOpportunity(OPP)
+    expect(details.quotes.map((q) => [q.number, q.status])).toEqual([["Q-00001", "sent"], ["Q-00002", "sent"], ["Q-00003", "draft"]])
+    expect(client.quotes.list.mock.calls[0][0]).toMatchObject({
+      filter: `_vibe_opportunityid_value eq ${OPP}`,
+      orderBy: ["createdon desc", "vibe_quoteid desc"],
+    })
+    const read = await gateway.getQuote(SENT)
+    expect(read.quote).toMatchObject({ id: SENT, number: "Q-00001", accountName: "Tailwind Traders", contactName: "Lotte de Groot", validUntil: "2026-11-12", netTotal: 216, grossTotal: 261.36, ownerName: "Adele Vance" })
+    expect(read.lines).toEqual([expect.objectContaining({ id: QLINE, productName: "Consulting", vatRate: 21, lineAmount: 216 })])
+    expect(read.canEdit).toBe(true)
+  })
+
+  it("makes a Draft from an open Opportunity, copying its Contact, Account and lines with the Product's VAT rate", async () => {
+    const client = fakeClient(ADELE, [], [productLine])
+    await new DataverseSalesGateway(client).createQuote(OPP)
+    const created = client.quotes.create.mock.calls[0][0]
+    expect(created).toMatchObject({
+      vibe_revision: 0,
+      "vibe_OpportunityId@odata.bind": `/vibe_opportunities(${OPP})`,
+      "vibe_AccountId@odata.bind": `/accounts(${TAILWIND})`,
+    })
+    expect(created.vibe_validuntil).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(client.quoteLines.create).toHaveBeenCalledWith({
+      vibe_name: "Consulting",
+      vibe_description: "Per hour",
+      vibe_quantity: 2,
+      vibe_unitprice: 120,
+      vibe_discountpercent: 10,
+      vibe_vatrate: 841200000,
+      "vibe_QuoteId@odata.bind": "/vibe_quotes(dddddddd-0000-0000-0000-000000000001)",
+      "vibe_ProductId@odata.bind": `/vibe_products(${PRODUCT})`,
+    })
+  })
+
+  it("refuses a Quote on a closed Opportunity and for someone who may not edit it", async () => {
+    const client = fakeClient(DIEGO)
+    await expect(new DataverseSalesGateway(client).createQuote(OPP)).rejects.toMatchObject({ code: "forbidden" })
+    const adele = fakeClient(ADELE)
+    await adele.opportunities.update(OPP, { vibe_stage: 841200004 })
+    await expect(new DataverseSalesGateway(adele).createQuote(OPP)).rejects.toMatchObject({ code: "invalid" })
+    expect(client.quotes.create).not.toHaveBeenCalled()
+    expect(adele.quotes.create).not.toHaveBeenCalled()
+  })
+
+  it("lets a manager make the Quote on a report's Opportunity", async () => {
+    const client = fakeClient(MEGAN)
+    await new DataverseSalesGateway(client).createQuote(OPP)
+    expect(client.quotes.create).toHaveBeenCalled()
+  })
+
+  it("changes only a Draft: Contact, Valid until, lines, delete", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows(), [{ ...quoteLine, _vibe_quoteid_value: DRAFT }])
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.updateQuote(DRAFT, { validUntil: "2026-12-01", contactId: "" })
+    expect(client.quotes.update).toHaveBeenLastCalledWith(DRAFT, { vibe_validuntil: "2026-12-01", vibe_ContactId: null })
+    await gateway.updateQuoteLine(QLINE, { quantity: 3 })
+    expect(client.quoteLines.update).toHaveBeenCalledWith(QLINE, { vibe_quantity: 3 })
+    await gateway.removeQuoteLine(QLINE)
+    expect(client.quoteLines.delete).toHaveBeenCalledWith(QLINE)
+    await gateway.deleteQuote(DRAFT)
+    expect(client.quotes.delete).toHaveBeenCalledWith(DRAFT)
+
+    await expect(gateway.updateQuote(SENT, { validUntil: "2026-12-01" })).rejects.toMatchObject({ code: "invalid" })
+    await expect(gateway.addQuoteLine(SENT, { productId: PRODUCT, quantity: 1 })).rejects.toMatchObject({ code: "invalid" })
+    await expect(gateway.deleteQuote(SENT)).rejects.toMatchObject({ code: "invalid" })
+    expect(client.quotes.delete).toHaveBeenCalledTimes(1)
+  })
+
+  it("adds a line with the Product's price, description and VAT rate, and refuses a retired Product", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows())
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.addQuoteLine(DRAFT, { productId: PRODUCT, quantity: 1 })
+    expect(client.quoteLines.create).toHaveBeenCalledWith(expect.objectContaining({ vibe_unitprice: 125, vibe_description: "Per hour", vibe_vatrate: 841200000 }))
+    await expect(gateway.addQuoteLine(DRAFT, { productId: RETIRED_PRODUCT, quantity: 1 })).rejects.toMatchObject({ fieldErrors: { productId: expect.any(String) } })
+  })
+
+  it("Send sets Sent (inactive), the sent date and who sent it; only a Draft can be sent", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows())
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.sendQuote(DRAFT)
+    expect(client.quotes.update).toHaveBeenCalledWith(DRAFT, expect.objectContaining({ statecode: 1, statuscode: 2, "vibe_SentBy@odata.bind": `/systemusers(${ADELE})` }))
+    await expect(gateway.sendQuote(SENT)).rejects.toMatchObject({ code: "invalid" })
+  })
+
+  it("Revise keeps the number, adds 1 to the Revision, copies the lines and marks the old Quote Revised last", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows(), [quoteLine])
+    const revised = await new DataverseSalesGateway(client).reviseQuote(SENT)
+    expect(client.quotes.create).toHaveBeenCalledWith(expect.objectContaining({ vibe_name: "Q-00001", vibe_revision: 1 }))
+    expect(client.quoteLines.create).toHaveBeenCalledWith(expect.objectContaining({ vibe_quantity: 2, vibe_vatrate: 841200000 }))
+    expect(client.quotes.update).toHaveBeenCalledWith(SENT, { statecode: 1, statuscode: 5 })
+    expect(revised.status).toBe("draft")
+    expect(client.quotes.create.mock.invocationCallOrder[0]).toBeLessThan(client.quotes.update.mock.invocationCallOrder[0])
+  })
+
+  it("Accept sets Accepted and Rejects the Opportunity's other Sent Quotes", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows())
+    await new DataverseSalesGateway(client).acceptQuote(SENT)
+    expect(client.quotes.update).toHaveBeenCalledWith(SENT, { statecode: 1, statuscode: 3 })
+    expect(client.quotes.update).toHaveBeenCalledWith(OTHER_SENT, { statecode: 1, statuscode: 4 })
+    expect(client.quotes.update).not.toHaveBeenCalledWith(DRAFT, expect.anything())
+    expect(client.quotes.list.mock.calls.at(-1)?.[0].filter).toBe(`_vibe_opportunityid_value eq ${OPP} and statuscode eq 2`)
+  })
+
+  it("Reject sets Rejected; a Draft or a final Quote cannot be accepted or rejected", async () => {
+    const client = fakeClient(ADELE, [], [], [...quoteRows(), quote("99999999-3333-0000-0000-000000000004", 3)])
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.rejectQuote(SENT)
+    expect(client.quotes.update).toHaveBeenCalledWith(SENT, { statecode: 1, statuscode: 4 })
+    await expect(gateway.acceptQuote(DRAFT)).rejects.toMatchObject({ code: "invalid" })
+    await expect(gateway.rejectQuote("99999999-3333-0000-0000-000000000004")).rejects.toMatchObject({ code: "invalid" })
+  })
+
+  it("a peer cannot send, revise, accept or reject", async () => {
+    const client = fakeClient(DIEGO, [], [], quoteRows())
+    const gateway = new DataverseSalesGateway(client)
+    for (const act of [() => gateway.sendQuote(DRAFT), () => gateway.reviseQuote(SENT), () => gateway.acceptQuote(SENT), () => gateway.rejectQuote(SENT)]) {
+      await expect(act()).rejects.toMatchObject({ code: "forbidden" })
+    }
+    expect(client.quotes.update).not.toHaveBeenCalled()
+  })
+
+  it("Close as lost rejects the Sent Quotes; Close as won leaves them", async () => {
+    const lost = fakeClient(ADELE, [], [], quoteRows())
+    await new DataverseSalesGateway(lost).closeOpportunity(OPP, { outcome: "lost", lostReason: "price" })
+    expect(lost.quotes.update).toHaveBeenCalledWith(SENT, { statecode: 1, statuscode: 4 })
+    expect(lost.quotes.update).toHaveBeenCalledWith(OTHER_SENT, { statecode: 1, statuscode: 4 })
+    expect(lost.quotes.update).not.toHaveBeenCalledWith(DRAFT, expect.anything())
+
+    const won = fakeClient(ADELE, [], [], quoteRows())
+    await new DataverseSalesGateway(won).closeOpportunity(OPP, { outcome: "won" })
+    expect(won.quotes.update).not.toHaveBeenCalled()
   })
 })

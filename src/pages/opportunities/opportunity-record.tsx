@@ -22,6 +22,7 @@ import type { OpportunityDetails } from "@/data/gateway"
 import { ExpectedCloseDate } from "./expected-close-date"
 import { CloseOpportunityDialog, ReopenOpportunityDialog } from "./close-dialogs"
 import { EditOpportunityForm } from "./opportunity-form"
+import { QuotesPanel } from "@/pages/quotes/quotes-panel"
 import { ProductLinesPanel } from "./product-lines"
 
 export default function OpportunityRecordPage() {
@@ -104,6 +105,8 @@ export default function OpportunityRecordPage() {
       </RecordSection>
 
       <ProductLinesPanel opportunityId={opportunity.id} lines={data.productLines} canEdit={canEdit && isOpen} />
+
+      <QuotesPanel opportunityId={opportunity.id} quotes={data.quotes} canCreate={canEdit && isOpen} />
 
       {isOpen ? (
         <CloseOpportunityDialog opportunity={opportunity} open={closing} onOpenChange={setClosing} />

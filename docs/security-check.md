@@ -71,6 +71,37 @@ Estimated value while lines exist:
 | Adele adds, changes or removes a line once the Opportunity is closed | 400 (plug-in) |
 | Megan deletes a Product that is on a line | 403 |
 
+Quotes (#101). A Quote and its lines follow their Opportunity the same way: QuotePlugin
+and QuoteLinePlugin give them the Opportunity's Owner, so Basic create, write and delete
+reach the Owner and, through the hierarchy, the Owner's manager (Sales Manager also has
+Create and Delete at Business Unit, so the manager can make one for a report). Everyone reads
+them. A Quote is a Draft (Active) until it is sent; Sent, Accepted, Rejected and Revised are
+inactive status reasons, and the plug-ins refuse any change or delete except the moves
+Draft to Sent and Sent to Accepted, Rejected or Revised. QuoteTotalPlugin keeps the net total,
+VAT 21 % and 9 % (per rate, on the net total of that rate) and the gross total in the same
+transaction:
+
+| Check | Expected |
+|---|---|
+| Adele makes a Quote on her Opportunity | 204; Draft, Revision 0, active, number Q-xxxxx, owned by her; the next Quote gets the next number |
+| Alex or Diego makes a Quote on Adele's Opportunity | 403 |
+| Megan makes one on Adele's Opportunity and adds a line | 204; owned by Adele |
+| Adele adds lines (2 x 100 less 10 %, 1.5 x 33.33, 1 x 100 at 9 %) | 204; Line amounts 180, 50.00, 100; net 330, VAT 21 % 48.30, VAT 9 % 9.00, gross 387.30 |
+| Adele changes a quantity; writes a total or Line amount directly | totals follow; total refused (400); Line amount recalculated |
+| Adele moves the Quote to another Opportunity or gives it to Alex; quantity 0; discount 101 % | 400 |
+| Alex or Diego read the Quote and its line; change it, add a line, change a line, send it, delete it | 200 / 403 for each change |
+| Adele accepts a Draft (skipping Sent) | 400 |
+| Adele sends it | 204; Sent and inactive |
+| Adele changes, adds a line to, changes or removes a line of, deletes or reopens the Sent Quote | 400 |
+| Alex accepts it; Adele accepts it; Adele then rejects or re-sends it | 403; 204; 400 |
+| Adele sends, revises (Revised) and re-creates the Quote with the same number and Revision 1; rejects a Sent Quote | 204; the number is kept |
+| Megan reassigns the Opportunity to Alex | its Draft and Sent Quotes move to Alex (parental cascade); Alex may change the Draft and accept the Sent one; Adele may not |
+| Adele makes a Quote on a closed Opportunity | 400 |
+| Adele deletes a Draft | 204 |
+
+Close as lost setting the Sent Quotes to Rejected and Accept rejecting the other Sent
+Quotes are gateway operations (app side), tested through `src/data`.
+
 Quota (#104). A Quota row is owned by its salesperson, so Basic read shows a
 salesperson their own and the manager hierarchy shows a manager her reports'.
 Only SalesApp Sales Manager can create and write Quotas, and QuotaGuardPlugin
@@ -93,8 +124,9 @@ uses a month in 2099 so it never collides with sample Quotas:
 | Megan changes her own Quota | 400 (plug-in) |
 | Listing that month: Adele and Alex see their own row, Megan her own and both reports', Diego none | yes |
 
-Cleanup deletes the records as the signed-in admin; lines are deleted with the
-custom plug-ins bypassed, as the plug-in refuses changes to a closed Opportunity's lines.
+Cleanup deletes the records as the signed-in admin; Product lines, Quotes and Quote lines are
+deleted with the custom plug-ins bypassed, as the plug-ins refuse changes to a closed
+Opportunity's lines and to a Quote that was sent.
 
 ## Last run
 

@@ -11,6 +11,9 @@ steps, all synchronous:
   * ProductLinePlugin (#100): pre-operation, Create, Update and Delete of vibe_productline
   * ProductLineTotalPlugin (#100): post-operation, Create, Update and Delete of vibe_productline
   * EstimatedValueGuardPlugin (#100): pre-operation, Update of vibe_opportunity's Estimated value
+  * QuotePlugin (#101): pre-operation, Create, Update and Delete of vibe_quote
+  * QuoteLinePlugin (#101): pre-operation, Create, Update and Delete of vibe_quoteline
+  * QuoteTotalPlugin (#101): post-operation, Create, Update and Delete of vibe_quoteline
 
 Run:  python scripts/register_plugin_package.py
       (PLUGIN_PROJECT=<dir> builds another copy of the project, e.g. to push two unmerged branches together)
@@ -65,6 +68,15 @@ STEPS = [
     ("ProductLineTotalPlugin", "Update", "vibe_productline", None, 40),
     ("ProductLineTotalPlugin", "Delete", "vibe_productline", None, 40),
     ("EstimatedValueGuardPlugin", "Update", "vibe_opportunity", "vibe_estimatedvalue", 20),
+    ("QuotePlugin", "Create", "vibe_quote", None, 20),
+    ("QuotePlugin", "Update", "vibe_quote", None, 20),
+    ("QuotePlugin", "Delete", "vibe_quote", None, 20),
+    ("QuoteLinePlugin", "Create", "vibe_quoteline", None, 20),
+    ("QuoteLinePlugin", "Update", "vibe_quoteline", None, 20),
+    ("QuoteLinePlugin", "Delete", "vibe_quoteline", None, 20),
+    ("QuoteTotalPlugin", "Create", "vibe_quoteline", None, 40),
+    ("QuoteTotalPlugin", "Update", "vibe_quoteline", None, 40),
+    ("QuoteTotalPlugin", "Delete", "vibe_quoteline", None, 40),
 ]
 for _table in ("vibe_lead", "vibe_opportunity", "account", "contact"):
     for _message in ("Create", "Update"):

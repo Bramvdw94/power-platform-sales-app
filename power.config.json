@@ -73,6 +73,16 @@
           "entitySetName": "vibe_productlines",
           "logicalName": "vibe_productline",
           "isHidden": false
+        },
+        "quotes": {
+          "entitySetName": "vibe_quotes",
+          "logicalName": "vibe_quote",
+          "isHidden": false
+        },
+        "quotelines": {
+          "entitySetName": "vibe_quotelines",
+          "logicalName": "vibe_quoteline",
+          "isHidden": false
         }
       },
       "environmentVariableName": ""

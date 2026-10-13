@@ -1,4 +1,4 @@
-import type { AccountType, DisqualifyReason, ForecastCategory, Industry, LeadSource, LeadStatus, LostReason, Opportunity, ProductUnit, RecordRef, RecordType, Stage, VatRate } from "@/sales"
+import type { AccountType, DisqualifyReason, ForecastCategory, Industry, LeadSource, LeadStatus, LostReason, Opportunity, ProductUnit, QuoteStatus, RecordRef, RecordType, Stage, VatRate } from "@/sales"
 
 // Display formatting shared by list and record pages. Terms follow GLOSSARY.md.
 
@@ -135,6 +135,14 @@ export const LOST_REASON_LABELS: Record<LostReason, string> = {
   noBudget: "No budget",
   noDecision: "No decision",
   other: "Other",
+}
+
+export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  accepted: "Accepted",
+  rejected: "Rejected",
+  revised: "Revised",
 }
 
 const RECORD_PATHS: Record<RecordType, string> = {
