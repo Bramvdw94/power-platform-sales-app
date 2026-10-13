@@ -4,6 +4,8 @@ import AccountListPage from "@/pages/accounts/account-list"
 import AccountRecordPage from "@/pages/accounts/account-record"
 import ContactListPage from "@/pages/contacts/contact-list"
 import ContactRecordPage from "@/pages/contacts/contact-record"
+import AutomationPage from "@/pages/automation/automation-page"
+import ProcessPage from "@/pages/automation/process-page"
 import ForecastPage from "@/pages/forecast/forecast-page"
 import HomePage from "@/pages/home"
 import LeadListPage from "@/pages/leads/lead-list"
@@ -29,6 +31,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       { path: "pipeline", element: <PipelinePage /> },
       { path: "forecast", element: <ForecastPage /> },
+      { path: "automation", element: <AutomationPage /> },
+      { path: "automation/processes/:id", element: <ProcessPage /> },
       { path: "leads", element: <LeadListPage /> },
       { path: "leads/:id", element: <LeadRecordPage /> },
       { path: "opportunities", element: <OpportunityListPage /> },
