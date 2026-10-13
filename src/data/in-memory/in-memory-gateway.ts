@@ -1,6 +1,10 @@
 import {
   SalesRuleError,
   accountErrors,
+  lineAmount,
+  newProductLineDefaults,
+  productLineErrors,
+  productLinesTotal,
   productErrors,
   canApplyLeadAction,
   canEdit,
@@ -57,6 +61,9 @@ import {
   type PhoneCall,
   type Product,
   type ProductInput,
+  type ProductLine,
+  type ProductLineInput,
+  type ProductLineUpdate,
   type PipelineFilter,
   type Quota,
   type RecordRef,
@@ -104,6 +111,7 @@ export type InMemoryGatewayOptions = {
 }
 
 const DEFAULT_PAGE_SIZE = 50
+const ESTIMATED_VALUE_FROM_LINES = "The Estimated value is the total of the Product lines. Change the lines instead."
 const SEARCH_LIMIT = 10
 
 function invalid(message: string, fieldErrors: FieldErrors): void {
@@ -264,6 +272,7 @@ export class InMemorySalesGateway implements SalesGateway {
       account: this.toAccount(this.accountRow(opportunity.accountId)),
       primaryContact: contact && this.toContact(contact),
       originatingLead: lead && this.toLead(lead),
+      productLines: this.linesOf(id),
       canEdit: this.mayEdit(opportunity.ownerId),
     }
   }
@@ -344,6 +353,58 @@ export class InMemorySalesGateway implements SalesGateway {
     const row = { ...this.productRow(id), retired: true }
     this.store.products.set(id, row)
     return clone(row)
+  }
+
+  // ---- Product lines ------------------------------------------------------------
+
+  async listProductLines(opportunityId: Id): Promise<ProductLine[]> {
+    this.opportunityRow(opportunityId)
+    return this.linesOf(opportunityId)
+  }
+
+  async addProductLine(opportunityId: Id, input: ProductLineInput): Promise<ProductLine> {
+    const opportunity = this.editableOpportunityForLines(opportunityId)
+    const product = this.productRow(input.productId)
+    if (product.retired) throw new GatewayError("invalid", "The Product line cannot be saved.", { productId: "A retired Product can't be added." })
+    const defaults = newProductLineDefaults(product)
+    const values = {
+      quantity: input.quantity,
+      unitPrice: input.unitPrice ?? defaults.unitPrice,
+      discountPercent: input.discountPercent ?? defaults.discountPercent,
+    }
+    invalid("The Product line cannot be saved.", productLineErrors(values))
+    const row: ProductLine = {
+      id: this.store.newId("line"),
+      opportunityId,
+      productId: product.id,
+      productName: product.name,
+      description: input.description?.trim() || (input.description === undefined ? defaults.description : undefined),
+      ...values,
+      listPriceAtAdd: product.listPrice,
+      lineAmount: lineAmount(values.quantity, values.unitPrice, values.discountPercent),
+      createdOn: this.now().toISOString(),
+    }
+    this.store.productLines.set(row.id, withoutBlanks(row))
+    this.syncEstimatedValue(opportunity)
+    return clone(row)
+  }
+
+  async updateProductLine(id: Id, update: ProductLineUpdate): Promise<ProductLine> {
+    const line = this.lineRow(id)
+    const opportunity = this.editableOpportunityForLines(line.opportunityId)
+    const next: ProductLine = withoutBlanks({ ...line, ...defined(clone(update)) })
+    invalid("The Product line cannot be saved.", productLineErrors(next))
+    next.lineAmount = lineAmount(next.quantity, next.unitPrice, next.discountPercent)
+    this.store.productLines.set(id, next)
+    this.syncEstimatedValue(opportunity)
+    return clone(next)
+  }
+
+  async removeProductLine(id: Id): Promise<void> {
+    const line = this.lineRow(id)
+    const opportunity = this.editableOpportunityForLines(line.opportunityId)
+    this.store.productLines.delete(id)
+    this.syncEstimatedValue(opportunity)
   }
 
   // ---- Accounts and Contacts -------------------------------------------------
@@ -530,6 +591,9 @@ export class InMemorySalesGateway implements SalesGateway {
     const patch = defined(clone(update)) as Partial<OpportunityRow>
     delete patch.stage // the Stage only changes through changeStage, close and reopen
     if (patch.forecastCategory) patch.forecastCategory = rule(() => overrideForecastCategory(row, patch.forecastCategory!))
+    if (patch.estimatedValue !== undefined && patch.estimatedValue !== row.estimatedValue && this.linesOf(id).length > 0) {
+      invalid("The Opportunity cannot be saved.", { estimatedValue: ESTIMATED_VALUE_FROM_LINES })
+    }
     const next: OpportunityRow = withoutBlanks({ ...row, ...patch })
     invalid("The Opportunity cannot be saved.", opportunityErrors(next as OpportunityInput))
     return this.saveOpportunity(next)
@@ -733,6 +797,37 @@ export class InMemorySalesGateway implements SalesGateway {
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE
     const start = ((query.page ?? 1) - 1) * pageSize
     return { items: matching.slice(start, start + pageSize), totalCount: matching.length }
+  }
+
+  private linesOf(opportunityId: Id): ProductLine[] {
+    return clone(
+      [...this.store.productLines.values()]
+        .filter((l) => l.opportunityId === opportunityId)
+        .sort((a, b) => a.createdOn.localeCompare(b.createdOn) || a.id.localeCompare(b.id)),
+    )
+  }
+
+  private lineRow(id: Id): ProductLine {
+    const row = this.store.productLines.get(id)
+    if (!row) throw new GatewayError("notFound", `Product line ${id} not found.`)
+    return row
+  }
+
+  /** Lines follow the Opportunity: its Owner or the Owner's manager changes them, and not once it is closed. */
+  private editableOpportunityForLines(opportunityId: Id): OpportunityRow {
+    const opportunity = this.opportunityRow(opportunityId)
+    this.requireEdit(opportunity.ownerId)
+    if (isOpportunityReadOnly(opportunity)) {
+      throw new GatewayError("invalid", "A closed Opportunity's Product lines are read-only.")
+    }
+    return opportunity
+  }
+
+  /** What the plug-in does in Dataverse: the Estimated value is the lines' total; with no lines it stays as it was. */
+  private syncEstimatedValue(opportunity: OpportunityRow): void {
+    const lines = this.linesOf(opportunity.id)
+    if (lines.length === 0) return
+    this.store.opportunities.set(opportunity.id, { ...opportunity, estimatedValue: productLinesTotal(lines) })
   }
 
   private requireCatalogueManager(): void {

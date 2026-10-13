@@ -8,7 +8,7 @@ const NOW = new Date(2026, 9, 9, 10, 30)
 const TODAY = "2026-10-09"
 
 const { megan, adele, alex, diego, bram } = SEED_USERS
-const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P } = SEED_IDS
+const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR, productLines: PL } = SEED_IDS
 
 let store: InMemorySalesStore
 const as = (userId: Id): SalesGateway => new InMemorySalesGateway(store, { userId, now: () => NOW })
@@ -602,5 +602,99 @@ describe("Quotas", () => {
   it("refuses a month that is not the first, and a negative amount", async () => {
     expect((await errorOf(as(megan.id).setQuota(adele.id, "2026-10-15", 1))).fieldErrors.month).toBeDefined()
     expect((await errorOf(as(megan.id).setQuota(adele.id, "2026-10-01", -5))).fieldErrors.amount).toBeDefined()
+  })
+})
+
+describe("Product lines", () => {
+  it("come with the Opportunity, oldest first, and add up to its Estimated value", async () => {
+    const details = await as(alex.id).getOpportunity(O.proposal)
+    expect(details.productLines.map((l) => l.id)).toEqual([PL.proposalConsulting, PL.proposalWorkshop, PL.proposalLicences])
+    expect(details.opportunity.estimatedValue).toBe(20000)
+    expect((await as(alex.id).listProductLines(O.proposal)).length).toBe(3)
+    expect((await as(adele.id).getOpportunity(O.qualification)).productLines).toEqual([])
+  })
+
+  it("start from the Product's description and List price, and make the Estimated value their total", async () => {
+    const line = await as(adele.id).addProductLine(O.qualification, { productId: PR.consultingHour, quantity: 2 })
+    expect(line).toMatchObject({
+      productName: "Consulting",
+      description: "Senior consultant, billed per hour.",
+      quantity: 2,
+      unitPrice: 125,
+      listPriceAtAdd: 125,
+      discountPercent: 0,
+      lineAmount: 250,
+    })
+    expect((await as(adele.id).getOpportunity(O.qualification)).opportunity.estimatedValue).toBe(250)
+  })
+
+  it("keep the List price they started from when the unit price is changed or the Product's price moves", async () => {
+    const line = await as(adele.id).addProductLine(O.qualification, { productId: PR.workshopDay, quantity: 1, unitPrice: 1200, discountPercent: 10 })
+    expect(line).toMatchObject({ unitPrice: 1200, listPriceAtAdd: 1450, lineAmount: 1080 })
+    await as(megan.id).updateProduct(PR.workshopDay, { listPrice: 1600 })
+    const [kept] = await as(adele.id).listProductLines(O.qualification)
+    expect(kept).toMatchObject({ listPriceAtAdd: 1450, unitPrice: 1200 })
+  })
+
+  it("round each line to cents before adding them up", async () => {
+    const gateway = as(adele.id)
+    for (const unitPrice of [0.15, 0.15, 0.15]) {
+      await gateway.addProductLine(O.qualification, { productId: PR.licence, quantity: 1, unitPrice, discountPercent: 50 })
+    }
+    expect((await gateway.getOpportunity(O.qualification)).opportunity.estimatedValue).toBe(0.24)
+  })
+
+  it("recalculate the Estimated value when a line changes or goes", async () => {
+    const gateway = as(alex.id)
+    await gateway.updateProductLine(PL.proposalConsulting, { quantity: 80 })
+    expect((await gateway.getOpportunity(O.proposal)).opportunity.estimatedValue).toBe(17500)
+    await gateway.removeProductLine(PL.proposalLicences)
+    expect((await gateway.getOpportunity(O.proposal)).opportunity.estimatedValue).toBe(17250)
+  })
+
+  it("leave the Estimated value as it was when the last line is removed, and typeable again", async () => {
+    const gateway = as(alex.id)
+    for (const id of [PL.proposalConsulting, PL.proposalWorkshop]) await gateway.removeProductLine(id)
+    expect((await gateway.getOpportunity(O.proposal)).opportunity.estimatedValue).toBe(250)
+    await gateway.removeProductLine(PL.proposalLicences)
+    expect((await gateway.getOpportunity(O.proposal)).opportunity.estimatedValue).toBe(250)
+    expect((await gateway.updateOpportunity(O.proposal, { estimatedValue: 12345 })).estimatedValue).toBe(12345)
+  })
+
+  it("refuse a typed Estimated value while lines exist, but not an unchanged one", async () => {
+    const gateway = as(alex.id)
+    expect((await errorOf(gateway.updateOpportunity(O.proposal, { estimatedValue: 1 }))).fieldErrors).toHaveProperty("estimatedValue")
+    expect((await gateway.updateOpportunity(O.proposal, { estimatedValue: 20000, nextStep: "Call" })).nextStep).toBe("Call")
+  })
+
+  it("refuse a retired Product, a quantity of zero and a discount above 100", async () => {
+    const gateway = as(adele.id)
+    expect((await errorOf(gateway.addProductLine(O.qualification, { productId: PR.retired, quantity: 1 }))).fieldErrors).toHaveProperty("productId")
+    const errors = (await errorOf(gateway.addProductLine(O.qualification, { productId: PR.licence, quantity: 0, discountPercent: 101 }))).fieldErrors
+    expect(Object.keys(errors).sort()).toEqual(["discountPercent", "quantity"])
+    expect((await gateway.listProductLines(O.qualification)).length).toBe(0)
+  })
+
+  it("follow the Opportunity: its Owner and the Owner's manager change them, a peer or outsider cannot", async () => {
+    expect((await errorOf(as(alex.id).addProductLine(O.qualification, { productId: PR.licence, quantity: 1 }))).code).toBe("forbidden")
+    expect((await errorOf(as(diego.id).removeProductLine(PL.proposalLicences))).code).toBe("forbidden")
+    expect((await errorOf(as(adele.id).updateProductLine(PL.proposalLicences, { quantity: 2 }))).code).toBe("forbidden")
+    await as(megan.id).updateProductLine(PL.proposalLicences, { quantity: 2 })
+    await as(megan.id).addProductLine(O.qualification, { productId: PR.licence, quantity: 1 })
+  })
+
+  it("are read-only once the Opportunity is closed", async () => {
+    const gateway = as(alex.id)
+    expect((await gateway.getOpportunity(O.won)).productLines.length).toBe(2)
+    expect((await errorOf(gateway.addProductLine(O.won, { productId: PR.licence, quantity: 1 }))).code).toBe("invalid")
+    expect((await errorOf(gateway.updateProductLine(PL.wonWorkshop, { quantity: 1 }))).code).toBe("invalid")
+    expect((await errorOf(gateway.removeProductLine(PL.wonWorkshop))).code).toBe("invalid")
+  })
+
+  it("keep their Product when the Product is retired, and a Product's name on the line", async () => {
+    await as(megan.id).retireProduct(PR.consultingHour)
+    const lines = await as(alex.id).listProductLines(O.proposal)
+    expect(lines.find((l) => l.id === PL.proposalConsulting)?.productName).toBe("Consulting")
+    await as(alex.id).updateProductLine(PL.proposalConsulting, { quantity: 50 })
   })
 })

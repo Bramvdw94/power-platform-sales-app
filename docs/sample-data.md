@@ -9,6 +9,7 @@ reaches a real company. Decided in #20, built in #35.
 | Data | Amount |
 |---|---|
 | Products (#99) | 16: hourly consulting, day rates, fixed-price packages, monthly licences and bundles, a yearly support contract, a generic "Services" Product, 9 % and 0 % VAT examples, and one Retired (`SUP-OLD`) |
+| Product lines (#100) | 37 lines on 13 Opportunities (10 open, 3 Closed Won); each of those Opportunities' Estimated value is the total of its lines. Rijnmond has a negotiated day rate below the List price |
 | Accounts | 25 |
 | Contacts | 50 (two per Account) |
 | Leads | 30: 8 Not Contacted, 12 Working, 6 Qualified, 4 Disqualified (with reason) |

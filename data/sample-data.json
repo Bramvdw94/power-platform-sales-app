@@ -1555,7 +1555,7 @@
       "primaryContact": "con-sander-hendriks",
       "stage": "proposal",
       "forecastCategory": "commit",
-      "estimatedValue": 86000,
+      "estimatedValue": 81850,
       "expectedCloseInDays": 12,
       "nextStep": "Walk through the proposal with Sander",
       "description": "Met at the Bouwbeurs. Wants laptops and phones managed centrally for site teams.",
@@ -1570,7 +1570,7 @@
       "account": "acc-hoekstra",
       "primaryContact": "con-sjoerd-hoekstra",
       "stage": "needsAnalysis",
-      "estimatedValue": 34000,
+      "estimatedValue": 33660,
       "expectedCloseInDays": 40,
       "nextStep": "Inventory of mailboxes and file shares",
       "description": "Filled in the contact form about moving their branches to Microsoft 365.",
@@ -1586,7 +1586,7 @@
       "primaryContact": "con-gerard-visser",
       "stage": "negotiation",
       "probability": 80,
-      "estimatedValue": 128000,
+      "estimatedValue": 103650,
       "expectedCloseInDays": 3,
       "nextStep": "Agree on response times in the SLA",
       "description": "Referred by Scheldepoort Shipping. Needs 24/7 monitoring of their dispatch systems.",
@@ -1616,7 +1616,7 @@
       "account": "acc-veluwe",
       "primaryContact": "con-martijn-vanbeek",
       "stage": "closedWon",
-      "estimatedValue": 64000,
+      "estimatedValue": 62400,
       "expectedCloseInDays": -20,
       "description": "Answered our mailing on booking platform hosting.",
       "leadSource": "coldOutreach",
@@ -1632,7 +1632,7 @@
       "account": "acc-ijsselstroom",
       "primaryContact": "con-niels-kok",
       "stage": "needsAnalysis",
-      "estimatedValue": 45000,
+      "estimatedValue": 49400,
       "expectedCloseInDays": 30,
       "nextStep": "Workshop on the planning process",
       "description": "Downloaded the Power Platform whitepaper; growing fast and running on spreadsheets.",
@@ -1647,7 +1647,7 @@
       "account": "acc-vandijk",
       "primaryContact": "con-ingrid-smit",
       "stage": "proposal",
-      "estimatedValue": 72000,
+      "estimatedValue": 77540,
       "expectedCloseInDays": 6,
       "nextStep": "Send revised proposal",
       "leadSource": "referral",
@@ -1686,7 +1686,7 @@
       "account": "acc-meulenhof",
       "primaryContact": "con-ruud-kuipers",
       "stage": "proposal",
-      "estimatedValue": 96000,
+      "estimatedValue": 95900,
       "expectedCloseInDays": 25,
       "nextStep": "Security review with Ruud",
       "owner": "megan",
@@ -1722,7 +1722,7 @@
       "account": "acc-scheldepoort",
       "primaryContact": "con-koen-peeters",
       "stage": "proposal",
-      "estimatedValue": 29000,
+      "estimatedValue": 19420,
       "expectedCloseInDays": -2,
       "nextStep": "Call Koen about the porting date",
       "owner": "diego",
@@ -1771,7 +1771,7 @@
       "account": "acc-noordkaap",
       "primaryContact": "con-nienke-deboer",
       "stage": "proposal",
-      "estimatedValue": 110000,
+      "estimatedValue": 118824,
       "expectedCloseInDays": 35,
       "nextStep": "Pilot in the Groningen store",
       "owner": "alex",
@@ -1808,7 +1808,7 @@
       "account": "acc-delftse",
       "primaryContact": "con-frank-meijer",
       "stage": "qualification",
-      "estimatedValue": 135000,
+      "estimatedValue": 133735,
       "expectedCloseInDays": 88,
       "leadSource": "partner",
       "owner": "megan",
@@ -1820,7 +1820,7 @@
       "account": "acc-peelland",
       "primaryContact": "con-rob-vanasten",
       "stage": "negotiation",
-      "estimatedValue": 38000,
+      "estimatedValue": 36400,
       "expectedCloseInDays": 14,
       "nextStep": "Confirm site survey date",
       "owner": "adele",
@@ -1832,7 +1832,7 @@
       "account": "acc-kaasmakerij",
       "primaryContact": "con-lotte-jansen",
       "stage": "closedWon",
-      "estimatedValue": 46000,
+      "estimatedValue": 45100,
       "expectedCloseInDays": -35,
       "actualValue": 44200,
       "closedDaysAgo": 33,
@@ -1871,7 +1871,7 @@
       "account": "acc-hofstad",
       "primaryContact": "con-jeroen-bakker",
       "stage": "closedWon",
-      "estimatedValue": 240000,
+      "estimatedValue": 232680,
       "expectedCloseInDays": -5,
       "actualValue": 228000,
       "closedDaysAgo": 4,
@@ -1945,6 +1945,302 @@
       "lostReason": "noBudget",
       "owner": "diego",
       "createdDaysAgo": 90
+    }
+  ],
+  "productLines": [
+    {
+      "key": "line-devries-1",
+      "opportunity": "opp-devries",
+      "product": "prod-workplace",
+      "quantity": 1200,
+      "description": "Managed workplace, 100 users for 12 months",
+      "discountPercent": 5,
+      "createdDaysAgo": 73
+    },
+    {
+      "key": "line-devries-2",
+      "opportunity": "opp-devries",
+      "product": "prod-migration",
+      "quantity": 1,
+      "createdDaysAgo": 72
+    },
+    {
+      "key": "line-devries-3",
+      "opportunity": "opp-devries",
+      "product": "prod-training",
+      "quantity": 2,
+      "description": "Admin training, two sessions",
+      "createdDaysAgo": 71
+    },
+    {
+      "key": "line-hoekstra-1",
+      "opportunity": "opp-hoekstra",
+      "product": "prod-m365",
+      "quantity": 480,
+      "description": "Microsoft 365 licences, 40 mailboxes for 12 months",
+      "createdDaysAgo": 50
+    },
+    {
+      "key": "line-hoekstra-2",
+      "opportunity": "opp-hoekstra",
+      "product": "prod-architect",
+      "quantity": 60,
+      "description": "Migration architecture and planning",
+      "createdDaysAgo": 49
+    },
+    {
+      "key": "line-hoekstra-3",
+      "opportunity": "opp-hoekstra",
+      "product": "prod-consultant",
+      "quantity": 120,
+      "createdDaysAgo": 48
+    },
+    {
+      "key": "line-rijnmond-1",
+      "opportunity": "opp-rijnmond",
+      "product": "prod-senior",
+      "quantity": 320,
+      "description": "Senior consultants for the platform build",
+      "createdDaysAgo": 38
+    },
+    {
+      "key": "line-rijnmond-2",
+      "opportunity": "opp-rijnmond",
+      "product": "prod-pm-day",
+      "quantity": 45,
+      "description": "Project management",
+      "createdDaysAgo": 37
+    },
+    {
+      "key": "line-rijnmond-3",
+      "opportunity": "opp-rijnmond",
+      "product": "prod-support",
+      "quantity": 1,
+      "createdDaysAgo": 36
+    },
+    {
+      "key": "line-rijnmond-4",
+      "opportunity": "opp-rijnmond",
+      "product": "prod-workshop",
+      "quantity": 4,
+      "description": "Discovery workshops, agreed day rate",
+      "unitPrice": 1300,
+      "createdDaysAgo": 35
+    },
+    {
+      "key": "line-vandijk-erp-1",
+      "opportunity": "opp-vandijk-erp",
+      "product": "prod-senior",
+      "quantity": 280,
+      "description": "ERP integration, 10% volume discount",
+      "discountPercent": 10,
+      "createdDaysAgo": 53
+    },
+    {
+      "key": "line-vandijk-erp-2",
+      "opportunity": "opp-vandijk-erp",
+      "product": "prod-pm-day",
+      "quantity": 30,
+      "createdDaysAgo": 52
+    },
+    {
+      "key": "line-vandijk-erp-3",
+      "opportunity": "opp-vandijk-erp",
+      "product": "prod-services",
+      "quantity": 1,
+      "description": "Data migration scripts (fixed price)",
+      "unitPrice": 9500,
+      "createdDaysAgo": 51
+    },
+    {
+      "key": "line-meulenhof-iam-1",
+      "opportunity": "opp-meulenhof-iam",
+      "product": "prod-architect",
+      "quantity": 200,
+      "description": "Identity architecture",
+      "createdDaysAgo": 68
+    },
+    {
+      "key": "line-meulenhof-iam-2",
+      "opportunity": "opp-meulenhof-iam",
+      "product": "prod-consultant",
+      "quantity": 400,
+      "createdDaysAgo": 67
+    },
+    {
+      "key": "line-meulenhof-iam-3",
+      "opportunity": "opp-meulenhof-iam",
+      "product": "prod-secaudit",
+      "quantity": 2,
+      "createdDaysAgo": 66
+    },
+    {
+      "key": "line-meulenhof-iam-4",
+      "opportunity": "opp-meulenhof-iam",
+      "product": "prod-endpoint",
+      "quantity": 600,
+      "description": "Endpoint protection, 50 devices for 12 months",
+      "createdDaysAgo": 65
+    },
+    {
+      "key": "line-noordkaap-pos-1",
+      "opportunity": "opp-noordkaap-pos",
+      "product": "prod-workplace",
+      "quantity": 1800,
+      "description": "Managed workplace for 150 POS terminals",
+      "discountPercent": 8,
+      "createdDaysAgo": 58
+    },
+    {
+      "key": "line-noordkaap-pos-2",
+      "opportunity": "opp-noordkaap-pos",
+      "product": "prod-support",
+      "quantity": 3,
+      "description": "Support contract, 3 years",
+      "createdDaysAgo": 57
+    },
+    {
+      "key": "line-noordkaap-pos-3",
+      "opportunity": "opp-noordkaap-pos",
+      "product": "prod-services",
+      "quantity": 1,
+      "description": "Rollout logistics",
+      "unitPrice": 15000,
+      "createdDaysAgo": 56
+    },
+    {
+      "key": "line-delftse-cloud-1",
+      "opportunity": "opp-delftse-cloud",
+      "product": "prod-migration",
+      "quantity": 3,
+      "createdDaysAgo": 6
+    },
+    {
+      "key": "line-delftse-cloud-2",
+      "opportunity": "opp-delftse-cloud",
+      "product": "prod-senior",
+      "quantity": 500,
+      "description": "Cloud engineers",
+      "discountPercent": 5,
+      "createdDaysAgo": 5
+    },
+    {
+      "key": "line-delftse-cloud-3",
+      "opportunity": "opp-delftse-cloud",
+      "product": "prod-backup",
+      "quantity": 240,
+      "description": "Backup, 20 TB for 12 months",
+      "createdDaysAgo": 4
+    },
+    {
+      "key": "line-ijsselstroom-1",
+      "opportunity": "opp-ijsselstroom",
+      "product": "prod-workshop",
+      "quantity": 6,
+      "createdDaysAgo": 26
+    },
+    {
+      "key": "line-ijsselstroom-2",
+      "opportunity": "opp-ijsselstroom",
+      "product": "prod-consultant",
+      "quantity": 250,
+      "createdDaysAgo": 25
+    },
+    {
+      "key": "line-ijsselstroom-3",
+      "opportunity": "opp-ijsselstroom",
+      "product": "prod-m365",
+      "quantity": 600,
+      "createdDaysAgo": 24
+    },
+    {
+      "key": "line-peelland-wifi-1",
+      "opportunity": "opp-peelland-wifi",
+      "product": "prod-services",
+      "quantity": 1,
+      "description": "Wi-Fi hardware and cabling",
+      "unitPrice": 26500,
+      "createdDaysAgo": 28
+    },
+    {
+      "key": "line-peelland-wifi-2",
+      "opportunity": "opp-peelland-wifi",
+      "product": "prod-consultant",
+      "quantity": 90,
+      "description": "Site survey and installation",
+      "createdDaysAgo": 27
+    },
+    {
+      "key": "line-scheldepoort-teams-1",
+      "opportunity": "opp-scheldepoort-teams",
+      "product": "prod-m365",
+      "quantity": 720,
+      "description": "Teams Phone licences",
+      "createdDaysAgo": 46
+    },
+    {
+      "key": "line-scheldepoort-teams-2",
+      "opportunity": "opp-scheldepoort-teams",
+      "product": "prod-training",
+      "quantity": 4,
+      "description": "Adoption training",
+      "createdDaysAgo": 45
+    },
+    {
+      "key": "line-veluwe-1",
+      "opportunity": "opp-veluwe",
+      "product": "prod-senior",
+      "quantity": 240,
+      "createdDaysAgo": 108
+    },
+    {
+      "key": "line-veluwe-2",
+      "opportunity": "opp-veluwe",
+      "product": "prod-pm-day",
+      "quantity": 12,
+      "createdDaysAgo": 107
+    },
+    {
+      "key": "line-veluwe-3",
+      "opportunity": "opp-veluwe",
+      "product": "prod-secaudit",
+      "quantity": 2,
+      "description": "Security audits, two sites",
+      "createdDaysAgo": 106
+    },
+    {
+      "key": "line-kaasmakerij-laptops-1",
+      "opportunity": "opp-kaasmakerij-laptops",
+      "product": "prod-services",
+      "quantity": 1,
+      "description": "Laptops (60 units)",
+      "unitPrice": 38500,
+      "createdDaysAgo": 108
+    },
+    {
+      "key": "line-kaasmakerij-laptops-2",
+      "opportunity": "opp-kaasmakerij-laptops",
+      "product": "prod-consultant",
+      "quantity": 60,
+      "description": "Imaging and deployment",
+      "createdDaysAgo": 107
+    },
+    {
+      "key": "line-hofstad-servicedesk-1",
+      "opportunity": "opp-hofstad-servicedesk",
+      "product": "prod-workplace",
+      "quantity": 3600,
+      "description": "Service desk for 300 users",
+      "discountPercent": 5,
+      "createdDaysAgo": 168
+    },
+    {
+      "key": "line-hofstad-servicedesk-2",
+      "opportunity": "opp-hofstad-servicedesk",
+      "product": "prod-support",
+      "quantity": 10,
+      "description": "Support contracts",
+      "createdDaysAgo": 167
     }
   ],
   "tasks": [

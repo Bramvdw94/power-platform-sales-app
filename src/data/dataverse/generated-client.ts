@@ -12,6 +12,7 @@ import {
   TasksService,
   Vibe_leadsService,
   Vibe_opportunitiesService,
+  Vibe_productlinesService,
   Vibe_productsService,
   Vibe_quotasService,
   WhoAmIService,
@@ -26,6 +27,7 @@ import {
   OPPORTUNITY_COLUMNS,
   PHONE_CALL_COLUMNS,
   PRODUCT_COLUMNS,
+  PRODUCT_LINE_COLUMNS,
   QUOTA_COLUMNS,
   SYSTEM_USER_COLUMNS,
   TASK_COLUMNS,
@@ -51,6 +53,7 @@ type GeneratedService = {
   getAll(options?: IGetAllOptions): Promise<IOperationResult<unknown[]>>
   create(record: never): Promise<IOperationResult<unknown>>
   update(id: string, changedFields: never): Promise<IOperationResult<unknown>>
+  delete(id: string): Promise<void>
 }
 
 /** A TableClient over one generated service, reading only the given columns. */
@@ -73,6 +76,9 @@ function table<T>(service: GeneratedService, name: string, columns: readonly str
     },
     async update(id, fields: Fields) {
       return unwrap(await service.update(id, fields as never), `${name} update`) as T
+    },
+    async delete(id) {
+      await service.delete(id)
     },
   }
 }
@@ -110,6 +116,7 @@ export function createGeneratedClient(): DataverseClient {
     leads: table(Vibe_leadsService, "vibe_lead", LEAD_COLUMNS),
     opportunities: table(Vibe_opportunitiesService, "vibe_opportunity", OPPORTUNITY_COLUMNS),
     products: table(Vibe_productsService, "vibe_product", PRODUCT_COLUMNS),
+    productLines: table(Vibe_productlinesService, "vibe_productline", PRODUCT_LINE_COLUMNS),
     quotas: table(Vibe_quotasService, "vibe_quota", QUOTA_COLUMNS),
     notes: table(AnnotationsService, "annotation", NOTE_COLUMNS),
     tasks: table(TasksService, "task", TASK_COLUMNS),

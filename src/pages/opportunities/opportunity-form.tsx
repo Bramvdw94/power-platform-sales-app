@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useMutation } from "@tanstack/react-query"
 import { AccountPicker, ContactPicker, type AccountChoice, type ContactChoice } from "@/components/records/account-picker"
 import { FormAlert, FormField, TextFields, type TextFieldSpec } from "@/components/records/fields"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { OpportunityUpdate } from "@/data/gateway"
@@ -10,7 +11,7 @@ import { useGateway } from "@/hooks/use-gateway"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
 import { fieldErrorsOf } from "@/lib/errors"
 import { FORECAST_CATEGORY_LABELS, LEAD_SOURCE_LABELS, STAGE_LABELS } from "@/lib/format"
-import { toPatch, type FormValues } from "@/lib/form"
+import { toNumber, toPatch, type FormValues } from "@/lib/form"
 import { cn } from "@/lib/utils"
 import {
   FORECAST_CATEGORIES,
@@ -40,11 +41,6 @@ const EDIT_SPECS: TextFieldSpec<EditTextField>[] = [
   { name: "nextStep", label: "Next step", wide: true },
   { name: "description", label: "Description", type: "textarea" },
 ]
-
-/** A form value as a number: blank or not a number is NaN, which validation refuses. */
-function toNumber(value: string | undefined): number {
-  return value?.trim() ? Number(value) : Number.NaN
-}
 
 /** A native select: works the same with a mouse, a keyboard and a phone's picker. */
 export function ChoiceField<T extends string>({
@@ -208,7 +204,16 @@ export function NewOpportunityDialog({
  * The Opportunity's details as a form, for its Owner or the Owner's manager.
  * The Stage changes on the Stage path, not here; the Probability may be overridden.
  */
-export function EditOpportunityForm({ opportunity, onDone }: { opportunity: Opportunity; onDone: () => void }) {
+export function EditOpportunityForm({
+  opportunity,
+  onDone,
+  hasProductLines = false,
+}: {
+  opportunity: Opportunity
+  onDone: () => void
+  /** While there are Product lines the Estimated value is their total and can't be typed. */
+  hasProductLines?: boolean
+}) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
   const [values, setValues] = useState<FormValues<EditTextField>>(() => ({
@@ -244,12 +249,12 @@ export function EditOpportunityForm({ opportunity, onDone }: { opportunity: Oppo
       ...text,
       accountId: company?.id ?? "",
       primaryContactId: contact?.id ?? "",
-      estimatedValue: toNumber(values.estimatedValue),
+      ...(hasProductLines ? {} : { estimatedValue: toNumber(values.estimatedValue) }),
       probability: toNumber(values.probability),
       leadSource,
       ...(forecast && forecast !== opportunity.forecastCategory ? { forecastCategory: forecast } : {}),
     }
-    const found = opportunityErrors({ ...patch, stage: "qualification", leadSource: undefined })
+    const found = opportunityErrors({ estimatedValue: opportunity.estimatedValue, ...patch, stage: "qualification", leadSource: undefined })
     setErrors(found)
     if (Object.keys(found).length === 0) save.mutate(patch)
   }
@@ -264,7 +269,21 @@ export function EditOpportunityForm({ opportunity, onDone }: { opportunity: Oppo
       <FormField id="edit-opportunity-contact" label="Primary Contact" error={errors.primaryContactId}>
         <ContactPicker id="edit-opportunity-contact" value={contact} onChange={setContact} />
       </FormField>
-      <TextFields idPrefix="edit-opportunity" specs={EDIT_SPECS.slice(1, 4)} values={values} errors={errors} onChange={onChange} />
+      <TextFields
+        idPrefix="edit-opportunity"
+        specs={hasProductLines ? EDIT_SPECS.slice(2, 4) : EDIT_SPECS.slice(1, 4)}
+        values={values}
+        errors={errors}
+        onChange={onChange}
+      />
+      {hasProductLines && (
+        <FormField id="edit-opportunity-estimated-value" label="Estimated value (€)">
+          <Input id="edit-opportunity-estimated-value" type="number" value={opportunity.estimatedValue} readOnly aria-describedby="edit-opportunity-estimated-value-note" />
+          <p id="edit-opportunity-estimated-value-note" className="text-xs text-muted-foreground">
+            The total of the Product lines. Change the lines to change it.
+          </p>
+        </FormField>
+      )}
       <ChoiceField
         id="edit-opportunity-forecast"
         label="Forecast category"

@@ -1,4 +1,4 @@
-import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, Quota, User } from "@/sales"
+import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, ProductLine, Quota, User } from "@/sales"
 
 // What the in-memory store keeps: records without the display names that
 // Dataverse returns as formatted values. The gateway adds those on read.
@@ -21,6 +21,7 @@ export type InMemoryData = {
   activities: ActivityRow[]
   products: Product[]
   quotas?: QuotaRow[]
+  productLines?: ProductLine[]
 }
 
 /** Shared state behind one or more in-memory gateways (one per signed-in user). */
@@ -33,6 +34,7 @@ export class InMemorySalesStore {
   readonly activities = new Map<Id, ActivityRow>()
   readonly products = new Map<Id, Product>()
   readonly quotas = new Map<Id, QuotaRow>()
+  readonly productLines = new Map<Id, ProductLine>()
   private sequence = 0
 
   constructor(data: InMemoryData) {
@@ -45,6 +47,7 @@ export class InMemorySalesStore {
     for (const row of copy.activities) this.activities.set(row.id, row)
     for (const row of copy.products) this.products.set(row.id, row)
     for (const row of copy.quotas ?? []) this.quotas.set(row.id, row)
+    for (const row of copy.productLines ?? []) this.productLines.set(row.id, row)
   }
 
   newId(prefix: string): Id {

@@ -8,6 +8,8 @@ steps, all synchronous:
   * ProcessEnginePlugin (#94): pre-operation, Create and Update of vibe_lead,
     vibe_opportunity, account and contact; post-operation (the Action Tasks, in
     the same transaction), Create and Update of vibe_lead and vibe_opportunity
+  * ProductLinePlugin (#100): pre-operation, Create, Update and Delete of vibe_productline
+  * EstimatedValueGuardPlugin (#100): pre-operation, Update of vibe_opportunity's Estimated value
 
 Run:  python scripts/register_plugin_package.py
       (PLUGIN_PROJECT=<dir> builds another copy of the project, e.g. to push two unmerged branches together)
@@ -51,6 +53,11 @@ if not r.ok:
 STEPS = [
     ("QuotaGuardPlugin", "Create", "vibe_quota", None, 20),
     ("QuotaGuardPlugin", "Update", "vibe_quota", "vibe_salespersonid,vibe_month,vibe_amount,ownerid", 20),
+    ("ProductLinePlugin", "Create", "vibe_productline", None, 20),
+    ("ProductLinePlugin", "Update", "vibe_productline",
+     "vibe_quantity,vibe_unitprice,vibe_discountpercent,vibe_description,vibe_opportunityid,vibe_productid,vibe_listpriceatadd,vibe_lineamount", 20),
+    ("ProductLinePlugin", "Delete", "vibe_productline", None, 20),
+    ("EstimatedValueGuardPlugin", "Update", "vibe_opportunity", "vibe_estimatedvalue", 20),
 ]
 for _table in ("vibe_lead", "vibe_opportunity", "account", "contact"):
     for _message in ("Create", "Update"):

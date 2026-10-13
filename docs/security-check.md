@@ -48,6 +48,29 @@ The script creates its own records as Adele, all named `[security-check] …`:
 | Megan deletes a Product | 403 (nobody has Delete) |
 
 The Product checks (#99) use a Product named `[security-check] Product`.
+Product lines (#100). A line follows its Opportunity. ProductLinePlugin gives
+it the Opportunity's Owner, so Basic create, write and delete reach the Owner
+and, through the hierarchy, the Owner's manager; Adding one also needs Append To
+on the Opportunity, which is User level, so a peer is refused. The plug-in keeps
+Line amount, List price at add and the Opportunity's Estimated value in the same
+transaction, and EstimatedValueGuardPlugin refuses a direct change to the
+Estimated value while lines exist:
+
+| Check | Expected |
+|---|---|
+| Adele adds a line (2 x 100, 10 % off) | 204; Line amount 180, List price at add 100, owned by Adele, Estimated value 180 |
+| Adele adds a second line (1.5 x 33.33) | 204; Estimated value 230 (each line rounded to cents, then summed) |
+| Adele or an admin types a different Estimated value while lines exist | 400 (plug-in) |
+| Adele saves the Estimated value unchanged with another field | 204 |
+| Adele changes a quantity | 204; Estimated value follows |
+| Adele writes Line amount, changes List price at add, uses quantity 0 or 101 % discount, adds a retired Product | recalculated / 400 / 400 / 400 / 400 |
+| Alex or Diego add, change or remove Adele's line; read it | 403 / 403 / 403 / 200 |
+| Megan adds a line to Adele's Opportunity | 204; owned by Adele; she removes it again, total drops back |
+| Adele removes the last line | 204; Estimated value keeps the last total and is typeable again |
+| Megan reassigns the Opportunity to Alex | its line moves to Alex (parental cascade); Alex may change it |
+| Adele adds, changes or removes a line once the Opportunity is closed | 400 (plug-in) |
+| Megan deletes a Product that is on a line | 403 |
+
 Quota (#104). A Quota row is owned by its salesperson, so Basic read shows a
 salesperson their own and the manager hierarchy shows a manager her reports'.
 Only SalesApp Sales Manager can create and write Quotas, and QuotaGuardPlugin
@@ -70,7 +93,8 @@ uses a month in 2099 so it never collides with sample Quotas:
 | Megan changes her own Quota | 400 (plug-in) |
 | Listing that month: Adele and Alex see their own row, Megan her own and both reports', Diego none | yes |
 
-Cleanup deletes the records as the signed-in admin.
+Cleanup deletes the records as the signed-in admin; lines are deleted with the
+custom plug-ins bypassed, as the plug-in refuses changes to a closed Opportunity's lines.
 
 ## Last run
 

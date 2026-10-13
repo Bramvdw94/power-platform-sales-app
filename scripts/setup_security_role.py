@@ -60,6 +60,17 @@ for t in ["Note", "Activity"]:
 PRODUCT_READ = {"prvReadvibe_Product": GLOBAL}
 PRODUCT_MANAGE = {"prvCreatevibe_Product": GLOBAL, "prvWritevibe_Product": GLOBAL}
 
+# Product lines (#100) follow their Opportunity: the plug-in gives a line the
+# Opportunity's Owner, so User-level create, write and delete reach the Owner and,
+# through the hierarchy, the Owner's manager. Adding a line also needs Append To on
+# the Opportunity (already User level, so a peer cannot add one) and on the Product.
+PRODUCT_LINE = {
+    "prvReadvibe_ProductLine": GLOBAL,
+    "prvCreatevibe_ProductLine": BASIC, "prvWritevibe_ProductLine": BASIC,
+    "prvDeletevibe_ProductLine": BASIC, "prvAppendvibe_ProductLine": BASIC,
+    "prvAssignvibe_ProductLine": BASIC, "prvAppendTovibe_Product": GLOBAL,
+}
+
 # Quota (#104) is owned by the salesperson it is for. Everyone reads their own
 # row (a manager reads and writes direct reports' rows through the hierarchy);
 # only the Sales Manager role writes them. Who may write which row is decided by
@@ -114,7 +125,7 @@ PLATFORM = {
 
 ROLES = {
     "SalesApp Salesperson": {
-        "privileges": {**SPEC, **PRODUCT_READ, **ENGINE_READ, **ENGINE_APPEND_TO, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
+        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **ENGINE_READ, **ENGINE_APPEND_TO, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
         "users": ["Megan Bowen", "Adele Vance", "Alex Wilber", "Diego Siciliani"],
     },
     # Fallback from #21: Manager hierarchy gives a manager Write on a direct
