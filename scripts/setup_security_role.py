@@ -306,6 +306,30 @@ def ensure_role(dv, name, spec, root_bu, solution_id, apply, refresh):
             print(f"  {fullname}: would give role")
 
 
+def ensure_administrator(dv, apply):
+    """System Administrator must hold every privilege on every vibe_ table, plus the kill-switch read.
+
+    Dataverse normally adds these to the role itself; this finds them in the environment (so a future
+    table is covered without editing this file) and tops up anything missing. It only adds, never removes.
+    """
+    print("Role System Administrator")
+    role = dv.get("roles?$select=roleid&$filter=name eq 'System Administrator'")["value"][0]["roleid"]
+    held = {p["PrivilegeName"].lower(): p["Depth"] for p in dv.get(f"RetrieveRolePrivilegesRole(RoleId={role})")["RolePrivileges"]}
+    rows = dv.get("privileges?$select=privilegeid,name&$filter=contains(name,'vibe_')&$top=5000")["value"]
+    rows += dv.get("privileges?$select=privilegeid,name&$filter=name eq 'prvReadEnvironmentVariableDefinition'")["value"]
+    missing = [r for r in rows if held.get(r["name"].lower()) != GLOBAL]
+    if not missing:
+        print(f"  holds all {len(rows)} vibe_ and kill-switch privileges at Global")
+        return
+    for r in missing:
+        print(f"  {r['name']}: {held.get(r['name'].lower())} -> {GLOBAL}")
+    if apply:
+        root_bu = dv.get("businessunits?$select=businessunitid&$filter=_parentbusinessunitid_value eq null")["value"][0]["businessunitid"]
+        dv.call("POST", f"roles({role})/Microsoft.Dynamics.CRM.AddPrivilegesRole", {"Privileges": [
+            {"PrivilegeId": r["privilegeid"], "Depth": GLOBAL, "BusinessUnitId": root_bu} for r in missing]})
+        print(f"  added {len(missing)}")
+
+
 def ensure_managers(dv, apply):
     print("Managers")
     for report, manager in MANAGERS.items():
@@ -341,6 +365,7 @@ def main():
     solution_id = dv.get(f"solutions?$select=solutionid&$filter=uniquename eq '{SOLUTION}'")["value"][0]["solutionid"]
     for name, spec in ROLES.items():
         ensure_role(dv, name, spec, root_bu, solution_id, args.apply, args.refresh)
+    ensure_administrator(dv, args.apply)
     ensure_managers(dv, args.apply)
     if not args.apply:
         print("\nDry run. Re-run with --apply to make these changes.")

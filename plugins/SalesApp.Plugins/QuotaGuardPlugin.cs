@@ -71,7 +71,7 @@ namespace SalesApp.Plugins
             var user = system.Retrieve("systemuser", salesperson.Id, new ColumnSet("fullname", "parentsystemuserid"));
             var manager = user.GetAttributeValue<EntityReference>("parentsystemuserid");
             var caller = context.InitiatingUserId;
-            var admin = manager == null && caller != salesperson.Id && IsSystemAdministrator(system, caller);
+            var admin = caller != salesperson.Id && IsSystemAdministrator(system, caller);
 
             var refusal = QuotaRules.Check(caller, salesperson.Id, manager?.Id, admin, month.Value, amount.Value);
             if (refusal != null)

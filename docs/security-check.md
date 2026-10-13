@@ -117,7 +117,8 @@ uses a month in 2099 so it never collides with sample Quotas:
 | Megan sets her own, or Diego's, or a month that is not the first | 400 (plug-in) |
 | Megan adds a second Quota for Adele and the same month | 412 (alternate key) |
 | Adele sets her own Quota, changes it, Alex changes it | 403 (no Create or Write) |
-| A system administrator sets Adele's Quota (she has a manager) / Megan's (she has none) | 400 / 204 |
+| A system administrator sets Adele's Quota (she has a manager) / Megan's (she has none) / their own | 204 / 204 / 400 |
+| System Administrator holds every `vibe_` privilege and the kill-switch read at Global; reads every `vibe_` table; updates and reassigns a Lead they do not own; Switches Process | pass / 200 / 204 / 204 |
 | Adele reads her Quota; Megan reads Adele's and her own | 200 |
 | Alex or Diego reads Adele's; Adele reads Megan's | 403 |
 | Megan changes Adele's Quota; makes it negative, moves its month, or hands it to herself | 204 / 400 / 400 / 400 |
