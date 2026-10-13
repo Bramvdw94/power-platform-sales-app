@@ -6,8 +6,8 @@ namespace SalesApp.Plugins
 {
     /// <summary>
     /// Pre-operation on update of vibe_opportunity, filtered on vibe_estimatedvalue (issue 100).
-    /// While an Opportunity has Product lines its Estimated value is their total, so a direct
-    /// change is refused. The write ProductLinePlugin makes itself is let through.
+    /// While an Opportunity has Product lines its Estimated value is their total, so any other
+    /// value is refused. The write ProductLineTotalPlugin makes is the total, so it passes.
     /// </summary>
     public class EstimatedValueGuardPlugin : PluginBase
     {
@@ -30,25 +30,9 @@ namespace SalesApp.Plugins
                 return;
             }
 
-            // The nested call's own parent is a copy of this update; the line's step sits above it.
-            for (var parent = context.ParentContext; parent != null; parent = parent.ParentContext)
-            {
-                if (parent.PrimaryEntityName == "vibe_productline")
-                {
-                    return;
-                }
-            }
-
             var system = localPluginContext.OrgSvcFactory.CreateOrganizationService(null);
-            var lines = new QueryExpression("vibe_productline") { ColumnSet = new ColumnSet(false), TopCount = 1 };
-            lines.Criteria.AddCondition("vibe_opportunityid", ConditionOperator.Equal, target.Id);
-            if (system.RetrieveMultiple(lines).Entities.Count == 0)
-            {
-                return;
-            }
-
-            var current = system.Retrieve("vibe_opportunity", target.Id, new ColumnSet("vibe_estimatedvalue"));
-            if (current.GetAttributeValue<Money>("vibe_estimatedvalue")?.Value == target.GetAttributeValue<Money>("vibe_estimatedvalue")?.Value)
+            var total = ProductLineTotal.Of(system, target.Id);
+            if (!total.HasValue || target.GetAttributeValue<Money>("vibe_estimatedvalue")?.Value == total.Value)
             {
                 return;
             }

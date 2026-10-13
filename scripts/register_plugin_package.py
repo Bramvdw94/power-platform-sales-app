@@ -9,6 +9,7 @@ steps, all synchronous:
     vibe_opportunity, account and contact; post-operation (the Action Tasks, in
     the same transaction), Create and Update of vibe_lead and vibe_opportunity
   * ProductLinePlugin (#100): pre-operation, Create, Update and Delete of vibe_productline
+  * ProductLineTotalPlugin (#100): post-operation, Create, Update and Delete of vibe_productline
   * EstimatedValueGuardPlugin (#100): pre-operation, Update of vibe_opportunity's Estimated value
 
 Run:  python scripts/register_plugin_package.py
@@ -34,6 +35,9 @@ NAME = "vibe_SalesApp.Plugins"
 PROJECT = os.environ.get("PLUGIN_PROJECT") or os.path.join(HERE, "..", "plugins", "SalesApp.Plugins")
 H = {"Authorization": "Bearer " + get_token(), "Accept": "application/json", "Content-Type": "application/json"}
 
+# The build packs only when it recompiles; a stale package would silently push old code.
+for _old in glob.glob(os.path.join(PROJECT, "bin", "Release", "SalesApp.Plugins.*.nupkg")):
+    os.remove(_old)
 subprocess.run(["dotnet", "build", PROJECT, "-c", "Release"], check=True, stdout=subprocess.DEVNULL)
 nupkg = glob.glob(os.path.join(PROJECT, "bin", "Release", "SalesApp.Plugins.*.nupkg"))[0]
 content = base64.b64encode(open(nupkg, "rb").read()).decode()
@@ -57,6 +61,9 @@ STEPS = [
     ("ProductLinePlugin", "Update", "vibe_productline",
      "vibe_quantity,vibe_unitprice,vibe_discountpercent,vibe_description,vibe_opportunityid,vibe_productid,vibe_listpriceatadd,vibe_lineamount", 20),
     ("ProductLinePlugin", "Delete", "vibe_productline", None, 20),
+    ("ProductLineTotalPlugin", "Create", "vibe_productline", None, 40),
+    ("ProductLineTotalPlugin", "Update", "vibe_productline", None, 40),
+    ("ProductLineTotalPlugin", "Delete", "vibe_productline", None, 40),
     ("EstimatedValueGuardPlugin", "Update", "vibe_opportunity", "vibe_estimatedvalue", 20),
 ]
 for _table in ("vibe_lead", "vibe_opportunity", "account", "contact"):

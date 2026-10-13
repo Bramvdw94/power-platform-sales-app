@@ -7,15 +7,14 @@ namespace SalesApp.Plugins
 {
     /// <summary>
     /// Pre-operation on create, update and delete of vibe_productline (issue 100). It keeps
-    /// the line honest (Line amount, List price at add, Owner, an active Product, an open
-    /// Opportunity) and keeps the Opportunity's Estimated value equal to the sum of its
-    /// lines' amounts, in the same transaction, so imports and the app agree.
-    /// When the last line goes, the Estimated value keeps its last total and is manual again.
+    /// the line honest: Line amount, List price at add, Owner, an active Product, an open
+    /// Opportunity. ProductLineTotalPlugin then totals the lines into the Estimated value.
     /// </summary>
     public class ProductLinePlugin : PluginBase
     {
         private const string Line = "vibe_productline";
         private const string Opportunity = "vibe_opportunity";
+        internal const string OpportunityKey = "vibe_productline_opportunity";
 
         public ProductLinePlugin(string unsecureConfiguration, string secureConfiguration)
             : base(typeof(ProductLinePlugin))
@@ -45,7 +44,7 @@ namespace SalesApp.Plugins
                     Update(system, (Entity)context.InputParameters["Target"]);
                     break;
                 case "Delete":
-                    Delete(system, (EntityReference)context.InputParameters["Target"]);
+                    Delete(context, system, (EntityReference)context.InputParameters["Target"]);
                     break;
             }
         }
@@ -89,7 +88,6 @@ namespace SalesApp.Plugins
             }
 
             target["ownerid"] = opportunity.GetAttributeValue<EntityReference>("ownerid");
-            SetEstimatedValue(system, opportunityRef.Id, null, amount);
         }
 
         private static void Update(IOrganizationService system, Entity target)
@@ -123,15 +121,14 @@ namespace SalesApp.Plugins
 
             var amount = ProductLineRules.LineAmount(quantity, unitPrice, discount);
             target["vibe_lineamount"] = new Money(amount);
-            SetEstimatedValue(system, opportunityRef.Id, target.Id, amount);
         }
 
-        private static void Delete(IOrganizationService system, EntityReference target)
+        private static void Delete(IPluginExecutionContext context, IOrganizationService system, EntityReference target)
         {
             var line = system.Retrieve(Line, target.Id, new ColumnSet("vibe_opportunityid"));
             var opportunityRef = line.GetAttributeValue<EntityReference>("vibe_opportunityid");
             RequireOpen(system, opportunityRef.Id);
-            SetEstimatedValue(system, opportunityRef.Id, target.Id, null);
+            context.SharedVariables[OpportunityKey] = opportunityRef.Id;
         }
 
         private static void Refuse(ILocalPluginContext local, string refusal)
@@ -152,38 +149,6 @@ namespace SalesApp.Plugins
             }
 
             return opportunity;
-        }
-
-        /// <summary>
-        /// Sets the Opportunity's Estimated value to this line's amount plus every other line's.
-        /// <paramref name="thisLine"/> is the line being changed or removed (excluded from the sum);
-        /// <paramref name="thisAmount"/> is its new amount, or null when it is being removed.
-        /// </summary>
-        private static void SetEstimatedValue(IOrganizationService system, Guid opportunityId, Guid? thisLine, decimal? thisAmount)
-        {
-            var query = new QueryExpression(Line) { ColumnSet = new ColumnSet("vibe_lineamount") };
-            query.Criteria.AddCondition("vibe_opportunityid", ConditionOperator.Equal, opportunityId);
-            if (thisLine.HasValue)
-            {
-                query.Criteria.AddCondition("vibe_productlineid", ConditionOperator.NotEqual, thisLine.Value);
-            }
-
-            var others = system.RetrieveMultiple(query).Entities;
-            if (others.Count == 0 && !thisAmount.HasValue)
-            {
-                return; // the last line is gone: the Estimated value stays and is manual again
-            }
-
-            var total = others.Sum(l => l.GetAttributeValue<Money>("vibe_lineamount")?.Value ?? 0m) + (thisAmount ?? 0m);
-            var current = system.Retrieve(Opportunity, opportunityId, new ColumnSet("vibe_estimatedvalue"));
-            if (current.GetAttributeValue<Money>("vibe_estimatedvalue")?.Value == total)
-            {
-                return;
-            }
-
-            var update = new Entity(Opportunity, opportunityId);
-            update["vibe_estimatedvalue"] = new Money(total);
-            system.Update(update);
         }
 
         private static T Pick<T>(Entity target, Entity current, string attribute)

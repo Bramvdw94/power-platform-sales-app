@@ -140,6 +140,9 @@ ROLES = {
             **PLATFORM,
             "prvCreatevibe_Quota": LOCAL, "prvWritevibe_Quota": BASIC,
             "prvAppendvibe_Quota": BASIC, "prvAppendTovibe_Quota": BASIC,
+            # A manager adding a line to a report's Opportunity: the plug-in gives the line the
+            # report as Owner, and creating a record for another owner needs Create at that depth.
+            "prvCreatevibe_ProductLine": LOCAL, "prvDeletevibe_ProductLine": LOCAL,
         },
         "users": ["Megan Bowen"],
     },
