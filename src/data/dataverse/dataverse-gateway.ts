@@ -159,6 +159,8 @@ const SEARCH_LIMIT = 10
 const SUGGESTION_LIMIT = 25
 /** Related lists stop here; more than this on one record is not a v1 case. */
 const RELATED_LIMIT = 500
+/** Source records per Activity query, so the OR filter stays well inside the URL length limit. */
+const TIMELINE_ID_CHUNK = 20
 /** The Pipeline page loads at most this many Opportunities; a v1 team stays well below it. */
 const PIPELINE_LIMIT = 2000
 const ACTIVE = "statecode eq 0"
@@ -1150,6 +1152,38 @@ export class DataverseSalesGateway implements SalesGateway {
       ...tasks.map((row) => toTask(row, record)),
       ...calls.map((row) => toPhoneCall(row, record)),
     ]
+    return orderTimeline(activities.filter((a): a is Activity => a !== undefined))
+  }
+
+  /**
+   * Separate queries per source kind, merged here; the Account's current
+   * Contacts, its Opportunities and their originating Leads are looked up first.
+   */
+  async listAccountTimeline(accountId: Id): Promise<Activity[]> {
+    const key = guid(accountId)
+    const [contacts, opportunities] = await Promise.all([
+      this.related(this.client.contacts, `_parentcustomerid_value eq ${key} and ${ACTIVE}`, ["lastname asc"]),
+      this.related(this.client.opportunities, `_vibe_accountid_value eq ${key}`, ["vibe_expectedclosedate desc"]),
+    ])
+    const leadIds = opportunities.map((o) => o._vibe_originatingleadid_value).filter((id): id is string => !!id)
+    const sourceIds = [key, ...contacts.map((c) => c.contactid), ...opportunities.map((o) => o.vibe_opportunityid), ...leadIds]
+    const chunks: string[][] = []
+    for (let i = 0; i < sourceIds.length; i += TIMELINE_ID_CHUNK) chunks.push(sourceIds.slice(i, i + TIMELINE_ID_CHUNK))
+    const anyOf = (column: string, ids: string[]) => ids.map((id) => `${column} eq ${guid(id)}`).join(" or ")
+    const results = await Promise.all(
+      chunks.map((ids) =>
+        Promise.all([
+          this.related(this.client.notes, anyOf("_objectid_value", ids), ["createdon desc"]),
+          this.related(this.client.tasks, anyOf("_regardingobjectid_value", ids), ["createdon desc"]),
+          this.related(this.client.phoneCalls, anyOf("_regardingobjectid_value", ids), ["createdon desc"]),
+        ]),
+      ),
+    )
+    const activities: (Activity | undefined)[] = results.flatMap(([notes, tasks, calls]) => [
+      ...notes.map((row) => toNote(row)),
+      ...tasks.map((row) => toTask(row)),
+      ...calls.map((row) => toPhoneCall(row)),
+    ])
     return orderTimeline(activities.filter((a): a is Activity => a !== undefined))
   }
 

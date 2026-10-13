@@ -413,6 +413,24 @@ describe("activities", () => {
     expect(timeline[0]).toMatchObject({ regardingName: "Tailwind Traders - Managed workplace", ownerName: "Adele Vance" })
   })
 
+  it("shows a call on a qualified Lead on its Account, labelled by its source", async () => {
+    const gateway = as(adele.id)
+    const call = await gateway.addPhoneCall({ type: "lead", id: L.qualified }, { subject: "Intro call", direction: "outgoing", date: TODAY })
+    await gateway.addNote({ type: "contact", id: C.lotte }, { title: "Prefers email", text: "" })
+
+    const timeline = await gateway.listAccountTimeline(A.tailwind)
+    expect(timeline.find((a) => a.id === call.id)?.regarding).toEqual({ type: "lead", id: L.qualified })
+    expect(timeline.find((a) => a.id === call.id)?.regardingName).toBe("Lotte de Groot")
+    expect(timeline.map((a) => a.regarding.type)).toEqual(expect.arrayContaining(["lead", "contact", "opportunity"]))
+    expect(timeline[0].id).toBe(T.dueLater)
+  })
+
+  it("keeps other Accounts' activities out of an Account's timeline", async () => {
+    const timeline = await as(adele.id).listAccountTimeline(A.fabrikam)
+    expect(timeline.map((a) => a.id)).not.toContain(T.dueLater)
+    expect((await errorOf(as(adele.id).listAccountTimeline("missing"))).code).toBe("notFound")
+  })
+
   it("adds a Note, a Task and a logged Phone Call, and completes the Task", async () => {
     const gateway = as(adele.id)
     await gateway.addNote(record, { title: "Budget", text: "Approved for Q1" })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { orderTimeline, sortOpenTasks } from "./activities"
+import { filterTimeline, orderTimeline, sortOpenTasks } from "./activities"
 import type { Activity } from "./types"
 
 const base = { regarding: { type: "lead" as const, id: "l1" }, regardingName: "Sanne Bakker", ownerId: "adele", ownerName: "Adele Vance" }
@@ -45,5 +45,21 @@ describe("sortOpenTasks", () => {
       { id: "today-older", dueDate: "2026-10-09", createdOn: "2026-09-01T00:00:00Z" },
     ]
     expect(sortOpenTasks(tasks).map((t) => t.id)).toEqual(["overdue", "today-older", "today", "undated"])
+  })
+})
+
+describe("filterTimeline", () => {
+  const extra = { ownerId: "u", ownerName: "U", createdOn: "2026-10-01T00:00:00Z", regardingName: "R" }
+  const aNote: Activity = { ...extra, id: "n", kind: "note", title: "", text: "", regarding: { type: "contact", id: "c" } }
+  const aCall: Activity = { ...extra, id: "p", kind: "phoneCall", subject: "", direction: "outgoing", date: "2026-10-01", completed: true, regarding: { type: "lead", id: "l" } }
+  const aTask: Activity = { ...extra, id: "t", kind: "task", subject: "", completed: false, regarding: { type: "account", id: "a" } }
+
+  it("keeps everything when nothing is checked", () => {
+    expect(filterTimeline([aNote, aCall, aTask], { kinds: [], sources: [] })).toHaveLength(3)
+  })
+
+  it("filters by source and by type, both at once", () => {
+    expect(filterTimeline([aNote, aCall, aTask], { kinds: [], sources: ["contact"] })).toEqual([aNote])
+    expect(filterTimeline([aNote, aCall, aTask], { kinds: ["phoneCall", "task"], sources: ["lead", "contact"] })).toEqual([aCall])
   })
 })

@@ -111,9 +111,63 @@ describe("activity timeline", () => {
     expect(await (await timeline()).findByRole("button", { name: "Task" })).toBeInTheDocument()
   })
 
-  it("shows only an Account's own activities", async () => {
-    renderApp(`/accounts/${accounts.tailwind}`)
-    expect(await (await timeline()).findByText("No activities yet.")).toBeInTheDocument()
+  describe("on an Account", () => {
+    const account = `/accounts/${accounts.tailwind}`
+
+    function addLeadCall(store: InMemorySalesStore) {
+      store.activities.set("call-on-lead", {
+        id: "call-on-lead",
+        kind: "phoneCall",
+        subject: "Intro call",
+        direction: "outgoing",
+        date: "2026-10-01",
+        completed: true,
+        regarding: { type: "lead", id: leads.qualified },
+        ownerId: adele.id,
+        createdOn: "2026-09-01T10:00:00Z",
+      })
+    }
+
+    it("gathers the activities of its Opportunities and qualified Leads, labelled by source", async () => {
+      const { store } = renderApp(account, { userId: adele.id })
+      addLeadCall(store)
+      const t = await timeline()
+      expect((await t.findAllByText("Opportunity · Tailwind Traders - Managed workplace")).length).toBeGreaterThan(0)
+      expect(await t.findByText("Lead · Lotte de Groot")).toBeInTheDocument()
+      expect(await t.findByText("Intro call")).toBeInTheDocument()
+    })
+
+    it("pins an open Task from an Opportunity on top", async () => {
+      renderApp(account, { userId: adele.id })
+      expect((await timelineTitles())[0]).toBe("Send proposal")
+    })
+
+    it("filters by source and by type", async () => {
+      const user = userEvent.setup()
+      const { store } = renderApp(account, { userId: adele.id })
+      addLeadCall(store)
+      const t = await timeline()
+      await t.findByText("Intro call")
+      await user.click(t.getByRole("button", { name: "Leads" }))
+      expect(await timelineTitles()).toEqual(["Intro call"])
+      await user.click(t.getByRole("button", { name: "Leads" }))
+      await user.click(t.getByRole("button", { name: "Contacts" }))
+      expect(await t.findByText("No activities match these filters.")).toBeInTheDocument()
+      await user.click(t.getByRole("button", { name: "Contacts" }))
+      await user.click(t.getByRole("button", { name: "Notes" }))
+      expect(await timelineTitles()).toEqual(["Kick-off"])
+    })
+
+    it("lets a peer see an open Task but not complete it", async () => {
+      renderApp(account, { userId: alex.id })
+      await timelineTitles()
+      expect((await timeline()).queryByRole("button", { name: /^Complete/ })).not.toBeInTheDocument()
+    })
+
+    it("shows an empty Account as having no activities", async () => {
+      renderApp(`/accounts/${accounts.northwind}`, { userId: adele.id })
+      expect(await (await timeline()).findByText("No activities yet.")).toBeInTheDocument()
+    })
   })
 
   it("puts the timeline in an Activity tab on a phone", async () => {

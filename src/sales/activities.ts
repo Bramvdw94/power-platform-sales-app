@@ -25,3 +25,22 @@ export function sortOpenTasks<T extends Pick<Task, "dueDate" | "createdOn">>(tas
     return a.dueDate.localeCompare(b.dueDate)
   })
 }
+
+/** The kinds of record an Account's timeline gathers from, as the filter groups them. */
+export type TimelineSource = "account" | "contact" | "opportunity" | "lead"
+
+export const TIMELINE_PAGE_SIZE = 50
+
+export type TimelineFilter = {
+  kinds: readonly Activity["kind"][]
+  sources: readonly TimelineSource[]
+}
+
+/** Keeps the activities of the checked types and sources; an empty list on either side means "all". */
+export function filterTimeline(activities: readonly Activity[], filter: TimelineFilter): Activity[] {
+  return activities.filter(
+    (a) =>
+      (filter.kinds.length === 0 || filter.kinds.includes(a.kind)) &&
+      (filter.sources.length === 0 || filter.sources.includes(a.regarding.type)),
+  )
+}
