@@ -3,6 +3,7 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { PRODUCT_UNIT_LABELS, formatPrice, formatVatRate } from "@/lib/format"
 import type { Product } from "@/sales"
 import { NewProductDialog } from "./product-form"
+import { ProductsTabs } from "./products-tabs"
 
 const COLUMNS: Column<Product>[] = [
   { field: "name", label: "Name", essential: true },
@@ -17,7 +18,9 @@ const COLUMNS: Column<Product>[] = [
 export default function ProductListPage() {
   const { data } = useCurrentUser()
   return (
-    <RecordList<Product>
+    <>
+      <ProductsTabs />
+      <RecordList<Product>
       title="Products"
       noun="Products"
       singular="Product"
@@ -40,6 +43,7 @@ export default function ProductListPage() {
         ],
       }}
       renderNewDialog={(props) => <NewProductDialog {...props} />}
-    />
+      />
+    </>
   )
 }

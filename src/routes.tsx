@@ -15,6 +15,8 @@ import OpportunityRecordPage from "@/pages/opportunities/opportunity-record"
 import PipelinePage from "@/pages/pipeline/pipeline-page"
 import ProductListPage from "@/pages/products/product-list"
 import ProductRecordPage from "@/pages/products/product-record"
+import QuoteSettingsPage from "@/pages/products/quote-settings-page"
+import QuoteTemplatesPage from "@/pages/products/quote-templates-page"
 import QuoteRecordPage from "@/pages/quotes/quote-record"
 import SearchPage from "@/pages/search"
 
@@ -36,6 +38,8 @@ export const routes: RouteObject[] = [
       { path: "contacts", element: <ContactListPage /> },
       { path: "contacts/:id", element: <ContactRecordPage /> },
       { path: "products", element: <ProductListPage /> },
+      { path: "products/quote-templates", element: <QuoteTemplatesPage /> },
+      { path: "products/quote-settings", element: <QuoteSettingsPage /> },
       { path: "products/:id", element: <ProductRecordPage /> },
       { path: "quotes/:id", element: <QuoteRecordPage /> },
       { path: "search", element: <SearchPage /> },

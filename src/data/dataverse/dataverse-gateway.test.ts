@@ -16,6 +16,8 @@ import type {
   QuotaRow,
   QuoteLineRow,
   QuoteRow,
+  QuoteSettingsRow,
+  QuoteTemplateRow,
   SystemUserRow,
   TableClient,
 } from "./client"
@@ -185,6 +187,11 @@ function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRow
     quotas: fakeTable("vibe_quotaid", quotaRows),
     quotes: fakeTable("vibe_quoteid", quoteRows),
     quoteLines: fakeTable("vibe_quotelineid", quoteLineRows),
+    quoteTemplates: fakeTable("vibe_quotetemplateid", [] as QuoteTemplateRow[]),
+    quoteSettings: fakeTable("vibe_quotesettingsid", [] as QuoteSettingsRow[]),
+    uploadQuotePdf: vi.fn(async () => undefined),
+    downloadQuotePdf: vi.fn(async () => new Uint8Array([1, 2, 3])),
+    sendEmail: vi.fn(async () => undefined),
     notes: fakeTable("annotationid", noteRows),
     tasks: fakeTable("activityid", taskRows),
     phoneCalls: fakeTable("activityid", phoneCallRows),
@@ -1449,12 +1456,50 @@ describe("DataverseSalesGateway, Quotes", () => {
     await expect(gateway.addQuoteLine(DRAFT, { productId: RETIRED_PRODUCT, quantity: 1 })).rejects.toMatchObject({ fieldErrors: { productId: expect.any(String) } })
   })
 
-  it("Send sets Sent (inactive), the sent date and who sent it; only a Draft can be sent", async () => {
+  const PDF = new Uint8Array([37, 80, 68, 70])
+
+  it("Send by download stores the PDF, then sets Sent (inactive) with the sent date, who sent it and how; only a Draft can be sent", async () => {
     const client = fakeClient(ADELE, [], [], quoteRows())
     const gateway = new DataverseSalesGateway(client)
-    await gateway.sendQuote(DRAFT)
-    expect(client.quotes.update).toHaveBeenCalledWith(DRAFT, expect.objectContaining({ statecode: 1, statuscode: 2, "vibe_SentBy@odata.bind": `/systemusers(${ADELE})` }))
-    await expect(gateway.sendQuote(SENT)).rejects.toMatchObject({ code: "invalid" })
+    await gateway.sendQuote(DRAFT, { route: "download", pdf: PDF })
+    expect(client.uploadQuotePdf).toHaveBeenCalledWith(DRAFT, "Q-00003.pdf", PDF)
+    expect(client.sendEmail).not.toHaveBeenCalled()
+    expect(client.quotes.update).toHaveBeenCalledWith(
+      DRAFT,
+      expect.objectContaining({ statecode: 1, statuscode: 2, vibe_sentvia: "Download", vibe_sentto: null, "vibe_SentBy@odata.bind": `/systemusers(${ADELE})` }),
+    )
+    expect(client.uploadQuotePdf.mock.invocationCallOrder[0]).toBeLessThan(client.quotes.update.mock.invocationCallOrder[0])
+    await expect(gateway.sendQuote(SENT, { route: "download", pdf: PDF })).rejects.toMatchObject({ code: "invalid" })
+  })
+
+  it("Send by email stores the PDF, emails it from Outlook, and only then sets Sent", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows())
+    await new DataverseSalesGateway(client).sendQuote(DRAFT, { route: "email", pdf: PDF, to: "pieter@fabrikam.example", cc: "boss@fabrikam.example", subject: "Offerte", message: "Hi <you>\nBye" })
+    expect(client.sendEmail).toHaveBeenCalledWith({
+      to: "pieter@fabrikam.example",
+      cc: "boss@fabrikam.example",
+      subject: "Offerte",
+      body: expect.stringContaining("Hi &lt;you&gt;<br>Bye"),
+      attachment: { name: "Q-00003.pdf", bytes: PDF },
+    })
+    expect(client.quotes.update).toHaveBeenCalledWith(DRAFT, expect.objectContaining({ statuscode: 2, vibe_sentvia: "Outlook", vibe_sentto: "pieter@fabrikam.example" }))
+    expect(client.uploadQuotePdf.mock.invocationCallOrder[0]).toBeLessThan(client.sendEmail.mock.invocationCallOrder[0])
+    expect(client.sendEmail.mock.invocationCallOrder[0]).toBeLessThan(client.quotes.update.mock.invocationCallOrder[0])
+  })
+
+  it("Send by email without an address sends and stores nothing", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows())
+    await expect(new DataverseSalesGateway(client).sendQuote(DRAFT, { route: "email", pdf: PDF, to: " ", subject: "s", message: "m" })).rejects.toMatchObject({ code: "invalid", fieldErrors: { to: expect.any(String) } })
+    expect(client.uploadQuotePdf).not.toHaveBeenCalled()
+    expect(client.sendEmail).not.toHaveBeenCalled()
+    expect(client.quotes.update).not.toHaveBeenCalled()
+  })
+
+  it("a failed email leaves the Quote a Draft", async () => {
+    const client = fakeClient(ADELE, [], [], quoteRows())
+    client.sendEmail.mockRejectedValueOnce(new Error("Outlook is down"))
+    await expect(new DataverseSalesGateway(client).sendQuote(DRAFT, { route: "email", pdf: PDF, to: "pieter@fabrikam.example", subject: "s", message: "m" })).rejects.toThrow("Outlook is down")
+    expect(client.quotes.update).not.toHaveBeenCalled()
   })
 
   it("Revise keeps the number, adds 1 to the Revision, copies the lines and marks the old Quote Revised last", async () => {
@@ -1488,7 +1533,7 @@ describe("DataverseSalesGateway, Quotes", () => {
   it("a peer cannot send, revise, accept or reject", async () => {
     const client = fakeClient(DIEGO, [], [], quoteRows())
     const gateway = new DataverseSalesGateway(client)
-    for (const act of [() => gateway.sendQuote(DRAFT), () => gateway.reviseQuote(SENT), () => gateway.acceptQuote(SENT), () => gateway.rejectQuote(SENT)]) {
+    for (const act of [() => gateway.sendQuote(DRAFT, { route: "download", pdf: new Uint8Array([1]) }), () => gateway.reviseQuote(SENT), () => gateway.acceptQuote(SENT), () => gateway.rejectQuote(SENT)]) {
       await expect(act()).rejects.toMatchObject({ code: "forbidden" })
     }
     expect(client.quotes.update).not.toHaveBeenCalled()

@@ -41,6 +41,11 @@ import type {
   QuoteLine,
   QuoteLineInput,
   QuoteLineUpdate,
+  QuoteSettings,
+  QuoteSettingsUpdate,
+  QuoteTemplate,
+  QuoteTemplateInput,
+  QuoteTemplateUpdate,
   QuoteUpdate,
   RecordRef,
   Stage,
@@ -107,7 +112,12 @@ export type QuoteDetails = Editable & {
   /** Oldest first. */
   lines: QuoteLine[]
   opportunity: Opportunity
+  account?: Account
   contact?: Contact
+  /** The Opportunity's Owner, who is the Quote's: the PDF names them. */
+  owner: User
+  /** The Products on the lines, for the code and Unit columns of the PDF. */
+  products: Product[]
 }
 
 export type AccountDetails = Editable & {
@@ -173,6 +183,14 @@ export type QualifyResult = {
   contactId: Id
   opportunityId: Id
 }
+
+/**
+ * How a Quote is sent. Both routes store the exact PDF on the Quote and set it to Sent.
+ * By email the PDF goes from the sender's own Outlook mailbox to `to` (the Quote's Contact), with an optional Cc.
+ */
+export type SendQuoteInput =
+  | { route: "download"; pdf: Uint8Array }
+  | { route: "email"; pdf: Uint8Array; to: string; cc?: string; subject: string; message: string }
 
 export type NoteInput = { title: string; text: string }
 export type TaskInput = { subject: string; description?: string; dueDate?: DateOnly }
@@ -279,8 +297,22 @@ export interface SalesGateway {
   addQuoteLine(quoteId: Id, input: QuoteLineInput): Promise<QuoteLine>
   updateQuoteLine(id: Id, update: QuoteLineUpdate): Promise<QuoteLine>
   removeQuoteLine(id: Id): Promise<void>
-  /** Draft to Sent. Sending the PDF is a later ticket; this sets the status, the sent date and who sent it. */
-  sendQuote(id: Id): Promise<Quote>
+  /**
+   * Draft to Sent. Stores the PDF on the Quote, emails it when the route is email (stopping with a field error on
+   * `to` when there is no address, and sending nothing), then sets Sent with the sent date, who sent it, how and to whom.
+   */
+  sendQuote(id: Id, input: SendQuoteInput): Promise<Quote>
+  /** The PDF stored when the Quote was sent, or undefined for a Quote that has none. */
+  getQuotePdf(id: Id): Promise<Uint8Array | undefined>
+
+  // Quote templates and Quote settings: everyone reads; only a Catalogue Manager creates and changes them.
+  /** The Default template first, then by name. */
+  listQuoteTemplates(): Promise<QuoteTemplate[]>
+  /** The first template is the Default; making another the Default clears the old one. Nothing is deleted. */
+  createQuoteTemplate(input: QuoteTemplateInput): Promise<QuoteTemplate>
+  updateQuoteTemplate(id: Id, update: QuoteTemplateUpdate): Promise<QuoteTemplate>
+  getQuoteSettings(): Promise<QuoteSettings>
+  updateQuoteSettings(update: QuoteSettingsUpdate): Promise<QuoteSettings>
   /** Sent to Revised, and a new Draft with the same number, Revision + 1 and a copy of the lines. Returns the new Draft. */
   reviseQuote(id: Id): Promise<Quote>
   /** Sent to Accepted; the Opportunity's other Sent Quotes become Rejected. Closing the Opportunity as won is a separate step. */

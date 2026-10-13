@@ -29,6 +29,7 @@ import {
   type QuotaQuery,
   type QuoteDetails,
   type SalesGateway,
+  type SendQuoteInput,
   type SearchResults,
   type TaskInput,
 } from "@/data/gateway"
@@ -46,6 +47,15 @@ import {
   QUOTE_STATUSES,
   VAT_RATES,
   defaultValidUntil,
+  FALLBACK_VALIDITY_DAYS,
+  definitionErrors,
+  isEmailAddress,
+  messageToHtml,
+  parseDefinition,
+  quotePdfFileName,
+  quoteSettingsErrors,
+  serializeDefinition,
+  templateErrors,
   quoteErrors,
   requireQuoteMove,
   newProductLineDefaults,
@@ -106,7 +116,12 @@ import {
   type QuoteLine,
   type QuoteLineInput,
   type QuoteLineUpdate,
+  type QuoteSettings,
+  type QuoteSettingsUpdate,
   type QuoteStatus,
+  type QuoteTemplate,
+  type QuoteTemplateInput,
+  type QuoteTemplateUpdate,
   type QuoteUpdate,
   type Id,
   type Lead,
@@ -141,6 +156,8 @@ import {
   QUOTE_LINE_NAVIGATION,
   QUOTE_NAVIGATION,
   RECORD_TABLES,
+  type QuoteSettingsRow,
+  type QuoteTemplateRow,
   regardingNavigation,
   type AccountRow,
   type ActivityRow,
@@ -530,6 +547,53 @@ function quoteStatusFields(status: QuoteStatus): Fields {
   return { statecode: status === "draft" ? 0 : 1, statuscode: QUOTE_STATUSES.indexOf(status) + 1 }
 }
 
+/** What "Sent via" holds in Dataverse for each route. */
+const SENT_VIA_EMAIL = "Outlook"
+const SENT_VIA_DOWNLOAD = "Download"
+
+export function toQuoteTemplate(row: QuoteTemplateRow): QuoteTemplate {
+  return { id: row.vibe_quotetemplateid, name: row.vibe_name ?? "", isDefault: !!row.vibe_isdefault, definition: parseDefinition(row.vibe_definition) }
+}
+
+export function toQuoteSettings(row: QuoteSettingsRow): QuoteSettings {
+  return {
+    id: row.vibe_quotesettingsid,
+    companyName: row.vibe_companyname ?? "",
+    address: row.vibe_address ?? "",
+    phone: row.vibe_phone ?? "",
+    email: row.vibe_email ?? "",
+    website: row.vibe_website ?? "",
+    kvk: row.vibe_kvk ?? "",
+    btwId: row.vibe_btwid ?? "",
+    iban: row.vibe_iban ?? "",
+    logo: row.vibe_logo ?? "",
+    defaultValidityDays: row.vibe_defaultvaliditydays ?? FALLBACK_VALIDITY_DAYS,
+    termsUrl: row.vibe_termsurl ?? "",
+    termsText: row.vibe_termstext ?? "",
+    emailSubject: row.vibe_emailsubject ?? "",
+    emailMessage: row.vibe_emailmessage ?? "",
+  }
+}
+
+function quoteSettingsFields(update: QuoteSettingsUpdate): Fields {
+  return fields({
+    vibe_companyname: update.companyName,
+    vibe_address: update.address,
+    vibe_phone: update.phone,
+    vibe_email: update.email,
+    vibe_website: update.website,
+    vibe_kvk: update.kvk,
+    vibe_btwid: update.btwId,
+    vibe_iban: update.iban,
+    vibe_logo: update.logo,
+    vibe_defaultvaliditydays: update.defaultValidityDays,
+    vibe_termsurl: update.termsUrl,
+    vibe_termstext: update.termsText,
+    vibe_emailsubject: update.emailSubject,
+    vibe_emailmessage: update.emailMessage,
+  })
+}
+
 export function toQuote(row: QuoteRow): Quote {
   return {
     id: row.vibe_quoteid,
@@ -549,6 +613,11 @@ export function toQuote(row: QuoteRow): Quote {
     sentOn: optional(row.vibe_senton),
     sentById: optional(row._vibe_sentby_value),
     sentByName: lookupName(row, "vibe_sentby"),
+    sentVia: row.vibe_sentvia ? (row.vibe_sentvia === SENT_VIA_EMAIL ? "email" : "download") : undefined,
+    sentTo: optional(row.vibe_sentto),
+    templateId: optional(row._vibe_quotetemplateid_value),
+    templateName: lookupName(row, "vibe_quotetemplateid"),
+    hasStoredPdf: !!row.vibe_storedpdf_name,
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
@@ -599,6 +668,7 @@ export function toUser(row: SystemUserRow): User {
     // Role membership is read only by listSalespeople and for the current user; users read elsewhere are not checked.
     isSalesperson: false,
     isCatalogueManager: false,
+    phone: optional(row.address1_telephone1),
   }
 }
 
@@ -968,24 +1038,38 @@ export class DataverseSalesGateway implements SalesGateway {
   async getQuote(id: Id): Promise<QuoteDetails> {
     const row = await this.call(() => this.client.quotes.get(guid(id)))
     const quote = toQuote(row)
-    const [lines, opportunity, contact, canEdit] = await Promise.all([
+    const [lines, opportunity, contact, account, owner, canEdit] = await Promise.all([
       this.related(this.client.quoteLines, `_vibe_quoteid_value eq ${guid(id)}`, QUOTE_LINE_ORDER),
       this.readOpportunity(quote.opportunityId),
       quote.contactId ? this.call(() => this.client.contacts.get(quote.contactId!)) : undefined,
+      quote.accountId ? this.call(() => this.client.accounts.get(quote.accountId)) : undefined,
+      row._ownerid_value ? this.call(() => this.client.getSystemUser(row._ownerid_value!)) : undefined,
       this.mayEdit(row._ownerid_value),
     ])
-    return { quote, lines: lines.map(toQuoteLine), opportunity, contact: contact && toContact(contact), canEdit }
+    const quoteLines = lines.map(toQuoteLine)
+    const products = await Promise.all([...new Set(quoteLines.map((l) => l.productId))].map((pid) => this.getProduct(pid)))
+    return {
+      quote,
+      lines: quoteLines,
+      opportunity,
+      account: account && toAccount(account),
+      contact: contact && toContact(contact),
+      owner: owner ? toUser(owner) : { id: quote.ownerId, fullName: quote.ownerName, email: "", managerId: null, isSalesperson: true, isCatalogueManager: false },
+      products,
+      canEdit,
+    }
   }
 
   async createQuote(opportunityId: Id): Promise<Quote> {
     const opportunity = await this.readOpportunity(opportunityId)
     if (!(await this.mayEdit(opportunity.ownerId))) throw forbidden()
     if (isOpportunityReadOnly(opportunity)) throw new GatewayError("invalid", "A closed Opportunity can't get new Quotes.")
+    const settings = await this.getQuoteSettings()
     const created = await this.call(() =>
       this.client.quotes.create(
         fields({
           vibe_revision: 0,
-          vibe_validuntil: defaultValidUntil(toDateOnly(new Date())),
+          vibe_validuntil: defaultValidUntil(toDateOnly(new Date()), settings.defaultValidityDays),
           ...bind(QUOTE_NAVIGATION.opportunity, "vibe_opportunities", opportunityId),
           ...bind(QUOTE_NAVIGATION.account, "accounts", opportunity.accountId),
           ...bind(QUOTE_NAVIGATION.contact, "contacts", opportunity.primaryContactId),
@@ -1009,6 +1093,7 @@ export class DataverseSalesGateway implements SalesGateway {
         fields({
           vibe_validuntil: update.validUntil === undefined ? undefined : column(update.validUntil),
           ...bind(QUOTE_NAVIGATION.contact, "contacts", update.contactId === undefined ? undefined : column(update.contactId)),
+          ...bind(QUOTE_NAVIGATION.template, "vibe_quotetemplates", update.templateId),
         }),
       ),
     )
@@ -1062,28 +1147,125 @@ export class DataverseSalesGateway implements SalesGateway {
     await this.call(() => this.client.quoteLines.delete(key))
   }
 
-  async sendQuote(id: Id): Promise<Quote> {
-    await this.movableQuote(id, "sent")
+  /**
+   * The PDF is stored first (the Quote is still a Draft, so the file column is writable), then emailed, and
+   * only then is the Quote set to Sent, which locks it. A failure before the last step leaves a Draft.
+   */
+  async sendQuote(id: Id, input: SendQuoteInput): Promise<Quote> {
+    const quote = await this.movableQuote(id, "sent")
+    const to = input.route === "email" ? input.to.trim() : ""
+    if (input.route === "email") {
+      if (!to) throw new GatewayError("invalid", "The Quote cannot be sent.", { to: "The Contact has no email address." })
+      if (!isEmailAddress(to)) throw new GatewayError("invalid", "The Quote cannot be sent.", { to: "Enter a valid email address." })
+    }
     const { user } = await this.getCurrentUser()
+    const fileName = quotePdfFileName(quote)
+    await this.call(() => this.client.uploadQuotePdf(guid(id), fileName, input.pdf))
+    if (input.route === "email") {
+      await this.call(() =>
+        this.client.sendEmail({ to, cc: input.cc?.trim() || undefined, subject: input.subject, body: messageToHtml(input.message), attachment: { name: fileName, bytes: input.pdf } }),
+      )
+    }
     await this.call(() =>
       this.client.quotes.update(guid(id), {
         ...quoteStatusFields("sent"),
         vibe_senton: new Date().toISOString(),
+        vibe_sentvia: input.route === "email" ? SENT_VIA_EMAIL : SENT_VIA_DOWNLOAD,
+        vibe_sentto: input.route === "email" ? to : null,
         ...bind(QUOTE_NAVIGATION.sentBy, "systemusers", user.id),
       }),
     )
     return this.readQuote(id)
   }
 
+  async getQuotePdf(id: Id): Promise<Uint8Array | undefined> {
+    const quote = await this.readQuote(id)
+    if (!quote.hasStoredPdf) return undefined
+    return this.call(() => this.client.downloadQuotePdf(guid(id)))
+  }
+
+  // ---- Quote templates and settings ----------------------------------------------
+  // Everyone reads; the Catalogue Manager role is what lets a user create and write them.
+
+  async listQuoteTemplates(): Promise<QuoteTemplate[]> {
+    const rows = await this.related(this.client.quoteTemplates, "", ["vibe_name asc"])
+    return rows.map(toQuoteTemplate).sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
+  }
+
+  async createQuoteTemplate(input: QuoteTemplateInput): Promise<QuoteTemplate> {
+    invalid("The template cannot be saved.", this.templateFieldErrors(input))
+    const existing = await this.listQuoteTemplates()
+    const isDefault = existing.length === 0 || !!input.isDefault
+    const created = await this.call(() =>
+      this.client.quoteTemplates.create({ vibe_name: input.name.trim(), vibe_isdefault: isDefault, vibe_definition: serializeDefinition(input.definition) }),
+    )
+    if (isDefault) await this.clearOtherDefaults(existing, created.vibe_quotetemplateid)
+    return toQuoteTemplate(await this.call(() => this.client.quoteTemplates.get(created.vibe_quotetemplateid)))
+  }
+
+  async updateQuoteTemplate(id: Id, update: QuoteTemplateUpdate): Promise<QuoteTemplate> {
+    const current = toQuoteTemplate(await this.call(() => this.client.quoteTemplates.get(guid(id))))
+    const next = { ...current, ...defined(update) }
+    invalid("The template cannot be saved.", this.templateFieldErrors(next))
+    if (current.isDefault && update.isDefault === false) {
+      throw new GatewayError("invalid", "The template cannot be saved.", { isDefault: "Make another template the Default instead." })
+    }
+    await this.call(() =>
+      this.client.quoteTemplates.update(
+        guid(id),
+        fields({
+          vibe_name: update.name === undefined ? undefined : update.name.trim(),
+          vibe_isdefault: update.isDefault,
+          vibe_definition: update.definition === undefined ? undefined : serializeDefinition(update.definition),
+        }),
+      ),
+    )
+    if (update.isDefault && !current.isDefault) await this.clearOtherDefaults(await this.listQuoteTemplates(), id)
+    return toQuoteTemplate(await this.call(() => this.client.quoteTemplates.get(guid(id))))
+  }
+
+  private async clearOtherDefaults(templates: QuoteTemplate[], keep: Id): Promise<void> {
+    for (const template of templates) {
+      if (template.isDefault && template.id.toLowerCase() !== keep.toLowerCase()) {
+        await this.call(() => this.client.quoteTemplates.update(guid(template.id), { vibe_isdefault: false }))
+      }
+    }
+  }
+
+  private templateFieldErrors(template: { name?: string; definition?: QuoteTemplateInput["definition"] }): FieldErrors {
+    const errors: FieldErrors = { ...templateErrors(template) }
+    const problems = template.definition ? definitionErrors(template.definition) : []
+    if (problems.length > 0) errors.definition = problems.join(" ")
+    return errors
+  }
+
+  async getQuoteSettings(): Promise<QuoteSettings> {
+    const rows = await this.related(this.client.quoteSettings, "", ["createdon asc"])
+    return rows.length > 0 ? toQuoteSettings(rows[0]) : toQuoteSettings({ vibe_quotesettingsid: "" })
+  }
+
+  async updateQuoteSettings(update: QuoteSettingsUpdate): Promise<QuoteSettings> {
+    invalid("The Quote settings cannot be saved.", quoteSettingsErrors(update))
+    const rows = await this.related(this.client.quoteSettings, "", ["createdon asc"])
+    if (rows.length > 0) {
+      await this.call(() => this.client.quoteSettings.update(guid(rows[0].vibe_quotesettingsid), quoteSettingsFields(update)))
+    } else {
+      await this.call(() => this.client.quoteSettings.create({ vibe_name: "Quote settings", ...quoteSettingsFields(update) }))
+    }
+    return this.getQuoteSettings()
+  }
+
   /** The new Draft is made first and the old Quote marked Revised last, so a failure leaves the Sent Quote as it was. */
   async reviseQuote(id: Id): Promise<Quote> {
     const quote = await this.movableQuote(id, "revised")
+    const validityDays = (await this.getQuoteSettings()).defaultValidityDays
     const created = await this.call(() =>
       this.client.quotes.create(
         fields({
           vibe_name: quote.number,
           vibe_revision: quote.revision + 1,
-          vibe_validuntil: defaultValidUntil(toDateOnly(new Date())),
+          vibe_validuntil: defaultValidUntil(toDateOnly(new Date()), validityDays),
+          ...bind(QUOTE_NAVIGATION.template, "vibe_quotetemplates", quote.templateId),
           ...bind(QUOTE_NAVIGATION.opportunity, "vibe_opportunities", quote.opportunityId),
           ...bind(QUOTE_NAVIGATION.account, "accounts", quote.accountId),
           ...bind(QUOTE_NAVIGATION.contact, "contacts", quote.contactId),

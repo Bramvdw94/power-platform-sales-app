@@ -10,6 +10,8 @@ const TODAY = "2026-10-09"
 const { megan, adele, alex, diego, bram } = SEED_USERS
 const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR, productLines: PL, quotes: Q, quoteLines: QL } = SEED_IDS
 
+const DOWNLOAD_PDF = { route: "download", pdf: new Uint8Array([37, 80, 68, 70]) } as const
+
 let store: InMemorySalesStore
 const as = (userId: Id): SalesGateway => new InMemorySalesGateway(store, { userId, now: () => NOW })
 
@@ -793,9 +795,9 @@ describe("Quotes", () => {
   })
 
   it("Send sets Sent, the sent date and who sent it; only a Draft can be sent", async () => {
-    const sent = await as(alex.id).sendQuote(Q.draft)
+    const sent = await as(alex.id).sendQuote(Q.draft, DOWNLOAD_PDF)
     expect(sent).toMatchObject({ status: "sent", sentOn: NOW.toISOString(), sentById: alex.id, sentByName: "Alex Wilber" })
-    expect((await errorOf(as(alex.id).sendQuote(Q.draft))).code).toBe("invalid")
+    expect((await errorOf(as(alex.id).sendQuote(Q.draft, DOWNLOAD_PDF))).code).toBe("invalid")
   })
 
   it("Revise keeps the number, adds 1 to the Revision, copies the lines and marks the old Quote Revised", async () => {
@@ -828,7 +830,7 @@ describe("Quotes", () => {
   it("only the Owner and the Owner's manager send, revise, accept and reject", async () => {
     for (const userId of [adele.id, diego.id]) {
       const gateway = as(userId)
-      for (const act of [() => gateway.sendQuote(Q.draft), () => gateway.reviseQuote(Q.sent), () => gateway.acceptQuote(Q.sent), () => gateway.rejectQuote(Q.sent)]) {
+      for (const act of [() => gateway.sendQuote(Q.draft, DOWNLOAD_PDF), () => gateway.reviseQuote(Q.sent), () => gateway.acceptQuote(Q.sent), () => gateway.rejectQuote(Q.sent)]) {
         expect((await errorOf(act())).code).toBe("forbidden")
       }
     }
@@ -839,7 +841,7 @@ describe("Quotes", () => {
   it("acts on no Quote of a closed Opportunity", async () => {
     await as(alex.id).closeOpportunity(O.proposal, { outcome: "won", actualValue: 1 })
     expect((await errorOf(as(alex.id).acceptQuote(Q.sent))).code).toBe("invalid")
-    expect((await errorOf(as(alex.id).sendQuote(Q.draft))).code).toBe("invalid")
+    expect((await errorOf(as(alex.id).sendQuote(Q.draft, DOWNLOAD_PDF))).code).toBe("invalid")
     expect((await errorOf(as(alex.id).addQuoteLine(Q.draft, { productId: PR.consultingHour, quantity: 1 }))).code).toBe("invalid")
   })
 
@@ -878,5 +880,98 @@ describe("Quotes", () => {
     expect(details.opportunity.id).toBe(O.proposal)
     expect(details.canEdit).toBe(false)
     expect((await as(diego.id).getOpportunity(O.proposal)).quotes.map((q) => q.id)).toEqual([Q.draft, Q.sent, Q.revised, Q.expired])
+  })
+})
+
+describe("Quote templates and settings", () => {
+  const { templates: TPL } = SEED_IDS
+  const letter = () => store.quoteTemplates.get(TPL.businessLetter)!
+
+  it("are read by everyone, the Default first", async () => {
+    for (const user of [adele, diego, megan]) {
+      expect((await as(user.id).listQuoteTemplates()).map((t) => t.name)).toEqual(["Business letter", "Order form", "Proposal"])
+      expect((await as(user.id).getQuoteSettings()).companyName).toBe("Northwind Solutions B.V.")
+    }
+  })
+
+  it("are changed only by a Catalogue manager", async () => {
+    const { definition } = letter()
+    expect((await errorOf(as(adele.id).createQuoteTemplate({ name: "Mine", definition }))).code).toBe("forbidden")
+    expect((await errorOf(as(adele.id).updateQuoteTemplate(TPL.proposal, { name: "Renamed" }))).code).toBe("forbidden")
+    expect((await errorOf(as(adele.id).updateQuoteSettings({ phone: "1" }))).code).toBe("forbidden")
+    expect((await as(megan.id).updateQuoteSettings({ phone: "1" })).phone).toBe("1")
+  })
+
+  it("keep exactly one Default", async () => {
+    await as(megan.id).updateQuoteTemplate(TPL.proposal, { isDefault: true })
+    expect([...store.quoteTemplates.values()].filter((t) => t.isDefault).map((t) => t.name)).toEqual(["Proposal"])
+    const created = await as(megan.id).createQuoteTemplate({ name: "Third", isDefault: true, definition: letter().definition })
+    expect([...store.quoteTemplates.values()].filter((t) => t.isDefault).map((t) => t.id)).toEqual([created.id])
+    // The Default can't be un-defaulted: another template takes over instead.
+    expect((await errorOf(as(megan.id).updateQuoteTemplate(created.id, { isDefault: false }))).fieldErrors).toHaveProperty("isDefault")
+  })
+
+  it("refuse a template without its locked Blocks or without a name", async () => {
+    const { definition } = letter()
+    const noLines = { ...definition, blocks: definition.blocks.filter((b) => b.type !== "lines") }
+    expect((await errorOf(as(megan.id).updateQuoteTemplate(TPL.proposal, { definition: noLines }))).fieldErrors).toHaveProperty("definition")
+    expect((await errorOf(as(megan.id).updateQuoteTemplate(TPL.proposal, { name: "  " }))).fieldErrors).toHaveProperty("name")
+    expect((await errorOf(as(megan.id).updateQuoteSettings({ defaultValidityDays: 0 }))).fieldErrors).toHaveProperty("defaultValidityDays")
+  })
+
+  it("settings give a new Quote and a Revision their Valid until", async () => {
+    await as(megan.id).updateQuoteSettings({ defaultValidityDays: 10 })
+    const draft = await as(alex.id).createQuote(O.proposal)
+    expect(draft.validUntil).toBe("2026-10-19")
+    const revision = await as(alex.id).reviseQuote(Q.sent)
+    expect(revision.validUntil).toBe("2026-10-19")
+  })
+
+  it("a Quote can be pointed only at a template that exists", async () => {
+    expect((await as(alex.id).updateQuote(Q.draft, { templateId: TPL.proposal })).templateName).toBe("Proposal")
+    expect((await errorOf(as(alex.id).updateQuote(Q.draft, { templateId: "nope" }))).code).toBe("notFound")
+  })
+})
+
+describe("Sending a Quote", () => {
+  const pdf = new Uint8Array([37, 80, 68, 70])
+  const email = { route: "email", pdf, to: "pieter@fabrikam.example", subject: "S", message: "M" } as const
+
+  it("by email stores the PDF, sends one email from the sender and records how and to whom", async () => {
+    const sent = await as(alex.id).sendQuote(Q.draft, { ...email, cc: " cc@fabrikam.example " })
+    expect(sent).toMatchObject({ status: "sent", sentVia: "email", sentTo: "pieter@fabrikam.example", hasStoredPdf: true })
+    expect(store.sentEmails).toEqual([expect.objectContaining({ from: alex.email, to: "pieter@fabrikam.example", cc: "cc@fabrikam.example", subject: "S", attachmentName: "Q-00003.pdf" })])
+    expect(await as(adele.id).getQuotePdf(Q.draft)).toEqual(pdf)
+  })
+
+  it("by email without an address, or with a bad one, sends and stores nothing and stays a Draft", async () => {
+    for (const to of ["", "  ", "not-an-address"]) {
+      expect((await errorOf(as(alex.id).sendQuote(Q.draft, { ...email, to }))).fieldErrors).toHaveProperty("to")
+    }
+    expect(store.sentEmails).toHaveLength(0)
+    expect(store.quotePdfs.size).toBe(0)
+    expect(store.quotes.get(Q.draft)?.status).toBe("draft")
+  })
+
+  it("by download stores the PDF and sends no email", async () => {
+    const sent = await as(alex.id).sendQuote(Q.draft, DOWNLOAD_PDF)
+    expect(sent).toMatchObject({ status: "sent", sentVia: "download", hasStoredPdf: true })
+    expect(sent.sentTo).toBeUndefined()
+    expect(store.sentEmails).toHaveLength(0)
+  })
+
+  it("a Sent Quote's stored PDF is not replaced by later changes, and a Quote without one returns undefined", async () => {
+    await as(alex.id).sendQuote(Q.draft, DOWNLOAD_PDF)
+    await as(megan.id).updateQuoteSettings({ companyName: "Changed B.V." })
+    expect(await as(alex.id).getQuotePdf(Q.draft)).toEqual(DOWNLOAD_PDF.pdf)
+    expect(await as(alex.id).getQuotePdf(Q.sent)).toBeUndefined()
+  })
+
+  it("a Revision starts without the sent address or stored PDF", async () => {
+    await as(alex.id).sendQuote(Q.draft, email)
+    const revision = await as(alex.id).reviseQuote(Q.draft)
+    expect(revision).toMatchObject({ status: "draft", hasStoredPdf: false })
+    expect(revision.sentTo).toBeUndefined()
+    expect(revision.sentVia).toBeUndefined()
   })
 })

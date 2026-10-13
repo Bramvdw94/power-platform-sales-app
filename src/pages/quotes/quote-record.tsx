@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { Check, Pencil, Plus, RotateCcw, Send, Trash2, Trophy, X } from "lucide-react"
+import { Check, Download, Eye, Pencil, Plus, RotateCcw, Send, Trash2, Trophy, X } from "lucide-react"
 import { ContactPicker, type ContactChoice } from "@/components/records/account-picker"
 import { DetailList, FormAlert, FormField } from "@/components/records/fields"
 import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
@@ -13,11 +13,14 @@ import { useGateway } from "@/hooks/use-gateway"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
 import { fieldErrorsOf } from "@/lib/errors"
 import { formatDate, formatPrice, formatVatRate } from "@/lib/format"
-import { fullName, isOpenStage, isQuoteEditable, quoteLabel, quoteTotals, type Quote, type QuoteLine } from "@/sales"
+import { fullName, isOpenStage, isQuoteEditable, quoteLabel, quotePdfFileName, quoteTotals, sentDescription, type Quote, type QuoteLine } from "@/sales"
 import type { QuoteDetails } from "@/data/gateway"
 import { CloseOpportunityDialog } from "@/pages/opportunities/close-dialogs"
 import { LineDialog } from "@/pages/opportunities/product-lines"
+import { PreviewPdfDialog } from "./preview-pdf-dialog"
+import { downloadPdf, renderQuote, templateFor, useQuotePdfSources } from "./quote-pdf-support"
 import { QuoteStatusBadges } from "./quote-status"
+import { SendQuoteDialog } from "./send-quote-dialog"
 
 export default function QuoteRecordPage() {
   const { id = "" } = useParams()
@@ -27,13 +30,14 @@ export default function QuoteRecordPage() {
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
+  const sources = useQuotePdfSources()
   const { data, error, isPending } = useQuery({ queryKey: ["Quote", id], queryFn: () => gateway.getQuote(id) })
 
   const move = useMutation({
-    mutationFn: async (action: "send" | "revise" | "accept" | "reject") => {
+    mutationFn: async (action: "revise" | "accept" | "reject") => {
       switch (action) {
-        case "send":
-          return { quote: await gateway.sendQuote(id), action }
         case "revise":
           return { quote: await gateway.reviseQuote(id), action }
         case "accept":
@@ -50,6 +54,14 @@ export default function QuoteRecordPage() {
     },
   })
 
+  const download = useMutation({
+    mutationFn: async () => {
+      const pdf = await gateway.getQuotePdf(id)
+      if (!pdf || !data) throw new Error("There is no stored PDF for this Quote.")
+      downloadPdf(pdf, quotePdfFileName(data.quote))
+    },
+  })
+
   if (isPending) return <RecordLoading />
   if (error) return <RecordError error={error} />
 
@@ -58,6 +70,7 @@ export default function QuoteRecordPage() {
   const mayAct = canEdit && open && !editing
   const draft = isQuoteEditable(quote)
   const busy = move.isPending
+  const template = sources.templates && templateFor(data, sources.templates)
 
   const opportunityLink = (
     <Link to={`/opportunities/${opportunity.id}`} className="text-primary hover:underline">
@@ -73,7 +86,11 @@ export default function QuoteRecordPage() {
             <Pencil aria-hidden />
             Edit
           </Button>
-          <Button disabled={busy} onClick={() => move.mutate("send")}>
+          <Button variant="outline" disabled={!sources.settings || !template} onClick={() => setPreviewing(true)}>
+            <Eye aria-hidden />
+            Preview PDF
+          </Button>
+          <Button disabled={busy} onClick={() => setSending(true)}>
             <Send aria-hidden />
             Send
           </Button>
@@ -108,6 +125,13 @@ export default function QuoteRecordPage() {
     </>
   )
 
+  const downloadAction = !draft && quote.hasStoredPdf && (
+    <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate()}>
+      <Download aria-hidden />
+      Download PDF
+    </Button>
+  )
+
   return (
     <RecordPage
       kind="Quote"
@@ -121,9 +145,16 @@ export default function QuoteRecordPage() {
         { label: "Gross total", value: formatPrice(quote.grossTotal) },
         { label: "Owner", value: quote.ownerName },
       ]}
-      actions={actions || undefined}
+      actions={actions || downloadAction ? <>{actions}{downloadAction}</> : undefined}
     >
       {move.isError && <FormAlert error={move.error} />}
+      {download.isError && <FormAlert error={download.error} />}
+      {quote.sentOn && (
+        <p className="rounded-md border p-3 text-sm">
+          {sentDescription(quote, formatDate)}
+          {quote.hasStoredPdf ? ` The exact PDF is stored: ${quotePdfFileName(quote)}.` : " No PDF was stored for this Quote."}
+        </p>
+      )}
       {!open && (
         <p className="rounded-md border p-3 text-sm text-muted-foreground">This Opportunity is closed, so its Quotes are read-only.</p>
       )}
@@ -139,6 +170,16 @@ export default function QuoteRecordPage() {
 
       <QuoteLinesPanel quote={quote} lines={data.lines} canEdit={mayAct && draft} />
 
+      {sending && <SendQuoteDialog details={data} onClose={() => setSending(false)} />}
+      {previewing && sources.settings && template && (
+        <PreviewPdfDialog
+          title={`Preview ${quoteLabel(quote)}`}
+          description={`Drawn with the "${template.name}" template. A Draft shows a watermark; nothing is sent.`}
+          fileName={quotePdfFileName(quote)}
+          render={() => renderQuote(data, sources.settings!, template)}
+          onClose={() => setPreviewing(false)}
+        />
+      )}
       {deleting && <DeleteQuoteDialog quote={quote} opportunityId={opportunity.id} onClose={() => setDeleting(false)} />}
       {closing && open && (
         <CloseOpportunityDialog
@@ -179,6 +220,7 @@ function QuoteDetailList({ details, opportunityLink }: { details: QuoteDetails; 
           ),
         },
         { label: "Valid until", value: quote.validUntil && formatDate(quote.validUntil) },
+        { label: "Quote template", value: quote.templateName ?? "Default template" },
         { label: "Sent on", value: quote.sentOn && formatDate(quote.sentOn) },
         { label: "Sent by", value: quote.sentByName },
         { label: "Owner", value: quote.ownerName },
@@ -193,9 +235,11 @@ function EditQuoteForm({ details, onDone }: { details: QuoteDetails; onDone: () 
   const invalidate = useInvalidateRecords()
   const [contact, setContact] = useState<ContactChoice | null>(quote.contactId ? { id: quote.contactId, name: quote.contactName ?? "" } : null)
   const [validUntil, setValidUntil] = useState(quote.validUntil ?? "")
+  const [templateId, setTemplateId] = useState(quote.templateId ?? "")
+  const { data: templates } = useQuery({ queryKey: ["QuoteTemplates"], queryFn: () => gateway.listQuoteTemplates() })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const save = useMutation({
-    mutationFn: () => gateway.updateQuote(quote.id, { contactId: contact?.id ?? "", validUntil }),
+    mutationFn: () => gateway.updateQuote(quote.id, { contactId: contact?.id ?? "", validUntil, ...(templateId ? { templateId } : {}) }),
     onSuccess: async () => {
       await invalidate()
       onDone()
@@ -214,6 +258,21 @@ function EditQuoteForm({ details, onDone }: { details: QuoteDetails; onDone: () 
       </FormField>
       <FormField id="edit-quote-valid-until" label="Valid until" error={errors.validUntil}>
         <Input id="edit-quote-valid-until" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} aria-invalid={errors.validUntil ? true : undefined} />
+      </FormField>
+      <FormField id="edit-quote-template" label="Quote template" className="sm:col-span-2">
+        <select
+          id="edit-quote-template"
+          value={templateId}
+          onChange={(e) => setTemplateId(e.target.value)}
+          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+        >
+          <option value="">{`Default${templates?.find((t) => t.isDefault) ? ` (${templates.find((t) => t.isDefault)!.name})` : ""}`}</option>
+          {templates?.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
       </FormField>
       {save.isError && !Object.keys(errors).length && <FormAlert error={save.error} />}
       <div className="flex gap-2 sm:col-span-2">

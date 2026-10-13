@@ -1,4 +1,5 @@
-import { lineAmount, quoteTotals, quotaMonths, toDateOnly, type DateOnly, type QuoteLine, type QuoteStatus, type Timestamp, type User } from "@/sales"
+import starters from "../../../data/quote-templates.json"
+import { lineAmount, quoteTotals, quotaMonths, toDateOnly, type DateOnly, type QuoteLine, type QuoteSettings, type QuoteStatus, type QuoteTemplate, type Timestamp, type User } from "@/sales"
 import type { QuoteRow } from "./store"
 import type { InMemoryData } from "./store"
 
@@ -52,8 +53,18 @@ export const SEED_IDS = {
     rejected: "quote-rejected",
   },
   quoteLines: { sentConsulting: "qline-sent-consulting", sentLicences: "qline-sent-licences", draftWorkshop: "qline-draft-workshop" },
+  templates: { businessLetter: "qtpl-1", proposal: "qtpl-2", orderForm: "qtpl-3" },
   products: { consultingHour: "prod-consulting-hour", workshopDay: "prod-workshop-day", licence: "prod-licence-month", retired: "prod-retired-support" },
 } as const
+
+/** The three starter templates and the settings, as the sample data and the setup script load them. */
+export const SEED_TEMPLATES: QuoteTemplate[] = starters.templates.map((t, i) => ({
+  id: `qtpl-${i + 1}`,
+  name: t.name,
+  isDefault: t.isDefault,
+  definition: t.definition as QuoteTemplate["definition"],
+}))
+export const SEED_SETTINGS: QuoteSettings = { id: "quote-settings", logo: "", ...starters.settings }
 
 function addDays(date: DateOnly, days: number): DateOnly {
   const [y, m, d] = date.split("-").map(Number)
@@ -103,6 +114,8 @@ export function createSeedData(today: DateOnly): InMemoryData {
       quote(Q.rejected, "Q-00005", 0, "rejected", O.lost, A.tailwind, undefined, adele.id, inDays(-27), 90, { sentOn: daysAgo(88), sentById: adele.id }),
     ],
     users: Object.values(SEED_USERS),
+    quoteTemplates: SEED_TEMPLATES,
+    quoteSettings: SEED_SETTINGS,
     quotas: [
       { id: "quota-adele-1", salespersonId: adele.id, month: thisMonth, amount: 40000 },
       { id: "quota-adele-2", salespersonId: adele.id, month: nextMonth, amount: 45000 },

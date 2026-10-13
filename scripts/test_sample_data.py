@@ -1,6 +1,7 @@
 """Offline tests for the sample data file and payloads (run: python -m unittest discover -s scripts)."""
 
 import copy
+import json
 import sys
 import unittest
 from collections import Counter
@@ -66,6 +67,16 @@ class DataFile(unittest.TestCase):
                 self.assertTrue(any(l["owner"] == user and l["status"] == "notContacted" for l in DATA["leads"]))
                 self.assertTrue(any(o["owner"] == user and o["stage"] in sd.OPEN_STAGES
                                     for o in DATA["opportunities"]))
+
+    def test_quote_templates_and_settings_come_from_the_starter_file(self):
+        self.assertEqual([t["name"] for t in DATA["quoteTemplates"]], ["Business letter", "Proposal", "Order form"])
+        self.assertEqual([t["name"] for t in DATA["quoteTemplates"] if t["isDefault"]], ["Business letter"])
+        self.assertEqual(len(DATA["quoteSettings"]), 1)
+        recs = records()
+        self.assertEqual(json.loads(recs["qtpl-proposal"].body["vibe_definition"]), next(t["definition"] for t in DATA["quoteTemplates"] if t["name"] == "Proposal"))
+        self.assertTrue(recs["qtpl-business-letter"].body["vibe_isdefault"])
+        self.assertEqual(recs["qset-company"].body["vibe_defaultvaliditydays"], 30)
+        self.assertNotIn("ownerid@odata.bind", recs["qtpl-proposal"].body)
 
     def test_keys_give_fixed_unique_ids(self):
         keys = [r["key"] for t in sd.TABLES for r in DATA[t.section]]

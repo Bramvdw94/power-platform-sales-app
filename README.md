@@ -87,8 +87,10 @@ Then wire it into `src/data/dataverse/generated-client.ts`. Tables so far:
 `vibe_opportunity` (registered as `opportunities`), `annotation` (Notes),
 `task` and `phonecall`, `vibe_product` (registered as `products`), `vibe_quota`
 (registered as `quotas`), `vibe_productline` (registered as `productLines`), `vibe_quote` (`quotes`),
-`vibe_quoteline` (`quoteLines`), plus
-the `WhoAmI` function.
+`vibe_quoteline` (`quoteLines`), `vibe_quotetemplate` (`quoteTemplates`),
+`vibe_quotesettings` (`quoteSettings`), plus the `WhoAmI` function and the
+Office 365 Outlook connector (`shared_office365`, used only to send a Quote's PDF from the
+user's own mailbox; each user creates their own connection the first time they send).
 
 The generated models list no bind key for polymorphic lookups such as a
 Contact's company (`parentcustomerid`). The SDK sends the body to the Web API
@@ -123,6 +125,17 @@ pac solution sync
 The app is **Sales App** (app id `4ef54f2e-5c41-4b99-803d-763351b2cc01`) in
 dev-salesapp:
 <https://apps.powerapps.com/play/e/553590c6-6bcb-e2f3-bd06-7d21eb695ff6/app/4ef54f2e-5c41-4b99-803d-763351b2cc01>
+
+## Quote PDF, templates and Send
+
+`python scripts/setup_quote_pdf.py` creates the Quote template and Quote settings tables and the
+Quote's template lookup and Stored PDF file column; `python scripts/setup_quote_templates.py` loads
+the three starter templates and the settings row from `data/quote-templates.json` (it never
+overwrites what a Catalogue manager changed). The PDF is drawn in the browser by `src/lib/quote-pdf.ts`
+from a plain document model (`src/sales/quote-document.ts`), so tests read the model, not PDF
+bytes. Send stores the exact PDF in the Quote's file column (`vibe_storedpdf`, uploaded with the
+Power Apps SDK's file upload) and, for the email route, sends it with the connector's
+`SendEmailV2`. The logo is kept in Quote settings as a PNG or JPEG data URL (under 300 KB).
 
 ## Sample data
 
