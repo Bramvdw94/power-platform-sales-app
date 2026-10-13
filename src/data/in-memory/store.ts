@@ -63,6 +63,8 @@ export class InMemorySalesStore {
   /** When each Process version was published. */
   readonly processVersionPublishedOn = new Map<Id, string>()
   readonly engineErrors: EngineErrorEntry[] = []
+  /** Who saved each Business rule last, and when. */
+  readonly ruleChanges = new Map<Id, { by: string; on: string }>()
   /** The kill switch: false turns Processes and Business rules off, so records behave as in v1. */
   engineEnabled = true
   private sequence = 0

@@ -55,6 +55,9 @@ import {
   activityRelated,
   PublishRefused,
   checkDraft,
+  checkRule,
+  type RuleAdmin,
+  type RuleInput,
   definitionKey,
   emptyDraft,
   impactOf,
@@ -103,7 +106,7 @@ import {
   type Task,
   type User,
 } from "@/sales"
-import { evaluateSave, type EngineRecord, type EngineTable, type Parents, type ProcessRow, type ProcessTable, type Related } from "@/sales/engine"
+import { evaluateSave, type BusinessRuleRow, type EngineRecord, type EngineTable, type Parents, type ProcessRow, type ProcessTable, type Related } from "@/sales/engine"
 import {
   GatewayError,
   QualifyError,
@@ -566,6 +569,52 @@ export class InMemorySalesGateway implements SalesGateway {
         .filter((e) => !processId || e.processId === processId)
         .sort((a, b) => b.occurredOn.localeCompare(a.occurredOn)),
     )
+  }
+
+  // ---- Business rule administration ---------------------------------------------
+
+  private toRuleAdmin(row: BusinessRuleRow): RuleAdmin {
+    const change = this.store.ruleChanges.get(row.id)
+    return clone({
+      ...row,
+      ...(change ? { lastChangedBy: change.by, lastChangedOn: change.on } : {}),
+      engineErrorCount: this.store.engineErrors.filter((e) => e.ruleId === row.id).length,
+    })
+  }
+
+  async listRulesAdmin(table: EngineTable): Promise<RuleAdmin[]> {
+    return this.store.businessRules.filter((r) => r.definition.table === table).map((r) => this.toRuleAdmin(r))
+  }
+
+  async saveBusinessRule(input: RuleInput): Promise<RuleAdmin> {
+    this.requireBuilder()
+    const table = input.definition.table
+    const existing = input.id ? this.store.businessRules.find((r) => r.id === input.id) : undefined
+    if (input.id && !existing) throw new GatewayError("notFound", `Business rule ${input.id} not found.`)
+    const processes = (["lead", "opportunity"] as const).includes(table as "lead" | "opportunity")
+      ? this.store.processes
+          .filter((p) => p.table === table && p.latestVersionId && !p.retired)
+          .flatMap((p) => this.store.processVersions.filter((v) => v.id === p.latestVersionId).map((v) => v.definition))
+      : []
+    const { errors } = checkRule({ rule: input, otherRules: this.store.businessRules.filter((r) => r.definition.table === table), processes })
+    if (errors.length > 0) throw new PublishRefused(errors)
+    const row: BusinessRuleRow = { id: existing?.id ?? this.store.newId("rule"), name: input.name.trim(), enabled: input.enabled, definition: structuredClone(input.definition) }
+    if (existing) Object.assign(existing, row)
+    else this.store.businessRules.push(row)
+    this.store.ruleChanges.set(row.id, { by: this.user(this.userId).fullName, on: this.now().toISOString() })
+    return this.toRuleAdmin(row)
+  }
+
+  async deleteBusinessRule(id: Id): Promise<void> {
+    this.requireBuilder()
+    const index = this.store.businessRules.findIndex((r) => r.id === id)
+    if (index < 0) throw new GatewayError("notFound", `Business rule ${id} not found.`)
+    this.store.businessRules.splice(index, 1)
+    this.store.ruleChanges.delete(id)
+  }
+
+  async listRuleEngineErrors(ruleId: Id): Promise<EngineErrorEntry[]> {
+    return clone(this.store.engineErrors.filter((e) => e.ruleId === ruleId).sort((a, b) => b.occurredOn.localeCompare(a.occurredOn)))
   }
 
   // ---- Products -----------------------------------------------------------------

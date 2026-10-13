@@ -55,6 +55,7 @@ import type {
 
 import type { BusinessRuleRow, EngineTable, ProcessDefinition, ProcessRow, ProcessTable, ProcessVersionRow, PublishIssue } from "@/sales/engine"
 import type { EngineErrorEntry, ProcessAdmin, PublishImpact } from "@/sales/process-admin"
+import type { RuleAdmin, RuleInput } from "@/sales/rule-admin"
 
 export type CurrentUser = {
   user: User
@@ -326,6 +327,18 @@ export interface SalesGateway {
   switchAllRecords(id: Id, targetProcessId: Id | null): Promise<number>
   /** Open Engine errors, newest first; for one Process when given. */
   listEngineErrors(processId?: Id): Promise<EngineErrorEntry[]>
+
+  // Business rule administration: everyone reads the rules; only a Process builder changes them. Saving applies at once.
+  /** Every Business rule of a table, switched off ones too, oldest first. */
+  listRulesAdmin(table: EngineTable): Promise<RuleAdmin[]>
+  /**
+   * Creates the rule, or saves the changes to it. Refused with a PublishRefused naming what is wrong (a set value cycle,
+   * a field that no longer exists, the size limits). Takes effect on every record at once.
+   */
+  saveBusinessRule(rule: RuleInput): Promise<RuleAdmin>
+  deleteBusinessRule(id: Id): Promise<void>
+  /** Open Engine errors of one rule, newest first. */
+  listRuleEngineErrors(ruleId: Id): Promise<EngineErrorEntry[]>
 
   // Products: everyone reads; only a Catalogue Manager creates, edits and retires. No delete.
   listProducts(query: ProductListQuery): Promise<Page<Product>>
