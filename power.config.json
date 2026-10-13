@@ -122,6 +122,11 @@
           "entitySetName": "environmentvariablevalues",
           "logicalName": "environmentvariablevalue",
           "isHidden": false
+        },
+        "businessrules": {
+          "entitySetName": "vibe_businessrules",
+          "logicalName": "vibe_businessrule",
+          "isHidden": false
         }
       },
       "environmentVariableName": ""

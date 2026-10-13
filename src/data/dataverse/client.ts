@@ -490,6 +490,18 @@ export type ProcessVersionRow = Row & {
 
 export const PROCESS_VERSION_COLUMNS = ["vibe_processversionid", "_vibe_processid_value", "vibe_definition"] as const
 
+/** A Business rule: table-wide effects whose condition and effects are the definition JSON. */
+export type BusinessRuleRowData = Row & {
+  vibe_businessruleid: Id
+  vibe_name?: string | null
+  vibe_tablechoice?: number | null
+  vibe_enabled?: boolean | null
+  /** The definition as JSON text. */
+  vibe_definition?: string | null
+}
+
+export const BUSINESS_RULE_COLUMNS = ["vibe_businessruleid", "vibe_name", "vibe_tablechoice", "vibe_enabled", "vibe_definition"] as const
+
 export type EnvironmentVariableDefinitionRow = Row & {
   environmentvariabledefinitionid: Id
   schemaname?: string | null
@@ -562,6 +574,7 @@ export interface DataverseClient {
   quoteSettings: TableClient<QuoteSettingsRow>
   processes: TableClient<ProcessRow>
   processVersions: TableClient<ProcessVersionRow>
+  businessRules: TableClient<BusinessRuleRowData>
   environmentVariableDefinitions: TableClient<EnvironmentVariableDefinitionRow>
   environmentVariableValues: TableClient<EnvironmentVariableValueRow>
   /** Puts a file in a Quote's file column. */

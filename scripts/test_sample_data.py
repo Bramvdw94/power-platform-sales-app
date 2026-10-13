@@ -422,5 +422,24 @@ class StarterProcesses(unittest.TestCase):
         self.assertLess(first["processVersions"], first["leads"])
 
 
+class StarterBusinessRules(unittest.TestCase):
+    """The starter Business rules of data/business-rules.json (#96)."""
+
+    def test_there_is_at_least_one_rule_per_effect(self):
+        effects = {e["type"] for r in DATA["businessRules"] for e in r["definition"]["effects"]}
+        self.assertEqual(effects, {"required", "readOnly", "setValue", "warning", "blockSave"})
+
+    def test_a_rule_holds_its_definition_as_json_and_is_on(self):
+        rule = records()["rule-contact-reachable"]
+        self.assertTrue(rule.body["vibe_enabled"])
+        self.assertEqual(rule.body["vibe_tablechoice"], sd.CHOICE_BASE + sd.PROCESS_TABLES.index("contact"))
+        self.assertEqual(json.loads(rule.body["vibe_definition"])["effects"][0]["type"], "blockSave")
+
+    def test_a_definition_for_another_table_is_refused(self):
+        def wrong_table(data):
+            data["businessRules"][0]["table"] = "lead"
+        self.assertTrue(any("another table" in e for e in broken(wrong_table)))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -53,7 +53,7 @@ import type {
   User,
 } from "@/sales"
 
-import type { ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
+import type { BusinessRuleRow, EngineTable, ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
 
 export type CurrentUser = {
   user: User
@@ -219,6 +219,12 @@ export type ProcessDefinitions = {
   versions: ProcessVersionRow[]
 }
 
+/** The published Business rules of a table, for rule effects on the record pages. */
+export type BusinessRules = {
+  engineEnabled: boolean
+  rules: BusinessRuleRow[]
+}
+
 export interface SalesGateway {
   // People
   getCurrentUser(): Promise<CurrentUser>
@@ -279,6 +285,8 @@ export interface SalesGateway {
    * (refused with a GatewayError naming the open checks), back without checks. Stage or Lead status follow the Step.
    */
   moveStep(record: RecordRef, stepId: string): Promise<void>
+  /** The Business rules of a table (Lead, Opportunity, Account or Contact), loaded once per session. With the kill switch off, none are evaluated. */
+  getBusinessRules(table: EngineTable): Promise<BusinessRules>
   /** Switch Process: to another Process version, or none (null), landing on the Step that fits the current Stage or status. */
   switchProcess(record: RecordRef, processVersionId: Id | null): Promise<void>
 

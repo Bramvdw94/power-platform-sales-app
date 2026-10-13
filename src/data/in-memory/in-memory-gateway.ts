@@ -93,7 +93,7 @@ import {
   type Task,
   type User,
 } from "@/sales"
-import { evaluateSave, type EngineRecord, type ProcessTable } from "@/sales/engine"
+import { evaluateSave, type EngineRecord, type EngineTable, type ProcessTable } from "@/sales/engine"
 import {
   GatewayError,
   QualifyError,
@@ -116,6 +116,7 @@ import {
   type ProductListQuery,
   type ProductUpdate,
   type PhoneCallInput,
+  type BusinessRules,
   type ProcessDefinitions,
   type QuoteDetails,
   type SendQuoteInput,
@@ -339,6 +340,13 @@ export class InMemorySalesGateway implements SalesGateway {
       engineEnabled: this.store.engineEnabled,
       processes,
       versions: this.store.processVersions.filter((v) => ids.has(v.processId)),
+    })
+  }
+
+  async getBusinessRules(table: EngineTable): Promise<BusinessRules> {
+    return clone({
+      engineEnabled: this.store.engineEnabled,
+      rules: this.store.businessRules.filter((r) => r.definition.table === table),
     })
   }
 
@@ -742,7 +750,7 @@ export class InMemorySalesGateway implements SalesGateway {
 
   async createAccount(input: AccountInput): Promise<Account> {
     invalid("The Account cannot be saved.", accountErrors(input))
-    const row: AccountRow = { ...clone(input), name: input.name.trim(), ...this.newOwned("acc") }
+    const row = this.runEngine("account", null, { ...clone(input), name: input.name.trim(), ...this.newOwned("acc") } as AccountRow)
     this.store.accounts.set(row.id, row)
     return this.toAccount(row)
   }
@@ -752,14 +760,15 @@ export class InMemorySalesGateway implements SalesGateway {
     this.requireEdit(row.ownerId)
     const next = withoutBlanks({ ...row, ...defined(clone(update)) }) as AccountRow
     invalid("The Account cannot be saved.", accountErrors(next))
-    this.store.accounts.set(id, next)
-    return this.toAccount(next)
+    const saved = this.runEngine("account", row, next)
+    this.store.accounts.set(id, saved)
+    return this.toAccount(saved)
   }
 
   async createContact(input: ContactInput): Promise<Contact> {
     invalid("The Contact cannot be saved.", contactErrors(input))
     if (input.accountId) this.accountRow(input.accountId)
-    const row: ContactRow = { ...clone(input), ...this.newOwned("con") }
+    const row = this.runEngine("contact", null, { ...clone(input), ...this.newOwned("con") } as ContactRow)
     this.store.contacts.set(row.id, row)
     return this.toContact(row)
   }
@@ -770,8 +779,9 @@ export class InMemorySalesGateway implements SalesGateway {
     if (update.accountId) this.accountRow(update.accountId)
     const next = withoutBlanks({ ...row, ...defined(clone(update)) })
     invalid("The Contact cannot be saved.", contactErrors(next))
-    this.store.contacts.set(id, next)
-    return this.toContact(next)
+    const saved = this.runEngine("contact", row, next)
+    this.store.contacts.set(id, saved)
+    return this.toContact(saved)
   }
 
   // ---- Leads ----------------------------------------------------------------
@@ -1132,7 +1142,7 @@ export class InMemorySalesGateway implements SalesGateway {
    * What the plug-in does on Dataverse: picks the Process of a new record, checks Gates on a Step move, makes the
    * Stage or Lead status follow the Step, and creates Action Tasks, all in the save. A refusal throws and stores nothing.
    */
-  private runEngine<R extends LeadRow | OpportunityRow>(table: ProcessTable, before: R | null, next: R, createTasks = false): R {
+  private runEngine<R extends LeadRow | OpportunityRow | AccountRow | ContactRow>(table: EngineTable, before: R | null, next: R, createTasks = false): R {
     const store = this.store
     if (!store.engineEnabled || (store.processes.length === 0 && store.businessRules.length === 0)) return next
     const keys = new Set([...Object.keys(next), ...Object.keys(before ?? {})])
@@ -1145,7 +1155,19 @@ export class InMemorySalesGateway implements SalesGateway {
     const activities = [...store.activities.values()].filter((a) => a.regarding.type === table && a.regarding.id === recordId)
     const toActivities = activities.map((a) => this.toActivity(a))
     let related, parents
-    if (table === "opportunity") {
+    if (table === "account") {
+      const contacts = [...this.store.contacts.values()].filter((c) => c.accountId === recordId)
+      const opportunities = [...this.store.opportunities.values()].filter((o) => o.accountId === recordId)
+      related = {
+        ...activityRelated(toActivities),
+        contacts: contacts.map((c) => toEngineRecord(this.toContact(c))),
+        opportunities: opportunities.map((o) => toEngineRecord(this.toOpportunity(o))),
+      }
+    } else if (table === "contact") {
+      related = activityRelated(toActivities)
+      const account = (next as ContactRow).accountId ? this.store.accounts.get((next as ContactRow).accountId!) : undefined
+      parents = { account: account ? toEngineRecord(this.toAccount(account)) : null }
+    } else if (table === "opportunity") {
       const row = next as OpportunityRow
       related = opportunityRelated(toActivities, this.linesOf(recordId), this.quotesOf(recordId))
       const account = store.accounts.get(row.accountId)

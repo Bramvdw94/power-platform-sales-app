@@ -2,15 +2,19 @@ import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { useMutation } from "@tanstack/react-query"
 import { FormAlert, FormField, TextFields, type TextFieldSpec } from "@/components/records/fields"
+import { ruleInputClass } from "@/lib/rule-classes"
+import { RuleBlockBox, RuleWarningBox } from "@/components/records/rule-effects"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { LeadUpdate } from "@/data/gateway"
 import { useGateway } from "@/hooks/use-gateway"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
+import { useRuleContext, useRulePreview } from "@/hooks/use-rules"
 import { fieldErrorsOf } from "@/lib/errors"
 import { LEAD_SOURCE_LABELS } from "@/lib/format"
 import { toInput, toPatch, type FormValues } from "@/lib/form"
+import { cn } from "@/lib/utils"
 import { LEAD_SOURCES, leadErrors, type Lead, type LeadInput, type LeadSource } from "@/sales"
 
 const LEAD_FIELDS = ["firstName", "lastName", "company", "jobTitle", "email", "phone", "website", "description"] as const
@@ -107,6 +111,14 @@ export function EditLeadForm({ lead, onDone }: { lead: Lead; onDone: () => void 
   )
   const [leadSource, setLeadSource] = useState<LeadSource | undefined>(lead.leadSource)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<ReadonlySet<string>>(new Set())
+  const context = useRuleContext("lead", lead.id)
+  const preview = useRulePreview(context, lead, { ...toPatch(values, LEAD_FIELDS), leadSource: leadSource ?? "" })
+  // A value a rule fills in shows until the user types their own.
+  const shown = (name: string, current: string) => (!touched.has(name) && name in preview.filled ? String(preview.filled[name]) : current)
+  const shownValues = Object.fromEntries(LEAD_FIELDS.map((f) => [f, shown(f, values[f] ?? "")])) as FormValues<LeadField>
+  const shownSource = shown("leadSource", leadSource ?? "") as LeadSource | ""
+  const sourceView = preview.viewOf("leadSource")
 
   const save = useMutation({
     mutationFn: (patch: LeadUpdate) => gateway.updateLead(lead.id, patch),
@@ -120,23 +132,31 @@ export function EditLeadForm({ lead, onDone }: { lead: Lead; onDone: () => void 
   const submit = (event: FormEvent) => {
     event.preventDefault()
     // A blank Lead source clears it, like a blank text field.
-    const patch = { ...toPatch(values, LEAD_FIELDS), leadSource: (leadSource ?? "") as LeadSource }
-    const found = leadErrors({ ...patch, leadSource })
+    const patch = { ...toPatch(shownValues, LEAD_FIELDS), leadSource: shownSource as LeadSource }
+    const found = leadErrors({ ...patch, leadSource: shownSource || undefined })
     setErrors(found)
     if (Object.keys(found).length === 0) save.mutate(patch)
   }
 
-  const onChange = (name: LeadField, value: string) => setValues((v) => ({ ...v, [name]: value }))
+  const onChange = (name: LeadField, value: string) => {
+    setTouched((t) => new Set(t).add(name))
+    setValues((v) => ({ ...v, [name]: value }))
+  }
 
   return (
     <form onSubmit={submit} noValidate aria-label="Edit Lead" className="grid gap-4 sm:grid-cols-2">
-      <TextFields idPrefix="edit-lead" specs={SPECS} values={values} errors={errors} onChange={onChange} />
-      <FormField id="edit-lead-source" label="Lead source" error={errors.leadSource}>
+      <RuleWarningBox warnings={preview.generalWarnings} />
+      <TextFields idPrefix="edit-lead" specs={SPECS} values={shownValues} errors={errors} onChange={onChange} ruleViews={preview.viewOf} />
+      <FormField id="edit-lead-source" label="Lead source" error={errors.leadSource} rule={sourceView}>
         <Select
-          value={leadSource ?? NO_SOURCE}
-          onValueChange={(value) => setLeadSource(value === NO_SOURCE ? undefined : (value as LeadSource))}
+          value={shownSource || NO_SOURCE}
+          disabled={!!sourceView.readOnly}
+          onValueChange={(value) => {
+            setTouched((t) => new Set(t).add("leadSource"))
+            setLeadSource(value === NO_SOURCE ? undefined : (value as LeadSource))
+          }}
         >
-          <SelectTrigger id="edit-lead-source" className="w-full">
+          <SelectTrigger id="edit-lead-source" className={cn("w-full", ruleInputClass(sourceView))}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -149,13 +169,14 @@ export function EditLeadForm({ lead, onDone }: { lead: Lead; onDone: () => void 
           </SelectContent>
         </Select>
       </FormField>
-      <TextFields idPrefix="edit-lead" specs={[DESCRIPTION]} values={values} errors={errors} onChange={onChange} />
+      <TextFields idPrefix="edit-lead" specs={[DESCRIPTION]} values={shownValues} errors={errors} onChange={onChange} ruleViews={preview.viewOf} />
+      <RuleBlockBox blocks={preview.blocks} className="sm:col-span-2" />
       {save.isError && <FormAlert error={save.error} className="sm:col-span-2" />}
       <div className="flex justify-end gap-2 sm:col-span-2">
         <Button type="button" variant="outline" onClick={onDone}>
           Cancel
         </Button>
-        <Button type="submit" disabled={save.isPending}>
+        <Button type="submit" disabled={save.isPending || preview.problems.length > 0}>
           Save
         </Button>
       </div>

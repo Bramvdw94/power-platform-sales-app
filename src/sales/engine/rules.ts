@@ -1,16 +1,17 @@
 import { checkFieldReference, checkReferences, conditionsHold, type ConditionScope, type ReferenceProblem } from "./conditions"
-import type { BusinessRuleRow, EngineErrorReport, EngineTable, FieldCatalogue } from "./types"
+import type { BusinessRuleRow, EngineErrorReport, EngineTable, FieldCatalogue, Scalar } from "./types"
 
 export type RuleRef = { ruleId: string; ruleName: string }
 export type FieldEffect = RuleRef & { field: string }
 export type MessageEffect = RuleRef & { message: string; field?: string }
+export type SetValueEffect = FieldEffect & { value: Scalar | null }
 
 /** The rule effects that hold on a record as it is now, for showing at the field. */
 export type RuleEffects = {
   required: FieldEffect[]
   readOnly: FieldEffect[]
   /** Values rules set, for the "Filled in by the rule" hint. */
-  setValues: FieldEffect[]
+  setValues: SetValueEffect[]
   warnings: MessageEffect[]
   blocks: MessageEffect[]
   engineErrors: EngineErrorReport[]
@@ -69,7 +70,7 @@ export function ruleEffects(
           effects.readOnly.push({ ...ref, field: effect.field })
           break
         case "setValue":
-          effects.setValues.push({ ...ref, field: effect.field })
+          effects.setValues.push({ ...ref, field: effect.field, value: effect.value })
           break
         case "warning":
           effects.warnings.push({ ...ref, message: effect.message, field: effect.field })

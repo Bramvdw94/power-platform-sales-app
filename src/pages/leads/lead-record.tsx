@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { Ban, BadgeCheck, Pencil, PhoneCall, RotateCcw, Undo2 } from "lucide-react"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
+import { RuleNoticeList } from "@/components/records/rule-effects"
 import { ReassignButton } from "@/components/records/reassign-dialog"
 import { ProcessBar } from "@/components/records/process/process-bar"
 import { SwitchProcessButton } from "@/components/records/process/switch-process"
@@ -14,6 +15,7 @@ import { useGateway } from "@/hooks/use-gateway"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
 import { useRecordProcess } from "@/hooks/use-process"
+import { useRuleContext, useRuleNotices, useRulePreview } from "@/hooks/use-rules"
 import { DISQUALIFY_REASON_LABELS, LEAD_SOURCE_LABELS, formatDate, opportunitySummary } from "@/lib/format"
 import { allowedLeadActions, canSwitchProcess, fullName, isLeadReadOnly, type Lead } from "@/sales"
 import { DisqualifyDialog } from "./disqualify-dialog"
@@ -174,21 +176,28 @@ function LeadActions({ lead, followsProcess, onEdit }: { lead: Lead; followsProc
 }
 
 function LeadDetailList({ lead }: { lead: Lead }) {
+  const context = useRuleContext("lead", lead.id)
+  const notices = useRuleNotices(context, lead)
+  const preview = useRulePreview(context, lead)
   return (
-    <DetailList
-      items={[
-        { label: "First name", value: lead.firstName },
-        { label: "Last name", value: lead.lastName },
-        { label: "Company", value: lead.company, wide: true },
-        { label: "Job title", value: lead.jobTitle },
-        { label: "Email", value: lead.email && <a href={`mailto:${lead.email}`} className="text-primary hover:underline">{lead.email}</a> },
-        { label: "Phone", value: lead.phone },
-        { label: "Website", value: lead.website },
-        { label: "Lead source", value: lead.leadSource && LEAD_SOURCE_LABELS[lead.leadSource] },
-        { label: "Owner", value: lead.ownerName },
-        { label: "Description", value: lead.description, wide: true },
-      ]}
-    />
+    <>
+      <RuleNoticeList notices={notices} />
+      <DetailList
+        ruleViews={preview.viewOf}
+        items={[
+          { label: "First name", field: "firstName", value: lead.firstName },
+          { label: "Last name", field: "lastName", value: lead.lastName },
+          { label: "Company", field: "company", value: lead.company, wide: true },
+          { label: "Job title", field: "jobTitle", value: lead.jobTitle },
+          { label: "Email", field: "email", value: lead.email && <a href={`mailto:${lead.email}`} className="text-primary hover:underline">{lead.email}</a> },
+          { label: "Phone", field: "phone", value: lead.phone },
+          { label: "Website", field: "website", value: lead.website },
+          { label: "Lead source", field: "leadSource", value: lead.leadSource && LEAD_SOURCE_LABELS[lead.leadSource] },
+          { label: "Owner", value: lead.ownerName },
+          { label: "Description", field: "description", value: lead.description, wide: true },
+        ]}
+      />
+    </>
   )
 }
 

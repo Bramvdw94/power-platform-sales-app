@@ -208,6 +208,8 @@ export function ProcessBar({ table, record, process, canEdit, canSwitch, parents
               fields={keyFieldsOf(shown)}
               editable={canEdit && open && !preview}
               hasProductLines={productLines.length > 0}
+              parents={parents}
+              related={related}
             />
           </div>
           <div className="min-w-0 space-y-3">

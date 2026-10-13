@@ -1,0 +1,83 @@
+{
+  "rules": [
+    {
+      "id": "rule-large-deal-next-step",
+      "name": "Large deals need a Next step",
+      "table": "opportunity",
+      "enabled": true,
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "when": { "match": "all", "conditions": [{ "field": "estimatedValue", "op": "greaterThan", "value": 50000 }] },
+        "effects": [{ "type": "required", "field": "nextStep" }]
+      }
+    },
+    {
+      "id": "rule-customer-industry",
+      "name": "Customers keep their Industry",
+      "table": "account",
+      "enabled": true,
+      "definition": {
+        "schemaVersion": 1,
+        "table": "account",
+        "when": { "match": "all", "conditions": [{ "field": "accountType", "op": "equals", "value": "customer" }] },
+        "effects": [{ "type": "readOnly", "field": "industry" }]
+      }
+    },
+    {
+      "id": "rule-partner-best-case",
+      "name": "Partner deals are Best case",
+      "table": "opportunity",
+      "enabled": true,
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "when": { "match": "all", "conditions": [{ "field": "leadSource", "op": "equals", "value": "partner" }] },
+        "effects": [{ "type": "setValue", "field": "forecastCategory", "value": "bestCase" }]
+      }
+    },
+    {
+      "id": "rule-lead-without-email",
+      "name": "Leads need an email address",
+      "table": "lead",
+      "enabled": true,
+      "definition": {
+        "schemaVersion": 1,
+        "table": "lead",
+        "when": { "match": "all", "conditions": [{ "field": "email", "op": "isEmpty" }] },
+        "effects": [{ "type": "warning", "field": "email", "message": "Without an email address you can't send this Lead a Quote later." }]
+      }
+    },
+    {
+      "id": "rule-big-deal-review",
+      "name": "Big deals get a review",
+      "table": "opportunity",
+      "enabled": true,
+      "definition": {
+        "schemaVersion": 1,
+        "table": "opportunity",
+        "when": { "match": "all", "conditions": [{ "field": "estimatedValue", "op": "greaterThan", "value": 100000 }] },
+        "effects": [{ "type": "warning", "message": "Deals over €100,000 need a manager's review before the offer goes out." }]
+      }
+    },
+    {
+      "id": "rule-contact-reachable",
+      "name": "Contacts must be reachable",
+      "table": "contact",
+      "enabled": true,
+      "definition": {
+        "schemaVersion": 1,
+        "table": "contact",
+        "when": {
+          "match": "all",
+          "conditions": [
+            { "field": "email", "op": "isEmpty" },
+            { "field": "phone", "op": "isEmpty" },
+            { "field": "mobile", "op": "isEmpty" }
+          ]
+        },
+        "effects": [{ "type": "blockSave", "message": "Add an email address, a phone or a mobile number." }]
+      }
+    }
+  ]
+}
