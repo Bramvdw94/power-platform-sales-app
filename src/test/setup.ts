@@ -10,3 +10,10 @@ afterEach(() => {
 Element.prototype.hasPointerCapture ??= () => false
 Element.prototype.releasePointerCapture ??= () => {}
 Element.prototype.scrollIntoView ??= () => {}
+
+// jsdom has no layout: recharts' ResponsiveContainer needs a ResizeObserver, and renders nothing at size 0.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}

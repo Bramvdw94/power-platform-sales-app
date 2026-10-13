@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useIsDesktop } from "@/hooks/use-is-desktop"
 import { cn } from "@/lib/utils"
-import { HOME, NEW_RECORD_ITEMS, PIPELINE, RECORD_LISTS, type NavItem } from "./nav-items"
+import { FORECAST, HOME, NEW_RECORD_ITEMS, PIPELINE, RECORD_LISTS, type NavItem } from "./nav-items"
 import { UserAvatar } from "./user-badge"
 
 const COLLAPSED_KEY = "salesapp.sidebarCollapsed"
@@ -60,7 +60,7 @@ function DesktopShell() {
           {!collapsed && <span className="font-semibold">Sales</span>}
         </div>
         <nav aria-label="Main" className="flex flex-1 flex-col gap-1 p-2">
-          {[HOME, PIPELINE, ...RECORD_LISTS].map((item) => (
+          {[HOME, PIPELINE, FORECAST, ...RECORD_LISTS].map((item) => (
             <SidebarLink key={item.to} item={item} collapsed={collapsed} />
           ))}
         </nav>
@@ -189,7 +189,7 @@ function PhoneShell() {
   )
 }
 
-const LIST_PATHS = RECORD_LISTS.map((item) => item.to)
+const LIST_PATHS = [FORECAST, ...RECORD_LISTS].map((item) => item.to)
 
 function BottomTabs() {
   const { pathname } = useLocation()

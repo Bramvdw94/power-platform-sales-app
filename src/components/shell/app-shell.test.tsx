@@ -39,7 +39,7 @@ describe("app shell on a desktop", () => {
     const user = userEvent.setup()
     const { router } = renderApp()
     const links = within(mainNav()).getAllByRole("link").map((l) => l.textContent)
-    expect(links).toEqual(["Home", "Pipeline", "Leads", "Opportunities", "Accounts", "Contacts", "Products"])
+    expect(links).toEqual(["Home", "Pipeline", "Forecast", "Leads", "Opportunities", "Accounts", "Contacts", "Products"])
 
     await user.click(within(mainNav()).getByRole("link", { name: "Opportunities" }))
     expect(router.state.location.pathname).toBe("/opportunities")
@@ -116,12 +116,13 @@ describe("app shell on a phone", () => {
     expect(screen.queryByRole("button", { name: "New" })).not.toBeInTheDocument()
   })
 
-  it("reaches the record lists through Menu", async () => {
+  it("reaches Forecast and the record lists through Menu", async () => {
     const user = userEvent.setup()
     const { router } = renderApp()
     await user.click(within(mainNav()).getByRole("link", { name: "Menu" }))
-    const lists = screen.getByRole("navigation", { name: "Records" })
+    const lists = screen.getByRole("navigation", { name: "Pages" })
     expect(within(lists).getAllByRole("link").map((l) => l.textContent)).toEqual([
+      "Forecast",
       "Leads",
       "Opportunities",
       "Accounts",

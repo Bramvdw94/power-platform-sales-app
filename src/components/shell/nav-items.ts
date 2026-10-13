@@ -1,9 +1,10 @@
-import { Briefcase, Building2, Columns3, Home, type LucideIcon, Package, UserPlus, Users } from "lucide-react"
+import { Briefcase, Building2, Columns3, Home, type LucideIcon, Package, TrendingUp, UserPlus, Users } from "lucide-react"
 
 export type NavItem = { to: string; label: string; icon: LucideIcon }
 
 export const HOME: NavItem = { to: "/", label: "Home", icon: Home }
 export const PIPELINE: NavItem = { to: "/pipeline", label: "Pipeline", icon: Columns3 }
+export const FORECAST: NavItem = { to: "/forecast", label: "Forecast", icon: TrendingUp }
 
 /** The record lists, in sidebar order. */
 export const RECORD_LISTS: NavItem[] = [
