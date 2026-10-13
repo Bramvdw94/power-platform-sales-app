@@ -24,6 +24,10 @@ export type PublishIssueCode =
   | "stepsOutOfOrder"
   | "gateFieldReadOnly"
   | "setValueCycle"
+  | "setsEstimatedValue"
+  | "nameMissing"
+  | "noEffects"
+  | "messageMissing"
   | "sameFieldSetByOtherRule"
 
 export type PublishIssue = {
@@ -219,6 +223,13 @@ export function checkRuleForPublish(input: {
   const warnings: PublishIssue[] = []
   const at = { ruleId: rule.id }
 
+  if (!rule.name.trim()) errors.push({ code: "nameMissing", message: "Give the rule a name.", ...at })
+  if (effects.length === 0) errors.push({ code: "noEffects", message: "Add at least one effect.", ...at })
+  for (const effect of effects) {
+    if ((effect.type === "warning" || effect.type === "blockSave") && !effect.message.trim()) {
+      errors.push({ code: "messageMissing", message: `Write the message of the ${effect.type === "warning" ? "warning" : "block save"} effect.`, ...at })
+    }
+  }
   errors.push(...sizeIssues(when.conditions, "This rule", at))
   const enabled = others.filter((r) => r.enabled).length + (rule.enabled ? 1 : 0)
   if (enabled > LIMITS.enabledRulesPerTable) {
@@ -236,6 +247,17 @@ export function checkRuleForPublish(input: {
     if (!("field" in effect) || !effect.field) continue
     const problem = checkFieldReference(fields, table, effect.field, effect.type === "setValue" ? [effect.value] : [])
     if (problem) errors.push({ code: problem.code, message: problem.message, field: problem.field, ...at })
+  }
+
+  for (const effect of effects) {
+    if (effect.type === "setValue" && table === "opportunity" && effect.field === "estimatedValue") {
+      errors.push({
+        code: "setsEstimatedValue",
+        message: "A rule can't set Estimated value: Product lines keep it up to date when an Opportunity has them.",
+        ...at,
+        field: effect.field,
+      })
+    }
   }
 
   const cycle = setValueCycle(rule, others)

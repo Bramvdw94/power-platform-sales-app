@@ -319,6 +319,59 @@ describe("DataverseSalesGateway, Process administration", () => {
       { id: "e1", processId: P1, actionId: "a1", code: "noManager", message: "The Owner has no manager.", occurredOn: "2026-10-12T10:00:00Z" },
     ])
   })
+
+  describe("Business rule administration", () => {
+    const RULE = "44444444-0000-0000-0000-0000000000a1"
+    const definition = { schemaVersion: 1 as const, table: "contact" as const, when: { match: "all" as const, conditions: [{ field: "email", op: "isEmpty" as const }] }, effects: [{ type: "blockSave" as const, message: "Add an email." }] }
+    const ruleRows = (): BusinessRuleRow[] => [
+      { vibe_businessruleid: RULE, vibe_name: "Reachable", vibe_tablechoice: 841200003, vibe_enabled: true, vibe_definition: JSON.stringify(definition), modifiedon: "2026-10-12T10:00:00Z", _modifiedby_value: MEGAN, "_modifiedby_value@OData.Community.Display.V1.FormattedValue": "Megan Bowen" },
+    ]
+
+    it("lists a table's rules with who changed them last and how many Engine errors they have", async () => {
+      const client = fakeClient(MEGAN, [], [], [], [], [], [], [], [], ruleRows())
+      client.engineErrors.list.mockResolvedValueOnce({ rows: [{ vibe_engineerrorid: "e1", _vibe_ruleid_value: RULE, vibe_code: "fieldMissing", vibe_message: "x" }], skipToken: undefined, count: 1 })
+      const [rule] = await new DataverseSalesGateway(client).listRulesAdmin("contact")
+      expect(rule).toMatchObject({ id: RULE, name: "Reachable", enabled: true, lastChangedBy: "Megan Bowen", lastChangedOn: "2026-10-12T10:00:00Z", engineErrorCount: 1 })
+      expect(client.businessRules.list.mock.calls[0][0].filter).toContain("vibe_tablechoice eq 841200003")
+    })
+
+    it("creates a rule with its table, switch and definition as JSON", async () => {
+      const client = fakeClient(MEGAN)
+      const saved = await new DataverseSalesGateway(client).saveBusinessRule({ name: "  Reachable ", enabled: true, definition })
+      expect(client.businessRules.create).toHaveBeenCalledWith({ vibe_name: "Reachable", vibe_enabled: true, vibe_definition: JSON.stringify(definition), vibe_tablechoice: 841200003 })
+      expect(saved.name).toBe("Reachable")
+    })
+
+    it("updates a rule in place and can switch it off", async () => {
+      const client = fakeClient(MEGAN, [], [], [], [], [], [], [], [], ruleRows())
+      await new DataverseSalesGateway(client).saveBusinessRule({ id: RULE, name: "Reachable", enabled: false, definition })
+      expect(client.businessRules.update).toHaveBeenCalledWith(RULE, { vibe_name: "Reachable", vibe_enabled: false, vibe_definition: JSON.stringify(definition) })
+      expect(client.businessRules.create).not.toHaveBeenCalled()
+    })
+
+    it("refuses a rule that closes a set value cycle, writing nothing", async () => {
+      const a = { schemaVersion: 1, table: "contact", when: { match: "all", conditions: [{ field: "jobTitle", op: "isNotEmpty" }] }, effects: [{ type: "setValue", field: "phone", value: "1" }] }
+      const rows: BusinessRuleRow[] = [{ vibe_businessruleid: RULE, vibe_name: "A", vibe_tablechoice: 841200003, vibe_enabled: true, vibe_definition: JSON.stringify(a) }]
+      const client = fakeClient(MEGAN, [], [], [], [], [], [], [], [], rows)
+      const b = { schemaVersion: 1 as const, table: "contact" as const, when: { match: "all" as const, conditions: [{ field: "phone", op: "isNotEmpty" as const }] }, effects: [{ type: "setValue" as const, field: "jobTitle", value: "x" }] }
+      await expect(new DataverseSalesGateway(client).saveBusinessRule({ name: "B", enabled: true, definition: b })).rejects.toThrow(/keep setting each other's fields/)
+      expect(client.businessRules.create).not.toHaveBeenCalled()
+    })
+
+    it("deletes a rule", async () => {
+      const client = fakeClient(MEGAN, [], [], [], [], [], [], [], [], ruleRows())
+      await new DataverseSalesGateway(client).deleteBusinessRule(RULE)
+      expect(client.businessRules.delete).toHaveBeenCalledWith(RULE)
+    })
+
+    it("reads the Engine errors of one rule", async () => {
+      const client = fakeClient(MEGAN)
+      client.engineErrors.list.mockResolvedValueOnce({ rows: [{ vibe_engineerrorid: "e9", _vibe_ruleid_value: RULE, vibe_code: "fieldMissing", vibe_message: "Gone." }], skipToken: undefined, count: 1 })
+      const errors = await new DataverseSalesGateway(client).listRuleEngineErrors(RULE)
+      expect(errors).toMatchObject([{ id: "e9", ruleId: RULE, code: "fieldMissing", message: "Gone." }])
+      expect(client.engineErrors.list.mock.calls[0][0].filter).toContain(RULE)
+    })
+  })
 })
 
 function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = [], processRows: ProcessRow[] = [], processVersionRows: ProcessVersionRow[] = [], envDefinitionRows: EnvironmentVariableDefinitionRow[] = [], envValueRows: EnvironmentVariableValueRow[] = [], businessRuleRows: BusinessRuleRow[] = []) {

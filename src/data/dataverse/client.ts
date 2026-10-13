@@ -509,9 +509,11 @@ export type BusinessRuleRow = Row & {
   vibe_enabled?: boolean | null
   /** The condition and effects as JSON text. */
   vibe_definition?: string | null
+  modifiedon?: string | null
+  _modifiedby_value?: Id | null
 }
 
-export const BUSINESS_RULE_COLUMNS = ["vibe_businessruleid", "vibe_name", "vibe_tablechoice", "vibe_enabled", "vibe_definition"] as const
+export const BUSINESS_RULE_COLUMNS = ["vibe_businessruleid", "vibe_name", "vibe_tablechoice", "vibe_enabled", "vibe_definition", "modifiedon", "_modifiedby_value"] as const
 
 /** A rule or Action the engine could not run. The save went through without it. */
 export type EngineErrorRow = Row & {

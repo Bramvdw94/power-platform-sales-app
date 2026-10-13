@@ -42,6 +42,7 @@ import {
   PublishRefused,
   activityRelated,
   checkDraft,
+  checkRule,
   definitionKey,
   emptyDraft,
   impactOf,
@@ -53,6 +54,8 @@ import {
   type EngineErrorEntry,
   type ImpactRecord,
   type ProcessAdmin,
+  type RuleAdmin,
+  type RuleInput,
 } from "@/sales"
 import {
   DISQUALIFY_REASONS,
@@ -175,6 +178,7 @@ import {
   PROCESS_NAVIGATION,
   PROCESS_VERSION_PUBLISHED_BY_NAVIGATION,
   type EngineErrorRow,
+  type BusinessRuleRow,
   type ProcessRow as ProcessRecord,
   type ProcessVersionRow as ProcessVersionRecord,
   QUOTA_SALESPERSON_NAVIGATION,
@@ -1365,6 +1369,75 @@ export class DataverseSalesGateway implements SalesGateway {
     const filter = processId ? `_vibe_processid_value eq ${guid(processId)}` : undefined
     const rows = await this.all(this.client.engineErrors, filter, ["vibe_occurredon desc"], ERROR_LIMIT)
     return rows.map(toEngineError)
+  }
+
+  // ---- Business rule administration ----------------------------------------------
+  // Dataverse lets everyone read and only the Process Builder role write; the plug-in picks a saved rule up at once.
+
+  private toRuleAdmin(row: BusinessRuleRow, errorCounts: Map<Id, number>): RuleAdmin | undefined {
+    const definition = parseRuleDefinition(row.vibe_definition)
+    if (!definition) return undefined
+    const by = lookupName(row, "modifiedby")
+    return {
+      id: row.vibe_businessruleid,
+      name: row.vibe_name ?? "",
+      enabled: row.vibe_enabled !== false,
+      definition,
+      ...(by ? { lastChangedBy: by } : {}),
+      ...(row.modifiedon ? { lastChangedOn: row.modifiedon } : {}),
+      engineErrorCount: errorCounts.get(row.vibe_businessruleid) ?? 0,
+    }
+  }
+
+  private async ruleErrorCounts(): Promise<Map<Id, number>> {
+    const rows = await this.all(this.client.engineErrors, "_vibe_ruleid_value ne null", ["vibe_occurredon desc"], ERROR_LIMIT)
+    const counts = new Map<Id, number>()
+    for (const row of rows) if (row._vibe_ruleid_value) counts.set(row._vibe_ruleid_value, (counts.get(row._vibe_ruleid_value) ?? 0) + 1)
+    return counts
+  }
+
+  async listRulesAdmin(table: EngineTable): Promise<RuleAdmin[]> {
+    const [rows, counts] = await Promise.all([
+      this.all(this.client.businessRules, `${ACTIVE} and vibe_tablechoice eq ${ENGINE_TABLE_CHOICE[table]}`, ["createdon asc"]),
+      this.ruleErrorCounts(),
+    ])
+    return rows.flatMap((row) => this.toRuleAdmin(row, counts) ?? [])
+  }
+
+  async saveBusinessRule(input: RuleInput): Promise<RuleAdmin> {
+    const table = input.definition.table
+    const others = (await this.listRulesAdmin(table)).filter((r) => r.id !== input.id)
+    const processes =
+      table === "lead" || table === "opportunity"
+        ? await this.latestProcessDefinitions(table)
+        : []
+    const { errors } = checkRule({ rule: input, otherRules: others, processes })
+    if (errors.length > 0) throw new PublishRefused(errors)
+    const fields = { vibe_name: input.name.trim(), vibe_enabled: input.enabled, vibe_definition: JSON.stringify(input.definition) }
+    const saved = input.id
+      ? await this.call(() => this.client.businessRules.update(guid(input.id!), fields))
+      : await this.call(() => this.client.businessRules.create({ ...fields, vibe_tablechoice: ENGINE_TABLE_CHOICE[table] }))
+    const row = await this.call(() => this.client.businessRules.get(saved.vibe_businessruleid))
+    const rule = this.toRuleAdmin(row, new Map())
+    if (!rule) throw new GatewayError("invalid", "The rule could not be saved.")
+    return rule
+  }
+
+  async deleteBusinessRule(id: Id): Promise<void> {
+    await this.call(() => this.client.businessRules.delete(guid(id)))
+  }
+
+  async listRuleEngineErrors(ruleId: Id): Promise<EngineErrorEntry[]> {
+    const rows = await this.all(this.client.engineErrors, `_vibe_ruleid_value eq ${guid(ruleId)}`, ["vibe_occurredon desc"], ERROR_LIMIT)
+    return rows.map(toEngineError)
+  }
+
+  /** The latest published definition of every Process of a table that is not retired. */
+  private async latestProcessDefinitions(table: ProcessTable): Promise<ProcessDefinition[]> {
+    const { processes, versions } = await this.getProcessDefinitions(table)
+    return processes
+      .filter((p) => !p.retired)
+      .flatMap((p) => versions.filter((v) => v.id === p.latestVersionId).map((v) => v.definition))
   }
 
   // ---- Products -----------------------------------------------------------------
