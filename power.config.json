@@ -10,7 +10,16 @@
   "buildEntryPoint": "index.html",
   "localAppUrl": "http://localhost:3000",
   "logoPath": "Default",
-  "connectionReferences": {},
+  "connectionReferences": {
+    "dda4b5d8-4fd2-4a1b-8e74-7583c8f460e9": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+      "displayName": "Office 365 Outlook",
+      "dataSources": [
+        "office365"
+      ],
+      "dataSets": {}
+    }
+  },
   "databaseReferences": {
     "default.cds": {
       "dataSources": {
@@ -82,6 +91,16 @@
         "quotelines": {
           "entitySetName": "vibe_quotelines",
           "logicalName": "vibe_quoteline",
+          "isHidden": false
+        },
+        "quotetemplates": {
+          "entitySetName": "vibe_quotetemplates",
+          "logicalName": "vibe_quotetemplate",
+          "isHidden": false
+        },
+        "quotesettings": {
+          "entitySetName": "vibe_quotesettingses",
+          "logicalName": "vibe_quotesettings",
           "isHidden": false
         }
       },

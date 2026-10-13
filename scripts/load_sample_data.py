@@ -134,7 +134,9 @@ def check(dv, data, users):
             print(f"  FAIL {data['users'][key]} reads {got} Quotas, expected {expected}")
             ok = False
     # Everyone reads every Quote and its lines (Read is Organization-wide).
-    for label, entity_set, expected in (("Quotes", "vibe_quotes", len(data.get("quotes", []))), ("Quote lines", "vibe_quotelines", len(data.get("quoteLines", [])))):
+    # Quote templates and settings are read by everyone too: the PDF is drawn in the salesperson's browser.
+    for label, entity_set, expected in (("Quotes", "vibe_quotes", len(data.get("quotes", []))), ("Quote lines", "vibe_quotelines", len(data.get("quoteLines", []))),
+                                        ("Quote templates", "vibe_quotetemplates", len(data.get("quoteTemplates", []))), ("Quote settings", "vibe_quotesettingses", len(data.get("quoteSettings", [])))):
         for key, user in users.items():
             got = len(dv.get(f"{entity_set}?$select=statecode&$top=500", as_user=user)["value"])
             if got != expected:

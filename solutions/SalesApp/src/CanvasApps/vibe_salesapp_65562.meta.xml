@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Name>vibe_salesapp_65562</Name>
-  <AppVersion>2026-10-13T09:49:25Z</AppVersion>
+  <AppVersion>2026-10-13T16:17:36Z</AppVersion>
   <Status>Ready</Status>
   <CreatedByClientVersion>0.0.0.0</CreatedByClientVersion>
   <MinClientVersion>0.0.0.0</MinClientVersion>
@@ -14,8 +14,8 @@
   <CommitMessage xsi:nil="true"></CommitMessage>
   <Publisher xsi:nil="true"></Publisher>
   <AuthorizationReferences>[]</AuthorizationReferences>
-  <ConnectionReferences>{}</ConnectionReferences>
-  <DatabaseReferences>{"default.cds":{"databaseDetails":{"referenceType":"Environmental","environmentName":"default.cds","overrideValues":{"status":"NotSpecified","environmentVariableName":""}},"dataSources":{"users":{"entitySetName":"systemusers","logicalName":"systemuser"},"environment_39a902ba":{"entitySetName":"Environment","logicalName":"environment_39a902ba"},"accounts":{"entitySetName":"accounts","logicalName":"account"},"contacts":{"entitySetName":"contacts","logicalName":"contact"},"leads":{"entitySetName":"vibe_leads","logicalName":"vibe_lead"},"opportunities":{"entitySetName":"vibe_opportunities","logicalName":"vibe_opportunity"},"annotations":{"entitySetName":"annotations","logicalName":"annotation"},"tasks":{"entitySetName":"tasks","logicalName":"task"},"phonecalls":{"entitySetName":"phonecalls","logicalName":"phonecall"},"products":{"entitySetName":"vibe_products","logicalName":"vibe_product"},"quotas":{"entitySetName":"vibe_quotas","logicalName":"vibe_quota"},"productlines":{"entitySetName":"vibe_productlines","logicalName":"vibe_productline"},"quotes":{"entitySetName":"vibe_quotes","logicalName":"vibe_quote"},"quotelines":{"entitySetName":"vibe_quotelines","logicalName":"vibe_quoteline"}}}}</DatabaseReferences>
+  <ConnectionReferences>{"dda4b5d8-4fd2-4a1b-8e74-7583c8f460e9":{"id":"/providers/Microsoft.PowerApps/apis/shared_office365","displayName":"Office 365 Outlook","iconUri":"https://static.powerapps.com/resource/ppcr/releases/v1.0.1831/1.0.1831.5110/office365/icon.png","dataSources":["office365"],"dependencies":[],"dependents":[],"parameterHints":{},"parameterHintsV2":{},"isOnPremiseConnection":false,"bypassConsent":false,"dataSets":{},"apiTier":"Standard","actions":[]}}</ConnectionReferences>
+  <DatabaseReferences>{"default.cds":{"databaseDetails":{"referenceType":"Environmental","environmentName":"default.cds","overrideValues":{"status":"NotSpecified","environmentVariableName":""}},"dataSources":{"users":{"entitySetName":"systemusers","logicalName":"systemuser"},"environment_39a902ba":{"entitySetName":"Environment","logicalName":"environment_39a902ba"},"accounts":{"entitySetName":"accounts","logicalName":"account"},"contacts":{"entitySetName":"contacts","logicalName":"contact"},"leads":{"entitySetName":"vibe_leads","logicalName":"vibe_lead"},"opportunities":{"entitySetName":"vibe_opportunities","logicalName":"vibe_opportunity"},"annotations":{"entitySetName":"annotations","logicalName":"annotation"},"tasks":{"entitySetName":"tasks","logicalName":"task"},"phonecalls":{"entitySetName":"phonecalls","logicalName":"phonecall"},"products":{"entitySetName":"vibe_products","logicalName":"vibe_product"},"quotas":{"entitySetName":"vibe_quotas","logicalName":"vibe_quota"},"productlines":{"entitySetName":"vibe_productlines","logicalName":"vibe_productline"},"quotes":{"entitySetName":"vibe_quotes","logicalName":"vibe_quote"},"quotelines":{"entitySetName":"vibe_quotelines","logicalName":"vibe_quoteline"},"quotetemplates":{"entitySetName":"vibe_quotetemplates","logicalName":"vibe_quotetemplate"},"quotesettings":{"entitySetName":"vibe_quotesettingses","logicalName":"vibe_quotesettings"}}}}</DatabaseReferences>
   <AppComponents>[]</AppComponents>
   <AppComponentDependencies>[]</AppComponentDependencies>
   <CanConsumeAppPass>1</CanConsumeAppPass>
@@ -24,12 +24,12 @@
   <AdminControlBypassConsent>0</AdminControlBypassConsent>
   <EmbeddedApp xsi:nil="true"></EmbeddedApp>
   <IntroducedVersion>1.0</IntroducedVersion>
-  <CdsDependencies>{"cdsdependencies":[{"logicalname":"systemuser","componenttype":1},{"logicalname":"account","componenttype":1},{"logicalname":"contact","componenttype":1},{"logicalname":"vibe_lead","componenttype":1},{"logicalname":"vibe_opportunity","componenttype":1},{"logicalname":"annotation","componenttype":1},{"logicalname":"task","componenttype":1},{"logicalname":"phonecall","componenttype":1},{"logicalname":"vibe_product","componenttype":1},{"logicalname":"vibe_quota","componenttype":1},{"logicalname":"vibe_productline","componenttype":1},{"logicalname":"vibe_quote","componenttype":1},{"logicalname":"vibe_quoteline","componenttype":1}]}</CdsDependencies>
+  <CdsDependencies>{"cdsdependencies":[{"logicalname":"systemuser","componenttype":1},{"logicalname":"account","componenttype":1},{"logicalname":"contact","componenttype":1},{"logicalname":"vibe_lead","componenttype":1},{"logicalname":"vibe_opportunity","componenttype":1},{"logicalname":"annotation","componenttype":1},{"logicalname":"task","componenttype":1},{"logicalname":"phonecall","componenttype":1},{"logicalname":"vibe_product","componenttype":1},{"logicalname":"vibe_quota","componenttype":1},{"logicalname":"vibe_productline","componenttype":1},{"logicalname":"vibe_quote","componenttype":1},{"logicalname":"vibe_quoteline","componenttype":1},{"logicalname":"vibe_quotetemplate","componenttype":1},{"logicalname":"vibe_quotesettings","componenttype":1}]}</CdsDependencies>
   <IsCustomizable>1</IsCustomizable>
   <CodeAppPackageUris>
     <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-QHj9hmNw.js_ContentType_application/javascript</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-wJJOGbgY.css_ContentType_text/css</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-D6VttEJH.css_ContentType_text/css</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/assets/index-DEKVO_N_.js_ContentType_application/javascript</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/vibe_salesapp_65562_CodeAppPackages/power-apps.svg_ContentType_image/svg+xml</CodeAppPackageUri>
   </CodeAppPackageUris>
 </CanvasApp>

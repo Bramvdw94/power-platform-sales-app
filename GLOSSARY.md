@@ -151,6 +151,22 @@ _Avoid_: Copy, new version, amend
 Recording that the customer agreed to a Quote. The Opportunity's other Sent Quotes become Rejected and the user is offered to Close the Opportunity as won at the Quote's net total.
 _Avoid_: Win, sign, approve
 
+**Quote template**:
+The layout of a Quote's PDF: an ordered list of Blocks with their options, and a page style (accent colour, typeface, logo position, language). A Catalogue manager designs several; exactly one is the Default, which a Quote uses unless its Owner picks another while it is a Draft. Editing a template never changes a PDF that was already sent.
+_Avoid_: PDF layout, Quote design
+
+**Block**:
+One part of a Quote template's page: Header, Customer address, Reference strip, Title and intro, Product lines, Totals and VAT per rate, Terms, Your contact person, Acceptance and signature, or Footer. Each appears at most once. Product lines, Totals and the Footer are always on the page; the Footer stays at the bottom.
+_Avoid_: Section, widget, component
+
+**Quote settings**:
+The one record of company details (name, logo, address, phone, email, website, KvK, btw-id, IBAN), default validity, terms link and text, and the email subject and message templates behind every Quote PDF and Quote email. A Catalogue manager edits it; everyone in sales reads it.
+_Avoid_: Company settings, PDF settings
+
+**Send**:
+Delivering a Draft Quote to the customer in one of two ways, by email from the user's own Outlook or by downloading the PDF to send by hand. Either way the exact PDF is stored on the Quote and the Quote becomes Sent, with when, by whom, how and to which address recorded. Download PDF on a Sent Quote returns that stored copy.
+_Avoid_: Issue, Publish, Mail merge
+
 ### Activities
 
 **Activity**:

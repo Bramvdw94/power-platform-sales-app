@@ -1,0 +1,75 @@
+{
+  "settings": {
+    "companyName": "Northwind Solutions B.V.",
+    "address": "Stationsplein 12\n3511 ED Utrecht",
+    "phone": "030 123 45 67",
+    "email": "sales@northwind-solutions.example",
+    "website": "northwind-solutions.example",
+    "kvk": "87654321",
+    "btwId": "NL864512398B01",
+    "iban": "NL91 ABNA 0417 1643 00",
+    "defaultValidityDays": 30,
+    "termsUrl": "northwind-solutions.example/voorwaarden",
+    "termsText": "Op deze offerte zijn onze algemene voorwaarden van toepassing. Prijzen zijn in euro en exclusief btw, tenzij anders vermeld. Facturatie van uren maandelijks achteraf; licenties jaarlijks vooraf.",
+    "emailSubject": "Offerte {{quote_number}}",
+    "emailMessage": "Beste {{contact_name}},\n\nHierbij ontvang je onze offerte {{quote_number}}. De offerte is geldig tot en met {{valid_until}}.\n\nMet vriendelijke groet,\n{{owner_name}}\n{{company}}"
+  },
+  "templates": [
+    {
+      "name": "Business letter",
+      "isDefault": true,
+      "definition": {
+        "version": 1,
+        "style": { "accent": "#14213d", "font": "sans", "logoPosition": "right", "language": "nl" },
+        "blocks": [
+          { "id": "header", "type": "header", "options": { "band": false, "sender": true } },
+          { "id": "address", "type": "address", "options": {} },
+          { "id": "reference", "type": "reference", "options": { "revision": true } },
+          { "id": "title", "type": "title", "options": { "intro": "Naar aanleiding van ons gesprek bieden wij u het volgende aan." } },
+          { "id": "lines", "type": "lines", "options": { "code": true, "unit": true, "discount": true, "vat": true } },
+          { "id": "totals", "type": "totals", "options": {} },
+          { "id": "terms", "type": "terms", "options": { "useSettings": true, "text": "" } },
+          { "id": "contact", "type": "contact", "options": { "phone": true } },
+          { "id": "footer", "type": "footer", "options": {} }
+        ]
+      }
+    },
+    {
+      "name": "Proposal",
+      "isDefault": false,
+      "definition": {
+        "version": 1,
+        "style": { "accent": "#0f6b5c", "font": "sans", "logoPosition": "left", "language": "nl" },
+        "blocks": [
+          { "id": "header", "type": "header", "options": { "band": true, "sender": false } },
+          { "id": "title", "type": "title", "options": { "intro": "Graag doen wij u dit voorstel voor de inrichting van uw verkoopproces." } },
+          { "id": "address", "type": "address", "options": {} },
+          { "id": "reference", "type": "reference", "options": { "revision": false } },
+          { "id": "lines", "type": "lines", "options": { "code": false, "unit": true, "discount": true, "vat": false } },
+          { "id": "totals", "type": "totals", "options": {} },
+          { "id": "terms", "type": "terms", "options": { "useSettings": true, "text": "" } },
+          { "id": "contact", "type": "contact", "options": { "phone": true } },
+          { "id": "footer", "type": "footer", "options": {} }
+        ]
+      }
+    },
+    {
+      "name": "Order form",
+      "isDefault": false,
+      "definition": {
+        "version": 1,
+        "style": { "accent": "#3b3f46", "font": "sans", "logoPosition": "left", "language": "nl" },
+        "blocks": [
+          { "id": "header", "type": "header", "options": { "band": false, "sender": true } },
+          { "id": "reference", "type": "reference", "options": { "revision": true } },
+          { "id": "address", "type": "address", "options": {} },
+          { "id": "lines", "type": "lines", "options": { "code": false, "unit": true, "discount": true, "vat": true } },
+          { "id": "totals", "type": "totals", "options": {} },
+          { "id": "terms", "type": "terms", "options": { "useSettings": true, "text": "" } },
+          { "id": "signature", "type": "signature", "options": { "heading": "Akkoord voor opdracht" } },
+          { "id": "footer", "type": "footer", "options": {} }
+        ]
+      }
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { SalesRuleError, throwIfFieldErrors, type FieldErrors } from "./errors"
 import { productLinesTotal } from "./product-lines"
 import type { DateOnly, Quote, QuoteLine, QuoteStatus, VatRate } from "./types"
 
-/** A new Quote is valid this many days from the day it is made (Quote settings, #83, will make it editable). */
+/** A new Quote is valid this many days from the day it is made (Quote settings can change it). */
 export const QUOTE_VALIDITY_DAYS = 30
 
 /** What each status can move to: a Draft is Sent; a Sent Quote is Accepted, Rejected or Revised; nothing leaves those. */
@@ -42,8 +42,8 @@ export function addDays(date: DateOnly, days: number): DateOnly {
   return toDateOnly(new Date(y, m - 1, d + days))
 }
 
-export function defaultValidUntil(today: DateOnly): DateOnly {
-  return addDays(today, QUOTE_VALIDITY_DAYS)
+export function defaultValidUntil(today: DateOnly, days: number = QUOTE_VALIDITY_DAYS): DateOnly {
+  return addDays(today, days)
 }
 
 /** "Q-00001" or "Q-00001 (rev 2)": the number, with the Revision when it is not the first. */

@@ -2,8 +2,11 @@
 // src/generated. Regenerate those with the commands in README, Dataverse data
 // sources; this file is the only place that knows their shape.
 
+import { getClient } from "@microsoft/power-apps/data"
 import type { IOperationResult } from "@microsoft/power-apps/data"
+import { dataSourcesInfo } from "../../../.power/schemas/appschemas/dataSourcesInfo"
 import {
+  Office365OutlookService,
   AccountsService,
   AnnotationsService,
   ContactsService,
@@ -17,6 +20,8 @@ import {
   Vibe_quotasService,
   Vibe_quotelinesService,
   Vibe_quotesService,
+  Vibe_quotesettingsesService,
+  Vibe_quotetemplatesService,
   WhoAmIService,
 } from "@/generated"
 import type { IGetAllOptions } from "@/generated/models/CommonModels"
@@ -33,6 +38,9 @@ import {
   QUOTA_COLUMNS,
   QUOTE_COLUMNS,
   QUOTE_LINE_COLUMNS,
+  QUOTE_PDF_COLUMN,
+  QUOTE_SETTINGS_COLUMNS,
+  QUOTE_TEMPLATE_COLUMNS,
   SYSTEM_USER_COLUMNS,
   TASK_COLUMNS,
   type DataverseClient,
@@ -87,6 +95,14 @@ function table<T>(service: GeneratedService, name: string, columns: readonly str
   }
 }
 
+const QUOTES_SOURCE = "vibe_quotes"
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = ""
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(binary)
+}
+
 export function createGeneratedClient(): DataverseClient {
   return {
     async whoAmI() {
@@ -124,6 +140,30 @@ export function createGeneratedClient(): DataverseClient {
     quotas: table(Vibe_quotasService, "vibe_quota", QUOTA_COLUMNS),
     quotes: table(Vibe_quotesService, "vibe_quote", QUOTE_COLUMNS),
     quoteLines: table(Vibe_quotelinesService, "vibe_quoteline", QUOTE_LINE_COLUMNS),
+    quoteTemplates: table(Vibe_quotetemplatesService, "vibe_quotetemplate", QUOTE_TEMPLATE_COLUMNS),
+    quoteSettings: table(Vibe_quotesettingsesService, "vibe_quotesettings", QUOTE_SETTINGS_COLUMNS),
+
+    async uploadQuotePdf(quoteId, fileName, bytes) {
+      unwrap(await getClient(dataSourcesInfo).uploadFileToRecord(QUOTES_SOURCE, quoteId, QUOTE_PDF_COLUMN, fileName, bytes), "Quote PDF upload")
+    },
+
+    async downloadQuotePdf(quoteId) {
+      return unwrap(await getClient(dataSourcesInfo).downloadFileFromRecord(QUOTES_SOURCE, quoteId, QUOTE_PDF_COLUMN), "Quote PDF download")
+    },
+
+    async sendEmail(email) {
+      unwrap(
+        await Office365OutlookService.SendEmailV2({
+          To: email.to,
+          Cc: email.cc || undefined,
+          Subject: email.subject,
+          Body: email.body,
+          Attachments: [{ Name: email.attachment.name, ContentBytes: toBase64(email.attachment.bytes) }],
+        }),
+        "Outlook send",
+      )
+    },
+
     notes: table(AnnotationsService, "annotation", NOTE_COLUMNS),
     tasks: table(TasksService, "task", TASK_COLUMNS),
     phoneCalls: table(PhonecallsService, "phonecall", PHONE_CALL_COLUMNS),

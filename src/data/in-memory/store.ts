@@ -1,4 +1,4 @@
-import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, ProductLine, Quota, Quote, QuoteLine, User } from "@/sales"
+import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, ProductLine, Quota, Quote, QuoteLine, QuoteSettings, QuoteTemplate, User } from "@/sales"
 
 // What the in-memory store keeps: records without the display names that
 // Dataverse returns as formatted values. The gateway adds those on read.
@@ -10,7 +10,7 @@ export type ContactRow = Omit<Contact, "ownerName" | "accountName">
 export type LeadRow = Omit<Lead, "ownerName">
 export type OpportunityRow = Omit<Opportunity, "ownerName" | "accountName" | "primaryContactName" | "closedByName">
 export type QuotaRow = Omit<Quota, "salespersonName">
-export type QuoteRow = Omit<Quote, "ownerName" | "accountName" | "contactName" | "sentByName">
+export type QuoteRow = Omit<Quote, "ownerName" | "accountName" | "contactName" | "sentByName" | "templateName" | "hasStoredPdf">
 export type ActivityRow = DistributiveOmit<Activity, "ownerName" | "regardingName">
 
 export type InMemoryData = {
@@ -25,7 +25,12 @@ export type InMemoryData = {
   productLines?: ProductLine[]
   quotes?: QuoteRow[]
   quoteLines?: QuoteLine[]
+  quoteTemplates?: QuoteTemplate[]
+  quoteSettings?: QuoteSettings
 }
+
+/** An email the in-memory gateway "sent": tests read these instead of a mailbox. */
+export type SentEmail = { from: string; to: string; cc?: string; subject: string; message: string; attachmentName: string; attachment: Uint8Array }
 
 /** Shared state behind one or more in-memory gateways (one per signed-in user). */
 export class InMemorySalesStore {
@@ -40,6 +45,11 @@ export class InMemorySalesStore {
   readonly productLines = new Map<Id, ProductLine>()
   readonly quotes = new Map<Id, QuoteRow>()
   readonly quoteLines = new Map<Id, QuoteLine>()
+  readonly quoteTemplates = new Map<Id, QuoteTemplate>()
+  /** The PDF stored on each Sent Quote. */
+  readonly quotePdfs = new Map<Id, Uint8Array>()
+  readonly sentEmails: SentEmail[] = []
+  quoteSettings: QuoteSettings
   private sequence = 0
 
   constructor(data: InMemoryData) {
@@ -55,6 +65,8 @@ export class InMemorySalesStore {
     for (const row of copy.productLines ?? []) this.productLines.set(row.id, row)
     for (const row of copy.quotes ?? []) this.quotes.set(row.id, row)
     for (const row of copy.quoteLines ?? []) this.quoteLines.set(row.id, row)
+    for (const row of copy.quoteTemplates ?? []) this.quoteTemplates.set(row.id, row)
+    this.quoteSettings = copy.quoteSettings ?? EMPTY_QUOTE_SETTINGS
   }
 
   /** The next Quote number: Q-00001, then one more than the highest in use. */
@@ -67,4 +79,22 @@ export class InMemorySalesStore {
     this.sequence += 1
     return `${prefix}-new-${this.sequence}`
   }
+}
+
+export const EMPTY_QUOTE_SETTINGS: QuoteSettings = {
+  id: "quote-settings",
+  companyName: "",
+  address: "",
+  phone: "",
+  email: "",
+  website: "",
+  kvk: "",
+  btwId: "",
+  iban: "",
+  logo: "",
+  defaultValidityDays: 30,
+  termsUrl: "",
+  termsText: "",
+  emailSubject: "Quote {{quote_number}}",
+  emailMessage: "Dear {{contact_name}},\n\nPlease find our quote {{quote_number}} attached. It is valid until {{valid_until}}.\n\nKind regards,\n{{owner_name}}",
 }

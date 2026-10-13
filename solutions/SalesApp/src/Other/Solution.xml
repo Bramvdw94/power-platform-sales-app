@@ -102,6 +102,8 @@
       <RootComponent type="1" schemaName="vibe_quota" behavior="0" />
       <RootComponent type="1" schemaName="vibe_quote" behavior="0" />
       <RootComponent type="1" schemaName="vibe_quoteline" behavior="0" />
+      <RootComponent type="1" schemaName="vibe_quotesettings" behavior="0" />
+      <RootComponent type="1" schemaName="vibe_quotetemplate" behavior="0" />
       <RootComponent type="20" id="{10079eb6-b2c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="20" id="{366b2f26-93c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="20" id="{468142e9-dac3-f111-b377-7c1e5253a39d}" behavior="0" />

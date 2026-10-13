@@ -16,6 +16,7 @@
     <RolePrivilege name="prvAppendTovibe_Product" level="Global" />
     <RolePrivilege name="prvAppendTovibe_Quote" level="Basic" />
     <RolePrivilege name="prvAppendTovibe_QuoteLine" level="Basic" />
+    <RolePrivilege name="prvAppendTovibe_QuoteTemplate" level="Global" />
     <RolePrivilege name="prvAppendvibe_Lead" level="Basic" />
     <RolePrivilege name="prvAppendvibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvAppendvibe_ProductLine" level="Basic" />
@@ -62,6 +63,8 @@
     <RolePrivilege name="prvReadvibe_Quota" level="Basic" />
     <RolePrivilege name="prvReadvibe_Quote" level="Global" />
     <RolePrivilege name="prvReadvibe_QuoteLine" level="Global" />
+    <RolePrivilege name="prvReadvibe_QuoteSettings" level="Global" />
+    <RolePrivilege name="prvReadvibe_QuoteTemplate" level="Global" />
     <RolePrivilege name="prvWriteAccount" level="Basic" />
     <RolePrivilege name="prvWriteActivity" level="Basic" />
     <RolePrivilege name="prvWriteContact" level="Basic" />

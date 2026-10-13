@@ -7,7 +7,11 @@ import {
   productLinesTotal,
   productErrors,
   defaultValidUntil,
+  definitionErrors,
+  isEmailAddress,
   quoteErrors,
+  quoteSettingsErrors,
+  templateErrors,
   quoteTotals,
   requireQuoteMove,
   canApplyLeadAction,
@@ -70,6 +74,11 @@ import {
   type ProductLineUpdate,
   type PipelineFilter,
   type Quote,
+  type QuoteSettings,
+  type QuoteSettingsUpdate,
+  type QuoteTemplate,
+  type QuoteTemplateInput,
+  type QuoteTemplateUpdate,
   type QuoteLine,
   type QuoteLineInput,
   type QuoteLineUpdate,
@@ -103,6 +112,7 @@ import {
   type ProductUpdate,
   type PhoneCallInput,
   type QuoteDetails,
+  type SendQuoteInput,
   type QualifyInput,
   type QualifyResult,
   type QualifyStep,
@@ -430,13 +440,18 @@ export class InMemorySalesGateway implements SalesGateway {
     const row = this.quoteRow(id)
     const opportunity = this.opportunityRow(row.opportunityId)
     const contact = row.contactId ? this.store.contacts.get(row.contactId) : undefined
-    return {
+    const account = this.store.accounts.get(row.accountId)
+    const lines = this.quoteLinesOf(id)
+    return clone({
       quote: this.toQuote(row),
-      lines: this.quoteLinesOf(id),
+      lines,
       opportunity: this.toOpportunity(opportunity),
+      account: account && this.toAccount(account),
       contact: contact && this.toContact(contact),
+      owner: this.user(row.ownerId),
+      products: [...new Set(lines.map((l) => l.productId))].map((pid) => this.productRow(pid)),
       canEdit: this.mayEdit(row.ownerId),
-    }
+    })
   }
 
   async createQuote(opportunityId: Id): Promise<Quote> {
@@ -451,7 +466,7 @@ export class InMemorySalesGateway implements SalesGateway {
       status: "draft",
       accountId: opportunity.accountId,
       contactId: opportunity.primaryContactId,
-      validUntil: defaultValidUntil(this.today()),
+      validUntil: defaultValidUntil(this.today(), this.store.quoteSettings.defaultValidityDays),
       netTotal: 0,
       vat21: 0,
       vat9: 0,
@@ -470,10 +485,11 @@ export class InMemorySalesGateway implements SalesGateway {
   async updateQuote(id: Id, update: QuoteUpdate): Promise<Quote> {
     const row = this.draftQuote(id)
     if (update.contactId) this.contactRow(update.contactId)
+    if (update.templateId && !this.store.quoteTemplates.has(update.templateId)) throw new GatewayError("notFound", `Quote template ${update.templateId} not found.`)
     invalid("The Quote cannot be saved.", quoteErrors(update))
     const next = withoutBlanks({
       ...row,
-      ...defined(clone({ contactId: update.contactId, validUntil: update.validUntil })),
+      ...defined(clone({ contactId: update.contactId, validUntil: update.validUntil, templateId: update.templateId })),
     }) as QuoteRow
     this.store.quotes.set(id, next)
     return this.toQuote(next)
@@ -525,11 +541,88 @@ export class InMemorySalesGateway implements SalesGateway {
     this.syncQuoteTotals(line.quoteId)
   }
 
-  async sendQuote(id: Id): Promise<Quote> {
+  async sendQuote(id: Id, input: SendQuoteInput): Promise<Quote> {
     const row = this.movableQuote(id, "sent")
-    const sent: QuoteRow = { ...row, status: "sent", sentOn: this.now().toISOString(), sentById: this.userId }
+    let sentTo: string | undefined
+    if (input.route === "email") {
+      const to = input.to.trim()
+      if (!to) throw new GatewayError("invalid", "The Quote cannot be sent.", { to: "The Contact has no email address." })
+      if (!isEmailAddress(to)) throw new GatewayError("invalid", "The Quote cannot be sent.", { to: "Enter a valid email address." })
+      sentTo = to
+    }
+    this.store.quotePdfs.set(id, input.pdf.slice())
+    if (input.route === "email") {
+      this.store.sentEmails.push({
+        from: this.user(this.userId).email,
+        to: sentTo!,
+        cc: input.cc?.trim() || undefined,
+        subject: input.subject,
+        message: input.message,
+        attachmentName: `${row.number}.pdf`,
+        attachment: input.pdf.slice(),
+      })
+    }
+    const sent: QuoteRow = withoutBlanks({ ...row, status: "sent", sentOn: this.now().toISOString(), sentById: this.userId, sentVia: input.route, sentTo })
     this.store.quotes.set(id, sent)
     return this.toQuote(sent)
+  }
+
+  async getQuotePdf(id: Id): Promise<Uint8Array | undefined> {
+    this.quoteRow(id)
+    return this.store.quotePdfs.get(id)?.slice()
+  }
+
+  // ---- Quote templates and settings ----------------------------------------------
+
+  async listQuoteTemplates(): Promise<QuoteTemplate[]> {
+    return clone([...this.store.quoteTemplates.values()].sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name)))
+  }
+
+  async createQuoteTemplate(input: QuoteTemplateInput): Promise<QuoteTemplate> {
+    this.requireCatalogueManager()
+    invalid("The template cannot be saved.", this.templateFieldErrors(input))
+    const first = this.store.quoteTemplates.size === 0
+    const row: QuoteTemplate = { id: this.store.newId("qtpl"), name: input.name.trim(), isDefault: first || !!input.isDefault, definition: clone(input.definition) }
+    if (row.isDefault) this.clearDefaultTemplate()
+    this.store.quoteTemplates.set(row.id, row)
+    return clone(row)
+  }
+
+  async updateQuoteTemplate(id: Id, update: QuoteTemplateUpdate): Promise<QuoteTemplate> {
+    this.requireCatalogueManager()
+    const row = this.store.quoteTemplates.get(id)
+    if (!row) throw new GatewayError("notFound", `Quote template ${id} not found.`)
+    const next: QuoteTemplate = { ...row, ...defined(clone(update)) }
+    next.name = next.name.trim()
+    invalid("The template cannot be saved.", this.templateFieldErrors(next))
+    if (row.isDefault && update.isDefault === false) {
+      throw new GatewayError("invalid", "The template cannot be saved.", { isDefault: "Make another template the Default instead." })
+    }
+    if (next.isDefault && !row.isDefault) this.clearDefaultTemplate()
+    this.store.quoteTemplates.set(id, next)
+    return clone(next)
+  }
+
+  async getQuoteSettings(): Promise<QuoteSettings> {
+    return clone(this.store.quoteSettings)
+  }
+
+  async updateQuoteSettings(update: QuoteSettingsUpdate): Promise<QuoteSettings> {
+    this.requireCatalogueManager()
+    invalid("The Quote settings cannot be saved.", quoteSettingsErrors(update))
+    this.store.quoteSettings = { ...this.store.quoteSettings, ...defined(clone(update)) }
+    return clone(this.store.quoteSettings)
+  }
+
+  private clearDefaultTemplate(): void {
+    for (const template of this.store.quoteTemplates.values()) if (template.isDefault) this.store.quoteTemplates.set(template.id, { ...template, isDefault: false })
+  }
+
+  private templateFieldErrors(template: { name?: string; definition?: QuoteTemplateInput["definition"] }): FieldErrors {
+    const errors: FieldErrors = { ...templateErrors(template) }
+    const problems = template.definition ? definitionErrors(template.definition) : []
+    if (problems.length > 0) errors.definition = problems.join(" ")
+    return errors
   }
 
   async reviseQuote(id: Id): Promise<Quote> {
@@ -539,9 +632,11 @@ export class InMemorySalesGateway implements SalesGateway {
       id: this.store.newId("quote"),
       revision: row.revision + 1,
       status: "draft",
-      validUntil: defaultValidUntil(this.today()),
+      validUntil: defaultValidUntil(this.today(), this.store.quoteSettings.defaultValidityDays),
       sentOn: undefined,
       sentById: undefined,
+      sentVia: undefined,
+      sentTo: undefined,
       createdOn: this.now().toISOString(),
     }
     this.store.quotes.set(draft.id, withoutBlanks(draft))
@@ -1201,6 +1296,8 @@ export class InMemorySalesGateway implements SalesGateway {
       accountName: this.store.accounts.get(row.accountId)?.name ?? "",
       contactName: contact && fullName(contact),
       sentByName: row.sentById && this.ownerName(row.sentById),
+      templateName: row.templateId && this.store.quoteTemplates.get(row.templateId)?.name,
+      hasStoredPdf: this.store.quotePdfs.has(row.id),
     })
   }
 

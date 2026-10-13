@@ -72,6 +72,9 @@ class Table:
 
 TABLES = [
     Table("products", "prod-", "vibe_product", "vibe_products", "vibe_productid", (0, 1), owned=False),
+    # The three starter templates and the settings row come from data/quote-templates.json (#102).
+    Table("quoteTemplates", "qtpl-", "vibe_quotetemplate", "vibe_quotetemplates", "vibe_quotetemplateid", (0, 1), owned=False),
+    Table("quoteSettings", "qset-", "vibe_quotesettings", "vibe_quotesettingses", "vibe_quotesettingsid", (0, 1), owned=False),
     Table("accounts", "acc-", "account", "accounts", "accountid", (0, 1)),
     Table("contacts", "con-", "contact", "contacts", "contactid", (0, 1)),
     Table("leads", "lead-", "vibe_lead", "vibe_leads", "vibe_leadid", (0, 1)),
@@ -128,8 +131,21 @@ def record_id(key):
     return str(uuid.uuid5(ID_NAMESPACE, key))
 
 
+QUOTE_TEMPLATES_PATH = Path(__file__).resolve().parent.parent / "data" / "quote-templates.json"
+
+
+def load_quote_templates(path=QUOTE_TEMPLATES_PATH):
+    """The starter templates and the settings row, as sample-data sections with fixed keys."""
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    templates = [{"key": "qtpl-" + t["name"].lower().replace(" ", "-"), "createdDaysAgo": 0, **t} for t in raw["templates"]]
+    return {"quoteTemplates": templates, "quoteSettings": [{"key": "qset-company", "createdDaysAgo": 0, **raw["settings"]}]}
+
+
 def load_data(path=DATA_PATH):
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    for section, rows in load_quote_templates().items():
+        data.setdefault(section, rows)
+    return data
 
 
 def choice(values, name):
@@ -481,6 +497,31 @@ def build_records(data, users, nav, clock):
             "vibe_vatrate": choice(VAT_RATES, prod["vatRate"]),
         }, (1, 2) if prod.get("retired") else None)  # Retired Products are deactivated
 
+    for tpl in data.get("quoteTemplates", []):
+        add("quoteTemplates", tpl, {
+            "vibe_name": tpl["name"],
+            "vibe_isdefault": bool(tpl.get("isDefault")),
+            "vibe_definition": json.dumps(tpl["definition"], separators=(",", ":")),
+        })
+
+    for st in data.get("quoteSettings", []):
+        add("quoteSettings", st, {
+            "vibe_name": "Quote settings",
+            "vibe_companyname": st["companyName"],
+            "vibe_address": st.get("address"),
+            "vibe_phone": st.get("phone"),
+            "vibe_email": st.get("email"),
+            "vibe_website": st.get("website"),
+            "vibe_kvk": st.get("kvk"),
+            "vibe_btwid": st.get("btwId"),
+            "vibe_iban": st.get("iban"),
+            "vibe_defaultvaliditydays": st.get("defaultValidityDays"),
+            "vibe_termsurl": st.get("termsUrl"),
+            "vibe_termstext": st.get("termsText"),
+            "vibe_emailsubject": st.get("emailSubject"),
+            "vibe_emailmessage": st.get("emailMessage"),
+        })
+
     for acc in data["accounts"]:
         add("accounts", acc, {
             "name": acc["name"],
@@ -740,6 +781,7 @@ def summary(data):
         f"{len(opps)} Opportunities: {by(opps, 'stage', STAGES)}",
         f"{len(data.get('productLines', []))} Product lines on {len({l['opportunity'] for l in data.get('productLines', [])})} Opportunities",
         f"{len(data.get('quotes', []))} Quotes: {by(data.get('quotes', []), 'status', QUOTE_STATUSES)}",
+        f"{len(data.get('quoteTemplates', []))} Quote templates and {len(data.get('quoteSettings', []))} Quote settings row",
         f"{len(data['products'])} Products ({sum(bool(p.get('retired')) for p in data['products'])} retired)",
         f"{len(data['notes'])} Notes, {len(data['tasks'])} Tasks, {len(data['phoneCalls'])} Phone Calls",
         f"{len(data.get('quotas', []))} Quotas",

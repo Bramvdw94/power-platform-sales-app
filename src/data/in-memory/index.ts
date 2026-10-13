@@ -5,7 +5,7 @@ import { InMemorySalesStore } from "./store"
 
 export { InMemorySalesGateway, type InMemoryGatewayOptions } from "./in-memory-gateway"
 export { InMemorySalesStore, type InMemoryData } from "./store"
-export { SEED_IDS, SEED_USERS, createSeedData } from "./seed"
+export { SEED_IDS, SEED_SETTINGS, SEED_TEMPLATES, SEED_USERS, createSeedData } from "./seed"
 
 /** A store filled with the seed data, dated relative to `now`. */
 export function createSeededStore(now: Date = new Date()): InMemorySalesStore {

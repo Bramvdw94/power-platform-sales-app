@@ -12,6 +12,7 @@ export type SystemUserRow = {
   internalemailaddress?: string | null
   /** The user's Manager (the `parentsystemuserid` lookup). */
   _parentsystemuserid_value?: Id | null
+  address1_telephone1?: string | null
 }
 
 export const SYSTEM_USER_COLUMNS = [
@@ -19,6 +20,7 @@ export const SYSTEM_USER_COLUMNS = [
   "fullname",
   "internalemailaddress",
   "_parentsystemuserid_value",
+  "address1_telephone1",
 ] as const
 
 /**
@@ -252,6 +254,11 @@ export type QuoteRow = Row & {
   vibe_grosstotal?: number | null
   vibe_senton?: string | null
   _vibe_sentby_value?: Id | null
+  vibe_sentvia?: string | null
+  vibe_sentto?: string | null
+  _vibe_quotetemplateid_value?: Id | null
+  /** The stored PDF's file name; set once the Quote was sent with its PDF. */
+  vibe_storedpdf_name?: string | null
   _ownerid_value?: Id | null
   createdon?: string | null
 }
@@ -271,12 +278,82 @@ export const QUOTE_COLUMNS = [
   "vibe_grosstotal",
   "vibe_senton",
   "_vibe_sentby_value",
+  "vibe_sentvia",
+  "vibe_sentto",
+  "_vibe_quotetemplateid_value",
+  "vibe_storedpdf_name",
   "_ownerid_value",
   "createdon",
 ] as const
 
 /** A Quote's lookups, as navigation properties for `@odata.bind` writes. */
-export const QUOTE_NAVIGATION = { opportunity: "vibe_OpportunityId", account: "vibe_AccountId", contact: "vibe_ContactId", sentBy: "vibe_SentBy" } as const
+export const QUOTE_NAVIGATION = {
+  opportunity: "vibe_OpportunityId",
+  account: "vibe_AccountId",
+  contact: "vibe_ContactId",
+  sentBy: "vibe_SentBy",
+  template: "vibe_QuoteTemplateId",
+} as const
+
+/** The file column that keeps the exact PDF a Sent Quote went out with. */
+export const QUOTE_PDF_COLUMN = "vibe_storedpdf"
+
+/** The vibe_quotetemplate columns the app reads. */
+export type QuoteTemplateRow = Row & {
+  vibe_quotetemplateid: Id
+  vibe_name?: string | null
+  vibe_isdefault?: boolean | null
+  vibe_definition?: string | null
+}
+
+export const QUOTE_TEMPLATE_COLUMNS = ["vibe_quotetemplateid", "vibe_name", "vibe_isdefault", "vibe_definition"] as const
+
+/** The vibe_quotesettings columns the app reads: one row. */
+export type QuoteSettingsRow = Row & {
+  vibe_quotesettingsid: Id
+  vibe_companyname?: string | null
+  vibe_address?: string | null
+  vibe_phone?: string | null
+  vibe_email?: string | null
+  vibe_website?: string | null
+  vibe_kvk?: string | null
+  vibe_btwid?: string | null
+  vibe_iban?: string | null
+  vibe_logo?: string | null
+  vibe_defaultvaliditydays?: number | null
+  vibe_termsurl?: string | null
+  vibe_termstext?: string | null
+  vibe_emailsubject?: string | null
+  vibe_emailmessage?: string | null
+}
+
+export const QUOTE_SETTINGS_COLUMNS = [
+  "vibe_quotesettingsid",
+  "vibe_companyname",
+  "vibe_address",
+  "vibe_phone",
+  "vibe_email",
+  "vibe_website",
+  "vibe_kvk",
+  "vibe_btwid",
+  "vibe_iban",
+  "vibe_logo",
+  "vibe_defaultvaliditydays",
+  "vibe_termsurl",
+  "vibe_termstext",
+  "vibe_emailsubject",
+  "vibe_emailmessage",
+] as const
+
+/** An email sent from the signed-in user's own Outlook mailbox through the Office 365 Outlook connector. */
+export type OutgoingEmail = {
+  to: string
+  cc?: string
+  subject: string
+  /** HTML. */
+  body: string
+  attachment: { name: string; bytes: Uint8Array }
+}
 
 /** The vibe_quoteline columns the app reads. */
 export type QuoteLineRow = Row & {
@@ -420,6 +497,12 @@ export interface DataverseClient {
   quotas: TableClient<QuotaRow>
   quotes: TableClient<QuoteRow>
   quoteLines: TableClient<QuoteLineRow>
+  quoteTemplates: TableClient<QuoteTemplateRow>
+  quoteSettings: TableClient<QuoteSettingsRow>
+  /** Puts a file in a Quote's file column. */
+  uploadQuotePdf(quoteId: Id, fileName: string, bytes: Uint8Array): Promise<void>
+  downloadQuotePdf(quoteId: Id): Promise<Uint8Array>
+  sendEmail(email: OutgoingEmail): Promise<void>
   notes: TableClient<NoteRow>
   tasks: TableClient<ActivityRow>
   phoneCalls: TableClient<PhoneCallRow>

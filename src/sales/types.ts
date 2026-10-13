@@ -16,6 +16,8 @@ export type User = {
   isSalesperson: boolean
   /** Holds the SalesApp Catalogue Manager role: creates, edits and retires Products. */
   isCatalogueManager: boolean
+  /** The business phone on the user's record, printed on a Quote PDF. */
+  phone?: string
 }
 
 export const PRODUCT_UNITS = ["piece", "hour", "day", "month", "year"] as const
@@ -306,10 +308,21 @@ export type Quote = {
   sentOn?: Timestamp
   sentById?: Id
   sentByName?: string
+  /** How the Quote was sent: from the sender's Outlook, or downloaded to send by hand. */
+  sentVia?: QuoteSendRoute
+  /** The address an emailed Quote went to. */
+  sentTo?: string
+  /** The Quote template the PDF is drawn with; blank means the Default template. */
+  templateId?: Id
+  templateName?: string
+  /** The exact PDF the customer received is stored on the Quote. */
+  hasStoredPdf: boolean
   ownerId: Id
   ownerName: string
   createdOn: Timestamp
 }
+
+export type QuoteSendRoute = "email" | "download"
 
 /** One Product on a Quote. Amounts are in euros excluding VAT. */
 export type QuoteLine = {
@@ -334,4 +347,4 @@ export type QuoteLineInput = ProductLineInput
 export type QuoteLineUpdate = ProductLineUpdate
 
 /** A Contact change and a new Valid until, while the Quote is a Draft. A blank Contact clears it. */
-export type QuoteUpdate = { contactId?: Id | ""; validUntil?: DateOnly }
+export type QuoteUpdate = { contactId?: Id | ""; validUntil?: DateOnly; templateId?: Id }

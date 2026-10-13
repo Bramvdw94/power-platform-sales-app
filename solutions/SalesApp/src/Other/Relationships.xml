@@ -7,6 +7,7 @@
   <EntityRelationship Name="business_unit_vibe_quote" />
   <EntityRelationship Name="business_unit_vibe_quoteline" />
   <EntityRelationship Name="contact_customer_accounts" />
+  <EntityRelationship Name="FileAttachment_vibe_Quote_vibe_StoredPdf" />
   <EntityRelationship Name="lk_vibe_businessrule_createdby" />
   <EntityRelationship Name="lk_vibe_businessrule_modifiedby" />
   <EntityRelationship Name="lk_vibe_engineerror_createdby" />
@@ -29,11 +30,17 @@
   <EntityRelationship Name="lk_vibe_quote_modifiedby" />
   <EntityRelationship Name="lk_vibe_quoteline_createdby" />
   <EntityRelationship Name="lk_vibe_quoteline_modifiedby" />
+  <EntityRelationship Name="lk_vibe_quotesettings_createdby" />
+  <EntityRelationship Name="lk_vibe_quotesettings_modifiedby" />
+  <EntityRelationship Name="lk_vibe_quotetemplate_createdby" />
+  <EntityRelationship Name="lk_vibe_quotetemplate_modifiedby" />
   <EntityRelationship Name="organization_vibe_businessrule" />
   <EntityRelationship Name="organization_vibe_engineerror" />
   <EntityRelationship Name="organization_vibe_process" />
   <EntityRelationship Name="organization_vibe_processversion" />
   <EntityRelationship Name="organization_vibe_product" />
+  <EntityRelationship Name="organization_vibe_quotesettings" />
+  <EntityRelationship Name="organization_vibe_quotetemplate" />
   <EntityRelationship Name="owner_vibe_lead" />
   <EntityRelationship Name="owner_vibe_opportunity" />
   <EntityRelationship Name="owner_vibe_productline" />
@@ -96,6 +103,7 @@
   <EntityRelationship Name="vibe_product_quoteline" />
   <EntityRelationship Name="vibe_quote_quoteline" />
   <EntityRelationship Name="vibe_quote_sentby_systemuser" />
+  <EntityRelationship Name="vibe_quotetemplate_quote" />
   <EntityRelationship Name="vibe_systemuser_quota" />
   <EntityRelationship Name="vibe_systemuser_vibe_lead_disqualifiedby" />
   <EntityRelationship Name="vibe_systemuser_vibe_opportunity_closedby" />

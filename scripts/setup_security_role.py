@@ -83,6 +83,14 @@ for _t in QUOTE_TABLES:
         f"prvAppend{_t}": BASIC, f"prvAppendTo{_t}": BASIC, f"prvAssign{_t}": BASIC,
     })
 
+# Quote templates and Quote settings (#102) are organisation-owned like Products: everyone reads
+# them (the PDF is drawn in the salesperson's browser), only the Catalogue Manager role creates and
+# changes them, and nobody deletes. Pointing a Quote at a template needs Append To on the template.
+QUOTE_PDF_TABLES = ["vibe_QuoteTemplate", "vibe_QuoteSettings"]
+QUOTE_PDF_READ = {f"prvRead{t}": GLOBAL for t in QUOTE_PDF_TABLES}
+QUOTE_PDF_READ["prvAppendTovibe_QuoteTemplate"] = GLOBAL
+QUOTE_PDF_MANAGE = {f"prv{verb}{t}": GLOBAL for t in QUOTE_PDF_TABLES for verb in ("Create", "Write")}
+
 # Quota (#104) is owned by the salesperson it is for. Everyone reads their own
 # row (a manager reads and writes direct reports' rows through the hierarchy);
 # only the Sales Manager role writes them. Who may write which row is decided by
@@ -137,7 +145,7 @@ PLATFORM = {
 
 ROLES = {
     "SalesApp Salesperson": {
-        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **QUOTES, **ENGINE_READ, **ENGINE_APPEND_TO, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
+        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **QUOTES, **QUOTE_PDF_READ, **ENGINE_READ, **ENGINE_APPEND_TO, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
         "users": ["Megan Bowen", "Adele Vance", "Alex Wilber", "Diego Siciliani"],
     },
     # Fallback from #21: Manager hierarchy gives a manager Write on a direct
@@ -163,7 +171,7 @@ ROLES = {
     # Megan in the demo (#99). The role holds only what Salesperson lacks; she
     # keeps reading everything through Salesperson.
     "SalesApp Catalogue Manager": {
-        "privileges": {**PRODUCT_READ, **PRODUCT_MANAGE, **PLATFORM},
+        "privileges": {**PRODUCT_READ, **PRODUCT_MANAGE, **QUOTE_PDF_MANAGE, **PLATFORM},
         "users": ["Megan Bowen"],
     },
     # Megan in the demo (#94). Holds only what Salesperson lacks; she keeps reading
