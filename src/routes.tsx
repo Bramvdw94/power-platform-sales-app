@@ -4,6 +4,7 @@ import AccountListPage from "@/pages/accounts/account-list"
 import AccountRecordPage from "@/pages/accounts/account-record"
 import ContactListPage from "@/pages/contacts/contact-list"
 import ContactRecordPage from "@/pages/contacts/contact-record"
+import ForecastPage from "@/pages/forecast/forecast-page"
 import HomePage from "@/pages/home"
 import LeadListPage from "@/pages/leads/lead-list"
 import LeadRecordPage from "@/pages/leads/lead-record"
@@ -24,6 +25,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <HomePage /> },
       { path: "pipeline", element: <PipelinePage /> },
+      { path: "forecast", element: <ForecastPage /> },
       { path: "leads", element: <LeadListPage /> },
       { path: "leads/:id", element: <LeadRecordPage /> },
       { path: "opportunities", element: <OpportunityListPage /> },
