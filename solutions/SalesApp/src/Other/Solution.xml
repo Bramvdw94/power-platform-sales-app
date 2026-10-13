@@ -158,6 +158,18 @@
         <Dependent type="1" schemaName="chat" displayName="Teams chat" />
       </MissingDependency>
       <MissingDependency>
+        <Required type="1" schemaName="environmentvariabledefinition" displayName="Environment Variable Definition" solution="EnvironmentVariables (1.0.2406.4)">
+          <package appName="EnvironmentVariables" version="1.0.2406.4">EnvironmentVariablesSolutionAnchor (1.0.2406.4)</package>
+        </Required>
+        <Dependent type="300" schemaName="vibe_salesapp_65562" displayName="Sales App" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="1" schemaName="environmentvariablevalue" displayName="Environment Variable Value" solution="EnvironmentVariables (1.0.2406.4)">
+          <package appName="EnvironmentVariables" version="1.0.2406.4">EnvironmentVariablesSolutionAnchor (1.0.2406.4)</package>
+        </Required>
+        <Dependent type="300" schemaName="vibe_salesapp_65562" displayName="Sales App" />
+      </MissingDependency>
+      <MissingDependency>
         <Required type="2" schemaName="regardingobjectid" displayName="Regarding" parentSchemaName="chat" parentDisplayName="Teams chat" solution="msdynce_ActivitiesPatch (9.0.26093.260917001)">
           <package appName="msdynce_Activities" version="9.0.26093.260917001">msdynce_EnableUCIByDefault (9.0.26093.260917001)</package>
         </Required>
