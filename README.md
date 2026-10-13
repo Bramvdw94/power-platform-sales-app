@@ -88,7 +88,7 @@ Then wire it into `src/data/dataverse/generated-client.ts`. Tables so far:
 `task` and `phonecall`, `vibe_product` (registered as `products`), `vibe_quota`
 (registered as `quotas`), `vibe_productline` (registered as `productLines`), `vibe_quote` (`quotes`),
 `vibe_quoteline` (`quoteLines`), `vibe_quotetemplate` (`quoteTemplates`),
-`vibe_quotesettings` (`quoteSettings`), `vibe_process` and `vibe_processversion` (`processes`, `processVersions`: the published Processes the process bar shows), `environmentvariabledefinition` and `environmentvariablevalue` (read only, for the process engine's kill switch), plus the `WhoAmI` function and the
+`vibe_quotesettings` (`quoteSettings`), `vibe_process` and `vibe_processversion` (`processes`, `processVersions`: the Processes the process bar shows and the Automation page builds and publishes), `vibe_businessrule` and `vibe_engineerror` (`businessRules`, `engineErrors`: read by Publish checks and the Process page's Engine errors), `environmentvariabledefinition` and `environmentvariablevalue` (read only, for the process engine's kill switch), plus the `WhoAmI` function and the
 Office 365 Outlook connector (`shared_office365`, used only to send a Quote's PDF from the
 user's own mailbox; each user creates their own connection the first time they send).
 

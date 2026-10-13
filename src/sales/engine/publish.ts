@@ -13,6 +13,7 @@ export const LIMITS = {
 
 export type PublishIssueCode =
   | ReferenceProblem["code"]
+  | "noSteps"
   | "tooManySteps"
   | "tooManyKeyFields"
   | "tooManyConditions"
@@ -100,6 +101,9 @@ export function checkProcessForPublish(input: {
     ...(stepId ? { stepId } : {}),
   })
 
+  if (definition.steps.length === 0) {
+    errors.push({ code: "noSteps", message: "A Process needs at least one Step." })
+  }
   if (definition.steps.length > LIMITS.stepsPerProcess) {
     errors.push({
       code: "tooManySteps",

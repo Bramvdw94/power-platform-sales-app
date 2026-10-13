@@ -1,4 +1,5 @@
-import type { BusinessRuleRow, ProcessRow, ProcessVersionRow } from "@/sales/engine"
+import type { BusinessRuleRow, ProcessDefinition, ProcessRow, ProcessVersionRow } from "@/sales/engine"
+import type { EngineErrorEntry } from "@/sales/process-admin"
 import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, ProductLine, Quota, Quote, QuoteLine, QuoteSettings, QuoteTemplate, User } from "@/sales"
 
 // What the in-memory store keeps: records without the display names that
@@ -57,6 +58,11 @@ export class InMemorySalesStore {
   readonly processes: ProcessRow[]
   readonly processVersions: ProcessVersionRow[]
   readonly businessRules: BusinessRuleRow[]
+  /** The definition being edited per Process; a Process without an entry is edited from its latest version. */
+  readonly processDrafts = new Map<Id, ProcessDefinition>()
+  /** When each Process version was published. */
+  readonly processVersionPublishedOn = new Map<Id, string>()
+  readonly engineErrors: EngineErrorEntry[] = []
   /** The kill switch: false turns Processes and Business rules off, so records behave as in v1. */
   engineEnabled = true
   private sequence = 0

@@ -39,7 +39,7 @@ describe("app shell on a desktop", () => {
     const user = userEvent.setup()
     const { router } = renderApp()
     const links = within(mainNav()).getAllByRole("link").map((l) => l.textContent)
-    expect(links).toEqual(["Home", "Pipeline", "Forecast", "Leads", "Opportunities", "Accounts", "Contacts", "Products"])
+    expect(links).toEqual(["Home", "Pipeline", "Forecast", "Leads", "Opportunities", "Accounts", "Contacts", "Products", "Automation"])
 
     await user.click(within(mainNav()).getByRole("link", { name: "Opportunities" }))
     expect(router.state.location.pathname).toBe("/opportunities")
@@ -128,6 +128,7 @@ describe("app shell on a phone", () => {
       "Accounts",
       "Contacts",
       "Products",
+      "Automation",
     ])
     expect(await screen.findByText("Adele Vance")).toBeInTheDocument()
 

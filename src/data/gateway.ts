@@ -53,7 +53,8 @@ import type {
   User,
 } from "@/sales"
 
-import type { ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
+import type { ProcessDefinition, ProcessRow, ProcessTable, ProcessVersionRow, PublishIssue } from "@/sales/engine"
+import type { EngineErrorEntry, ProcessAdmin, PublishImpact } from "@/sales/process-admin"
 
 export type CurrentUser = {
   user: User
@@ -219,6 +220,21 @@ export type ProcessDefinitions = {
   versions: ProcessVersionRow[]
 }
 
+/** What a Process builder changes on a draft Process. Editing never affects users until Publish. */
+export type ProcessDraftUpdate = {
+  name?: string
+  /** Making a Process the fallback clears the flag on the table's other Processes and drops its Entry criteria. */
+  isFallback?: boolean
+  definition?: ProcessDefinition
+}
+
+/** What Publish would refuse, warn about and do to open records, shown before the builder confirms. */
+export type PublishPreview = {
+  errors: PublishIssue[]
+  warnings: PublishIssue[]
+  impact: PublishImpact
+}
+
 export interface SalesGateway {
   // People
   getCurrentUser(): Promise<CurrentUser>
@@ -281,6 +297,27 @@ export interface SalesGateway {
   moveStep(record: RecordRef, stepId: string): Promise<void>
   /** Switch Process: to another Process version, or none (null), landing on the Step that fits the current Stage or status. */
   switchProcess(record: RecordRef, processVersionId: Id | null): Promise<void>
+
+  // Process administration: everyone reads the definitions; only a Process builder changes them.
+  /** Every Process of a table, draft and retired ones too, in priority order. */
+  listProcessAdmin(table: ProcessTable): Promise<ProcessAdmin[]>
+  getProcessAdmin(id: Id): Promise<ProcessAdmin>
+  /** A draft Process with no Steps, last in the table's priority order. */
+  createProcess(table: ProcessTable, name: string): Promise<ProcessAdmin>
+  saveProcessDraft(id: Id, update: ProcessDraftUpdate): Promise<ProcessAdmin>
+  /** Moves a Process one place up or down the table's priority order. */
+  moveProcessPriority(id: Id, direction: "up" | "down"): Promise<void>
+  previewPublish(id: Id): Promise<PublishPreview>
+  /** Writes the draft as a new Process version. Refused with a PublishRefused naming what is wrong. Open records stay on the version they started on. */
+  publishProcess(id: Id): Promise<ProcessAdmin>
+  /** No new record gets it; records on it finish on it. */
+  retireProcess(id: Id): Promise<ProcessAdmin>
+  /** Moves every open record on an older version onto the latest. Returns how many moved. */
+  moveToLatestVersion(id: Id): Promise<number>
+  /** Switch Process for every open record of a Process, to the latest version of another Process, or to none (null). Returns how many moved. */
+  switchAllRecords(id: Id, targetProcessId: Id | null): Promise<number>
+  /** Open Engine errors, newest first; for one Process when given. */
+  listEngineErrors(processId?: Id): Promise<EngineErrorEntry[]>
 
   // Products: everyone reads; only a Catalogue Manager creates, edits and retires. No delete.
   listProducts(query: ProductListQuery): Promise<Page<Product>>

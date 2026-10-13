@@ -1,5 +1,6 @@
-import type { Check, FieldCondition, ProcessTable, RelatedCheck, RelatedList, StepStatus } from "@/sales/engine"
-import { isRelatedCheck } from "@/sales/engine"
+import type { Check, FieldCondition, Op, ProcessTable, RelatedCheck, RelatedList, Step, StepStatus } from "@/sales/engine"
+import { isRelatedCheck, keyFieldsOf } from "@/sales/engine"
+import type { ProcessAdmin } from "@/sales/process-admin"
 import { DISQUALIFY_REASON_LABELS, FORECAST_CATEGORY_LABELS, LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS, STAGE_LABELS } from "./format"
 
 // Plain-language names for what a Process asks of a record: its fields, Gate checks
@@ -28,7 +29,7 @@ const FIELD_LABELS: Record<string, string> = {
   originatingLeadId: "Originating Lead",
 }
 
-function humanize(name: string): string {
+export function humanize(name: string): string {
   const words = name.replace(/([A-Z])/g, " $1").toLowerCase()
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
@@ -65,12 +66,12 @@ const VALUE_LABELS: Record<string, string> = {
   revised: "Revised",
 }
 
-function valueLabel(value: unknown): string {
+export function valueLabel(value: unknown): string {
   if (typeof value === "string") return VALUE_LABELS[value] ?? value
   return String(value)
 }
 
-const RELATED_LABELS: Record<RelatedList, [string, string]> = {
+export const RELATED_LABELS: Record<RelatedList, [string, string]> = {
   tasks: ["Task", "Tasks"],
   phoneCalls: ["Phone Call", "Phone Calls"],
   notes: ["Note", "Notes"],
@@ -116,3 +117,37 @@ export function describeCheck(check: Check): string {
 }
 
 export const PROCESS_TABLE_NOUN: Record<ProcessTable, string> = { lead: "Lead", opportunity: "Opportunity" }
+
+export const OP_LABELS: Record<Op, string> = {
+  equals: "is",
+  isNot: "is not",
+  isOneOf: "is one of",
+  isEmpty: "is empty",
+  isNotEmpty: "has a value",
+  greaterThan: "is more than",
+  lessThan: "is less than",
+}
+
+/** A group of conditions as one sentence, for lists: "Account type is Partner and Lead source is Website". */
+export function describeConditions(checks: Check[], match: "all" | "any"): string {
+  return checks.map(describeCheck).join(match === "any" ? " or " : " and ")
+}
+
+/** What decides whether a new record gets this Process. */
+export function entrySummary(process: Pick<ProcessAdmin, "isFallback" | "draft">): string {
+  if (process.isFallback) return "Fallback: every new record no other Process matches"
+  const criteria = process.draft.entryCriteria
+  if (!criteria || criteria.conditions.length === 0) return "No Entry criteria: no new record gets it"
+  return describeConditions(criteria.conditions, criteria.match)
+}
+
+/** "Qualification · 2 Key fields · 1 check · 1 Action": the line shown while a Step is collapsed. */
+export function stepSummary(step: Step): string {
+  const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`
+  return [
+    STEP_STATUS_LABELS[step.mapsTo],
+    plural(keyFieldsOf(step).length, "Key field"),
+    plural(step.gate?.checks.length ?? 0, "check"),
+    plural(step.actions?.length ?? 0, "Action"),
+  ].join(" · ")
+}
