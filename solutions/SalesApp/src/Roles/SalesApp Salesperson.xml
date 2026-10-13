@@ -12,14 +12,18 @@
     <RolePrivilege name="prvAppendToUser" level="Global" />
     <RolePrivilege name="prvAppendTovibe_Lead" level="Basic" />
     <RolePrivilege name="prvAppendTovibe_Opportunity" level="Basic" />
+    <RolePrivilege name="prvAppendTovibe_ProcessVersion" level="Global" />
+    <RolePrivilege name="prvAppendTovibe_Product" level="Global" />
     <RolePrivilege name="prvAppendvibe_Lead" level="Basic" />
     <RolePrivilege name="prvAppendvibe_Opportunity" level="Basic" />
+    <RolePrivilege name="prvAppendvibe_ProductLine" level="Basic" />
     <RolePrivilege name="prvAssignAccount" level="Basic" />
     <RolePrivilege name="prvAssignActivity" level="Basic" />
     <RolePrivilege name="prvAssignContact" level="Basic" />
     <RolePrivilege name="prvAssignNote" level="Basic" />
     <RolePrivilege name="prvAssignvibe_Lead" level="Basic" />
     <RolePrivilege name="prvAssignvibe_Opportunity" level="Basic" />
+    <RolePrivilege name="prvAssignvibe_ProductLine" level="Basic" />
     <RolePrivilege name="prvCreateAccount" level="Basic" />
     <RolePrivilege name="prvCreateActivity" level="Basic" />
     <RolePrivilege name="prvCreateContact" level="Basic" />
@@ -27,6 +31,8 @@
     <RolePrivilege name="prvCreateSharePointData" level="Global" />
     <RolePrivilege name="prvCreatevibe_Lead" level="Basic" />
     <RolePrivilege name="prvCreatevibe_Opportunity" level="Basic" />
+    <RolePrivilege name="prvCreatevibe_ProductLine" level="Basic" />
+    <RolePrivilege name="prvDeletevibe_ProductLine" level="Basic" />
     <RolePrivilege name="prvReadAccount" level="Global" />
     <RolePrivilege name="prvReadActivity" level="Global" />
     <RolePrivilege name="prvReadAsyncOperation" level="Basic" />
@@ -36,9 +42,13 @@
     <RolePrivilege name="prvReadSharePointData" level="Global" />
     <RolePrivilege name="prvReadSharePointDocument" level="Global" />
     <RolePrivilege name="prvReadUser" level="Global" />
+    <RolePrivilege name="prvReadvibe_BusinessRule" level="Global" />
     <RolePrivilege name="prvReadvibe_Lead" level="Global" />
     <RolePrivilege name="prvReadvibe_Opportunity" level="Global" />
+    <RolePrivilege name="prvReadvibe_Process" level="Global" />
+    <RolePrivilege name="prvReadvibe_ProcessVersion" level="Global" />
     <RolePrivilege name="prvReadvibe_Product" level="Global" />
+    <RolePrivilege name="prvReadvibe_ProductLine" level="Global" />
     <RolePrivilege name="prvReadvibe_Quota" level="Basic" />
     <RolePrivilege name="prvWriteAccount" level="Basic" />
     <RolePrivilege name="prvWriteActivity" level="Basic" />
@@ -47,5 +57,6 @@
     <RolePrivilege name="prvWriteSharePointData" level="Global" />
     <RolePrivilege name="prvWritevibe_Lead" level="Basic" />
     <RolePrivilege name="prvWritevibe_Opportunity" level="Basic" />
+    <RolePrivilege name="prvWritevibe_ProductLine" level="Basic" />
   </RolePrivileges>
 </Role>

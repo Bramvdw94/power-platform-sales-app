@@ -1,0 +1,14 @@
+<environmentvariabledefinition schemaname="vibe_ProcessEngineEnabled">
+  <defaultvalue>on</defaultvalue>
+  <description default="The kill switch of the process engine. &quot;on&quot; (default) runs Processes and Business rules; &quot;off&quot; turns both the plug-in and the app's engine off so records behave as in v1.">
+    <label description="The kill switch of the process engine. &quot;on&quot; (default) runs Processes and Business rules; &quot;off&quot; turns both the plug-in and the app's engine off so records behave as in v1." languagecode="1033" />
+  </description>
+  <displayname default="Process engine enabled">
+    <label description="Process engine enabled" languagecode="1033" />
+  </displayname>
+  <introducedversion>1.0.0.0</introducedversion>
+  <iscustomizable>1</iscustomizable>
+  <isrequired>0</isrequired>
+  <secretstore>0</secretstore>
+  <type>100000000</type>
+</environmentvariabledefinition>
