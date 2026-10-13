@@ -19,7 +19,7 @@ touched while the rules exist. Then, as the demo users:
   * a block save rule rejects a Web API write
   * a salesperson cannot Switch Process; the manager who is a Process builder can
   * a broken rule fails open and leaves an Engine error row
-  * salespeople read definitions, not Engine errors, and cannot write definitions
+  * salespeople read definitions and the kill switch, not Engine errors, and cannot write definitions
   * the kill switch turns the engine off, and the bypass option loads without it
 
 All records are removed afterwards (a leftover kill switch value is removed too).
@@ -84,10 +84,18 @@ def message(result):
 
 def run(dv, report, users, track):
     records, rules = [], []
+    # The starter Processes of the sample data are fallbacks, which match every new record. Set them
+    # aside while the checks run, so "matching no Process" means that, and put them back afterwards.
+    fallbacks = [r["vibe_processid"] for r in dv.get(
+        "vibe_processes?$select=vibe_processid&$filter=vibe_isfallback eq true and vibe_retired ne true")["value"]]
+    for process_id in fallbacks:
+        dv.call("PATCH", f"vibe_processes({process_id})", {"vibe_isfallback": False})
     try:
         _run(dv, report, users, track, records, rules)
     finally:
         sweep(dv, records, rules)
+        for process_id in fallbacks:
+            dv.call("PATCH", f"vibe_processes({process_id})", {"vibe_isfallback": True})
 
 
 def sweep(dv, records, rules):
@@ -248,6 +256,8 @@ def _run(dv, report, users, track, records, rules):
         report.expect_status(f"{who} reads Processes", dv.call("GET", "vibe_processes?$top=1&$select=vibe_name", as_user=caller), 200)
         report.expect_status(f"{who} reads Business rules", dv.call("GET", "vibe_businessrules?$top=1&$select=vibe_name", as_user=caller), 200)
         report.expect_status(f"{who} reads Process versions", dv.call("GET", "vibe_processversions?$top=1&$select=vibe_name", as_user=caller), 200)
+        report.expect_status(f"{who} reads the kill switch (the process bar follows it)", dv.call(
+            "GET", f"environmentvariabledefinitions?$top=1&$select=defaultvalue&$filter=schemaname eq '{KILL_SWITCH}'", as_user=caller), 200)
         report.expect_status(f"{who} cannot read Engine errors", dv.call("GET", "vibe_engineerrors?$top=1&$select=vibe_name", as_user=caller), 403)
         report.expect_status(f"{who} cannot write a Business rule", dv.call(
             "PATCH", f"vibe_businessrules({block_rule})", {"vibe_enabled": False}, as_user=caller), 403)

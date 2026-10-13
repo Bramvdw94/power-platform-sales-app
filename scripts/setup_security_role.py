@@ -111,6 +111,11 @@ ENGINE_MANAGE = {
     for verb in ["Create", "Write", "Delete", "Append", "AppendTo"]
 }
 ENGINE_ERRORS = {"prvReadvibe_EngineError": GLOBAL}
+# The process bar reads the kill switch (the environment variable vibe_ProcessEngineEnabled) so the
+# app's engine goes off together with the plug-in (#95). Without these, a salesperson's read fails
+# with 0x80040220 and the bar would stay on while the plug-in no longer enforces anything.
+# (The value table has no privileges of its own; it follows the definition.)
+ENGINE_KILL_SWITCH = {"prvReadEnvironmentVariableDefinition": GLOBAL}
 # Switch Process on any record (spec #91, Security summary; stories 31 and 66), including
 # Move to latest version and the bulk switch for a retired Process, writes other people's
 # Leads and Opportunities. So a Process builder has Write on all of them (Bram, 2026-10-13).
@@ -146,7 +151,7 @@ PLATFORM = {
 
 ROLES = {
     "SalesApp Salesperson": {
-        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **QUOTES, **QUOTE_PDF_READ, **ENGINE_READ, **ENGINE_APPEND_TO, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
+        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **QUOTES, **QUOTE_PDF_READ, **ENGINE_READ, **ENGINE_APPEND_TO, **ENGINE_KILL_SWITCH, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
         "users": ["Megan Bowen", "Adele Vance", "Alex Wilber", "Diego Siciliani"],
     },
     # Fallback from #21: Manager hierarchy gives a manager Write on a direct

@@ -290,6 +290,10 @@ function rule<T>(apply: () => T): T {
   }
 }
 
+/** What the process engine plug-in says when it stops a save, so a salesperson reads it without Dataverse's wrapping. */
+const ENGINE_REFUSAL =
+  /\d+ open checks? on “[^”]*”\.|A Lead on this Process can only be qualified from its last Step, “[^”]*”\.|Only the Owner's manager or a Process builder can switch the Process\.|A closed record (?:keeps its Process|can't move Step)\.|That Step isn't part of this Process\.|That Process version doesn't exist\.|No Step of this Process maps to [^.]*\./
+
 /**
  * Dataverse's refusals as GatewayErrors: a missing privilege is "forbidden"
  * (the record's Owner changed, or the user is neither Owner nor manager), a
@@ -298,6 +302,8 @@ function rule<T>(apply: () => T): T {
 export function toGatewayError(error: unknown): unknown {
   if (error instanceof GatewayError || !(error instanceof Error)) return error
   const message = error.message
+  const refusal = ENGINE_REFUSAL.exec(message)
+  if (refusal) return new GatewayError("invalid", refusal[0])
   if (/0x80040220|SecLib::|privilege|does not have permission|not have.*access/i.test(message)) {
     return new GatewayError("forbidden", message)
   }

@@ -1623,6 +1623,14 @@ describe("DataverseSalesGateway, Processes", () => {
     expect(client.leads.update).toHaveBeenCalledWith(SANNE, { vibe_ProcessVersionId: null })
   })
 
+  it("turns the plug-in's refusal into a message a salesperson can read", async () => {
+    const client = fakeClient(ADELE)
+    client.opportunities.update.mockRejectedValueOnce(new Error("Plug-in failed: 2 open checks on “Find the need”. (0x80040265)"))
+    const refusal = await new DataverseSalesGateway(client).moveStep({ type: "opportunity", id: OPP }, "s2").catch((e: unknown) => e)
+    expect(refusal).toBeInstanceOf(GatewayError)
+    expect(refusal).toMatchObject({ code: "invalid", message: "2 open checks on “Find the need”." })
+  })
+
   it("sees a Process builder", async () => {
     const megan = await new DataverseSalesGateway(fakeClient(MEGAN)).getCurrentUser()
     expect(megan.user.isProcessBuilder).toBe(true)
