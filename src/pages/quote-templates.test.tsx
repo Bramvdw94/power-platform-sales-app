@@ -7,6 +7,7 @@ import { routes } from "@/routes"
 import { renderWithGateway } from "@/test/render"
 import { setViewport } from "@/test/viewport"
 import type { Id } from "@/sales"
+import { templateFor } from "@/pages/quotes/quote-pdf-support"
 
 const { megan, adele } = SEED_USERS
 const { templates: TPL } = SEED_IDS
@@ -40,8 +41,8 @@ describe("The Products page sections", () => {
 describe("The Quote template builder", () => {
   it("shows the three starters with the Business letter as Default, and an A4 preview", async () => {
     renderApp("/products/quote-templates", { userId: megan.id })
-    const pick = await screen.findByLabelText("Template")
-    expect(within(pick).getAllByRole("option").map((o) => o.textContent)).toEqual(["Business letter (Default)", "Order form", "Proposal"])
+    const list = within(await screen.findByRole("region", { name: "Templates" }))
+    expect(list.getAllByRole("listitem").map((li) => li.textContent?.replace(/(Rename|Set Default|Delete)/g, "").trim())).toEqual(["Business letterDefault", "Order form", "Proposal"])
     expect(await blockNames()).toEqual(["Header", "Customer address", "Reference strip", "Title and intro", "Product lines", "Totals and VAT per rate", "Terms", "Your contact person", "Footer"])
     expect(sheet().getByText("Offerte: CRM rollout Fabrikam")).toBeInTheDocument()
     expect(sheet().getByText("€ 10.491,13", { exact: false })).toBeInTheDocument()
@@ -148,13 +149,63 @@ describe("The Quote template builder", () => {
     const user = userEvent.setup()
     const { store } = renderApp("/products/quote-templates", { userId: megan.id })
     await blockNames()
-    await user.selectOptions(screen.getByLabelText("Template"), "Proposal")
-    await waitFor(() => expect(screen.getByLabelText("Name")).toHaveValue("Proposal"))
-    await user.click(screen.getByRole("checkbox", { name: "Default template" }))
-    await user.click(screen.getByRole("button", { name: "Save template" }))
+    await user.click(screen.getByRole("button", { name: "Set Proposal as Default" }))
     await waitFor(() => expect(store.quoteTemplates.get(TPL.proposal)?.isDefault).toBe(true))
     expect([...store.quoteTemplates.values()].filter((t) => t.isDefault)).toHaveLength(1)
     expect(store.quoteTemplates.get(TPL.businessLetter)?.isDefault).toBe(false)
+  })
+
+  it("renames a template from the list", async () => {
+    const user = userEvent.setup()
+    const { store } = renderApp("/products/quote-templates", { userId: megan.id })
+    await blockNames()
+    await user.click(screen.getByRole("button", { name: "Rename Order form" }))
+    const dialog = await screen.findByRole("dialog", { name: "Rename template" })
+    await user.clear(within(dialog).getByLabelText(/Name/))
+    await user.type(within(dialog).getByLabelText(/Name/), "Bestelbon")
+    await user.click(within(dialog).getByRole("button", { name: "Save name" }))
+    await waitFor(() => expect(store.quoteTemplates.get(TPL.orderForm)?.name).toBe("Bestelbon"))
+  })
+
+  it("deletes a template unless it is the Default", async () => {
+    const user = userEvent.setup()
+    const { store } = renderApp("/products/quote-templates", { userId: megan.id })
+    await blockNames()
+    expect(screen.queryByRole("button", { name: "Delete Business letter" })).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Delete Proposal" }))
+    await waitFor(() => expect(store.quoteTemplates.has(TPL.proposal)).toBe(false))
+    expect(store.quoteTemplates.size).toBe(2)
+  })
+
+  it("lets a salesperson read the list but not rename, set Default or delete", async () => {
+    renderApp("/products/quote-templates", { userId: adele.id })
+    await blockNames()
+    expect(screen.getByRole("button", { name: "Proposal" })).toBeInTheDocument()
+    for (const name of [/^Rename/, /^Delete/, /as Default$/]) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument()
+  })
+
+  it("a new Default is the template a new Quote uses", async () => {
+    const user = userEvent.setup()
+    const { gateway, store } = renderApp("/products/quote-templates", { userId: megan.id })
+    await blockNames()
+    await user.click(screen.getByRole("button", { name: "Set Order form as Default" }))
+    await waitFor(() => expect(store.quoteTemplates.get(TPL.orderForm)?.isDefault).toBe(true))
+    const quote = await gateway.createQuote(SEED_IDS.opportunities.negotiation)
+    const details = await gateway.getQuote(quote.id)
+    const used = templateFor(details, await gateway.listQuoteTemplates())
+    expect(used?.id).toBe(TPL.orderForm)
+  })
+
+  it("previews with a chosen Quote's data instead of the example", async () => {
+    const user = userEvent.setup()
+    const { gateway } = renderApp("/products/quote-templates", { userId: megan.id })
+    await blockNames()
+    const recent = await gateway.listRecentQuotes()
+    expect(recent.length).toBeGreaterThan(0)
+    const pick = screen.getByLabelText("Preview with")
+    await waitFor(() => expect(within(pick).getAllByRole("option").length).toBeGreaterThan(1))
+    await user.selectOptions(pick, recent[0].id)
+    await waitFor(() => expect(sheet().getAllByText(recent[0].accountName, { exact: false }).length).toBeGreaterThan(0))
   })
 
   it("creates a new template as a copy of the one on screen", async () => {

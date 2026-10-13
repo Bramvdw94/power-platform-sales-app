@@ -436,6 +436,21 @@ export class InMemorySalesGateway implements SalesGateway {
     return this.quotesOf(opportunityId)
   }
 
+  async listRecentQuotes(limit = 25): Promise<Quote[]> {
+    return [...this.store.quotes.values()]
+      .filter((q) => {
+        try {
+          this.opportunityRow(q.opportunityId)
+          return true
+        } catch {
+          return false
+        }
+      })
+      .sort((a, b) => b.createdOn.localeCompare(a.createdOn) || b.id.localeCompare(a.id))
+      .slice(0, limit)
+      .map((q) => this.toQuote(q))
+  }
+
   async getQuote(id: Id): Promise<QuoteDetails> {
     const row = this.quoteRow(id)
     const opportunity = this.opportunityRow(row.opportunityId)
@@ -601,6 +616,15 @@ export class InMemorySalesGateway implements SalesGateway {
     if (next.isDefault && !row.isDefault) this.clearDefaultTemplate()
     this.store.quoteTemplates.set(id, next)
     return clone(next)
+  }
+
+  async deleteQuoteTemplate(id: Id): Promise<void> {
+    this.requireCatalogueManager()
+    const row = this.store.quoteTemplates.get(id)
+    if (!row) throw new GatewayError("notFound", `Quote template ${id} not found.`)
+    if (row.isDefault) throw new GatewayError("invalid", "The Default template can't be deleted.", { isDefault: "Make another template the Default first." })
+    for (const quote of this.store.quotes.values()) if (quote.templateId === id) this.store.quotes.set(quote.id, { ...quote, templateId: undefined })
+    this.store.quoteTemplates.delete(id)
   }
 
   async getQuoteSettings(): Promise<QuoteSettings> {

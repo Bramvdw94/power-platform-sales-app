@@ -311,6 +311,10 @@ export interface SalesGateway {
   /** The first template is the Default; making another the Default clears the old one. Nothing is deleted. */
   createQuoteTemplate(input: QuoteTemplateInput): Promise<QuoteTemplate>
   updateQuoteTemplate(id: Id, update: QuoteTemplateUpdate): Promise<QuoteTemplate>
+  /** The Default template can't be deleted. Quotes that used a deleted template are drawn with the Default. */
+  deleteQuoteTemplate(id: Id): Promise<void>
+  /** The latest Quotes the user may see, newest first, for previewing a template with real data. */
+  listRecentQuotes(limit?: number): Promise<Quote[]>
   getQuoteSettings(): Promise<QuoteSettings>
   updateQuoteSettings(update: QuoteSettingsUpdate): Promise<QuoteSettings>
   /** Sent to Revised, and a new Draft with the same number, Revision + 1 and a copy of the lines. Returns the new Draft. */

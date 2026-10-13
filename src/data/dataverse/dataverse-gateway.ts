@@ -1224,6 +1224,17 @@ export class DataverseSalesGateway implements SalesGateway {
     return toQuoteTemplate(await this.call(() => this.client.quoteTemplates.get(guid(id))))
   }
 
+  async deleteQuoteTemplate(id: Id): Promise<void> {
+    const current = toQuoteTemplate(await this.call(() => this.client.quoteTemplates.get(guid(id))))
+    if (current.isDefault) throw new GatewayError("invalid", "The Default template can't be deleted.", { isDefault: "Make another template the Default first." })
+    await this.call(() => this.client.quoteTemplates.delete(guid(id)))
+  }
+
+  async listRecentQuotes(limit = 25): Promise<Quote[]> {
+    const result = await this.call(() => this.client.quotes.list({ orderBy: QUOTE_ORDER, pageSize: limit }))
+    return result.rows.map(toQuote)
+  }
+
   private async clearOtherDefaults(templates: QuoteTemplate[], keep: Id): Promise<void> {
     for (const template of templates) {
       if (template.isDefault && template.id.toLowerCase() !== keep.toLowerCase()) {

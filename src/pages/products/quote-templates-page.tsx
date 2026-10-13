@@ -1,7 +1,8 @@
 import { useMemo, useState, type DragEvent, type FormEvent } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { ArrowDown, ArrowUp, Eye, GripVertical, Lock, Plus, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Eye, GripVertical, Lock, Pencil, Plus, Star, Trash2 } from "lucide-react"
 import { FormAlert, FormField } from "@/components/records/fields"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -38,6 +39,7 @@ import {
   type TemplateDefinition,
 } from "@/sales"
 import { PreviewPdfDialog } from "@/pages/quotes/preview-pdf-dialog"
+import { documentOf } from "@/pages/quotes/quote-pdf-support"
 import { ProductsTabs } from "./products-tabs"
 import { QuoteSheet } from "./quote-sheet"
 
@@ -77,7 +79,7 @@ export default function QuoteTemplatesPage() {
 function Builder({ templates, settings, canEdit, user }: { templates: QuoteTemplate[]; settings: QuoteSettings; canEdit: boolean; user: { fullName: string; email: string; phone?: string } }) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
-  const [selectedId, setSelectedId] = useState(templates.find((t) => t.isDefault)?.id ?? templates[0]?.id)
+  const [selectedId, setSelectedId] = useState<string | undefined>(templates.find((t) => t.isDefault)?.id ?? templates[0]?.id)
   const current = templates.find((t) => t.id === selectedId) ?? templates[0]
   const [draft, setDraft] = useState<Draft | undefined>(current && { name: current.name, isDefault: current.isDefault, definition: current.definition })
   const [loadedFrom, setLoadedFrom] = useState(current)
@@ -86,6 +88,21 @@ function Builder({ templates, settings, canEdit, user }: { templates: QuoteTempl
   const [dropIndex, setDropIndex] = useState<number>()
   const [previewing, setPreviewing] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [renaming, setRenaming] = useState<QuoteTemplate>()
+  const [previewQuoteId, setPreviewQuoteId] = useState("")
+  const recentQuotes = useQuery({ queryKey: ["Quotes", "recent"], queryFn: () => gateway.listRecentQuotes() })
+  const chosenQuote = useQuery({ queryKey: ["Quote", previewQuoteId], queryFn: () => gateway.getQuote(previewQuoteId), enabled: !!previewQuoteId })
+  const remove = useMutation({
+    mutationFn: (id: string) => gateway.deleteQuoteTemplate(id),
+    onSuccess: () => {
+      setSelectedId(undefined)
+      return invalidate()
+    },
+  })
+  const makeDefault = useMutation({
+    mutationFn: (id: string) => gateway.updateQuoteTemplate(id, { isDefault: true }),
+    onSuccess: () => invalidate(),
+  })
 
   // A template that was saved (or another one picked) replaces the draft.
   if (current && current !== loadedFrom) {
@@ -100,8 +117,12 @@ function Builder({ templates, settings, canEdit, user }: { templates: QuoteTempl
 
   const today = toDateOnly(new Date())
   const document = useMemo(
-    () => (draft ? buildQuoteDocument(sampleQuoteInput(draft.definition, settings, user, today)) : undefined),
-    [draft, settings, user, today],
+    () => {
+      if (!draft) return undefined
+      if (previewQuoteId && chosenQuote.data) return documentOf(chosenQuote.data, settings, { ...current!, definition: draft.definition })
+      return buildQuoteDocument(sampleQuoteInput(draft.definition, settings, user, today))
+    },
+    [draft, settings, user, today, previewQuoteId, chosenQuote.data, current],
   )
 
   if (!current || !draft || !document) return <p className="text-sm text-muted-foreground">There are no Quote templates yet.</p>
@@ -182,18 +203,51 @@ function Builder({ templates, settings, canEdit, user }: { templates: QuoteTempl
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      <div className="space-y-4">
+        <section aria-label="Templates" className="rounded-md border p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-medium">Templates</h2>
+            {canEdit && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setCreating(true)}>
+                <Plus aria-hidden />
+                New template
+              </Button>
+            )}
+          </div>
+          <ul className="grid gap-1.5">
+            {templates.map((t) => (
+              <li key={t.id} className={`flex flex-wrap items-center gap-1 rounded-md border p-1 ${t.id === current.id ? "border-primary" : ""}`}>
+                <button type="button" aria-pressed={t.id === current.id} className="min-w-0 flex-1 truncate px-2 py-1 text-left text-sm font-medium" onClick={() => setSelectedId(t.id)}>
+                  {t.name}
+                </button>
+                {t.isDefault && <Badge variant="secondary">Default</Badge>}
+                {canEdit && (
+                  <>
+                    <Button type="button" variant="ghost" size="sm" aria-label={`Rename ${t.name}`} onClick={() => setRenaming(t)}>
+                      <Pencil aria-hidden />
+                      Rename
+                    </Button>
+                    {!t.isDefault && (
+                      <>
+                        <Button type="button" variant="ghost" size="sm" aria-label={`Set ${t.name} as Default`} disabled={makeDefault.isPending} onClick={() => makeDefault.mutate(t.id)}>
+                          <Star aria-hidden />
+                          Set Default
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" aria-label={`Delete ${t.name}`} disabled={remove.isPending} onClick={() => remove.mutate(t.id)}>
+                          <Trash2 aria-hidden />
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+          {(remove.isError || makeDefault.isError) && <FormAlert error={remove.error ?? makeDefault.error} />}
+        </section>
       <form aria-label="Template details" onSubmit={submit} noValidate className="space-y-4 rounded-md border p-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <FormField id="tpl-pick" label="Template">
-            <select id="tpl-pick" className={selectClass} value={current.id} onChange={(e) => setSelectedId(e.target.value)}>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                  {t.isDefault ? " (Default)" : ""}
-                </option>
-              ))}
-            </select>
-          </FormField>
           <FormField id="tpl-name" label="Name" error={errors.name}>
             <Input id="tpl-name" value={draft.name} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </FormField>
@@ -337,18 +391,27 @@ function Builder({ templates, settings, canEdit, user }: { templates: QuoteTempl
               <Button type="button" variant="outline" disabled={!dirty} onClick={() => setDraft({ name: current.name, isDefault: current.isDefault, definition: current.definition })}>
                 Discard changes
               </Button>
-              <Button type="button" variant="outline" className="ml-auto" onClick={() => setCreating(true)}>
-                <Plus aria-hidden />
-                New template
-              </Button>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">Only a Catalogue manager changes Quote templates.</p>
           )}
         </div>
       </form>
+      </div>
 
-      <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+      <div className="min-w-0 space-y-2 lg:sticky lg:top-4 lg:self-start">
+        <div className="grid gap-1.5">
+          <Label htmlFor="tpl-preview-with">Preview with</Label>
+          <select id="tpl-preview-with" className={selectClass} value={previewQuoteId} onChange={(e) => setPreviewQuoteId(e.target.value)}>
+            <option value="">Example data</option>
+            {(recentQuotes.data ?? []).map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.number}
+                {q.revision > 0 ? ` rev ${q.revision}` : ""} · {q.accountName}
+              </option>
+            ))}
+          </select>
+        </div>
         <QuoteSheet document={document} wrap={wrap} onDragOverSheet={canEdit ? (event) => drag && event.preventDefault() : undefined} onDropOnSheet={canEdit ? () => finishDrop(blocks.length) : undefined} />
       </div>
 
@@ -361,6 +424,7 @@ function Builder({ templates, settings, canEdit, user }: { templates: QuoteTempl
           onClose={() => setPreviewing(false)}
         />
       )}
+      {renaming && <RenameTemplateDialog template={renaming} onClose={() => setRenaming(undefined)} />}
       {creating && <NewTemplateDialog definition={draft.definition} onClose={() => setCreating(false)} onCreated={(id) => setSelectedId(id)} />}
     </div>
   )
@@ -433,6 +497,51 @@ function BlockOptions({ block, readOnly, onChange }: { block: Block; readOnly: b
       <h2 className="text-sm font-medium">{BLOCK_LABELS[block.type]}</h2>
       {body}
     </section>
+  )
+}
+
+function RenameTemplateDialog({ template, onClose }: { template: QuoteTemplate; onClose: () => void }) {
+  const gateway = useGateway()
+  const invalidate = useInvalidateRecords()
+  const [name, setName] = useState(template.name)
+  const rename = useMutation({
+    mutationFn: () => gateway.updateQuoteTemplate(template.id, { name }),
+    onSuccess: async () => {
+      await invalidate()
+      onClose()
+    },
+  })
+  const errors = fieldErrorsOf(rename.error)
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rename template</DialogTitle>
+          <DialogDescription>Quotes keep using the template under its new name.</DialogDescription>
+        </DialogHeader>
+        <form
+          aria-label="Rename template"
+          onSubmit={(event) => {
+            event.preventDefault()
+            rename.mutate()
+          }}
+          className="grid gap-3"
+        >
+          <FormField id="rename-tpl-name" label="Name" required error={errors.name}>
+            <Input id="rename-tpl-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </FormField>
+          {rename.isError && Object.keys(errors).length === 0 && <FormAlert error={rename.error} />}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={rename.isPending}>
+              Save name
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
