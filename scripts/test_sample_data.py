@@ -287,6 +287,70 @@ class Payloads(unittest.TestCase):
         self.assertTrue(broken(lambda d: d["productLines"][0].update(discountPercent=101)))
         self.assertTrue(broken(lambda d: find(d, "opp-devries").update(estimatedValue=1)))
 
+    def test_quotes_cover_every_status_including_an_expired_sent_one(self):
+        statuses = Counter(q["status"] for q in DATA["quotes"])
+        self.assertEqual(set(statuses), set(sd.QUOTE_STATUSES))
+        expired = [q for q in DATA["quotes"] if q["status"] == "sent" and q["validUntilInDays"] < 0]
+        self.assertTrue(expired, "a Sent Quote past its Valid until")
+        self.assertTrue(any(q["status"] == "revised" for q in DATA["quotes"]))
+        opportunities = Counter(q["opportunity"] for q in DATA["quotes"])
+        self.assertGreater(max(opportunities.values()), 1, "several Quotes on one Opportunity")
+
+    def test_quote_totals_work_out_vat_per_rate_on_the_net_total_per_rate(self):
+        net, vat21, vat9, gross = sd.quote_totals({
+            "products": [{"key": "a", "listPrice": 100, "vatRate": 21}, {"key": "b", "listPrice": 0.5, "vatRate": 9}, {"key": "c", "listPrice": 75, "vatRate": 0}],
+            "quoteLines": [
+                {"quote": "q", "product": "a", "quantity": 10}, {"quote": "q", "product": "a", "quantity": 0.01, "unitPrice": 50.55},
+                {"quote": "q", "product": "b", "quantity": 1}, {"quote": "q", "product": "c", "quantity": 1},
+                {"quote": "other", "product": "a", "quantity": 99},
+            ],
+        }, "q")
+        self.assertEqual((str(net), str(vat21), str(vat9), str(gross)), ("1076.01", "210.11", "0.05", "1286.17"))
+
+    def test_a_quote_payload_has_the_totals_status_and_owner_the_plug_ins_would_give_it(self):
+        recs = records()
+        sent = recs["quote-devries-2"]
+        net, vat21, vat9, gross = sd.quote_totals(DATA, "quote-devries-2")
+        self.assertEqual(sent.body["vibe_name"], "Q-00001")
+        self.assertEqual(sent.body["vibe_revision"], 1)
+        self.assertEqual((sent.body["vibe_nettotal"], sent.body["vibe_vat21"], sent.body["vibe_grosstotal"]), (float(net), float(vat21), float(gross)))
+        self.assertEqual(sent.final_state, (1, 2))
+        self.assertEqual(sent.body["ownerid@odata.bind"], f"/systemusers({USERS['adele']})")  # the Opportunity's owner
+        self.assertEqual(sent.body["nav_quote_opportunity@odata.bind"], f"/vibe_opportunities({sd.record_id('opp-devries')})")
+        self.assertEqual(sent.body["nav_quote_contact@odata.bind"], f"/contacts({sd.record_id('con-sander-hendriks')})")
+        self.assertEqual(sent.body["nav_quote_sentby@odata.bind"], f"/systemusers({USERS['adele']})")
+        self.assertEqual(recs["quote-devries-3"].final_state, None)
+        self.assertNotIn("vibe_senton", recs["quote-devries-3"].body)
+        self.assertEqual({recs[k].final_state for k in ("quote-veluwe-1", "quote-peelland-mes-1", "quote-devries-1")}, {(1, 3), (1, 4), (1, 5)})
+        line = recs["qline-devries-2-1"]
+        self.assertEqual(line.body["vibe_discountpercent"], 8)
+        self.assertEqual(line.body["vibe_vatrate"], sd.choice(sd.VAT_RATES, 21))
+        self.assertEqual(line.body["ownerid@odata.bind"], f"/systemusers({USERS['adele']})")
+
+    def test_quote_rules(self):
+        self.assertTrue(broken(lambda d: d["quotes"][0].update(number="Q-1")))
+        self.assertTrue(broken(lambda d: d["quotes"][0].update(status="open")))
+        self.assertTrue(broken(lambda d: d["quotes"][0].update(opportunity="opp-nope")))
+        self.assertTrue(broken(lambda d: find(d, "quote-devries-2").update(revision=0)), "a repeated number and revision")
+        self.assertTrue(broken(lambda d: find(d, "quote-devries-3").update(sentDaysAgo=1)), "a Draft has not been sent")
+        self.assertTrue(broken(lambda d: find(d, "quote-devries-2").pop("sentDaysAgo")), "a Sent Quote has a sent date")
+        self.assertTrue(broken(lambda d: find(d, "quote-devries-2").update(createdDaysAgo=400)), "created before its Opportunity")
+        def two_accepted(d):
+            find(d, "quote-devries-2")["status"] = "accepted"
+            find(d, "quote-vandijk-erp-1").update(opportunity="opp-devries", status="accepted")
+
+        self.assertTrue(broken(two_accepted), "two Accepted on one Opportunity")
+        self.assertTrue(broken(lambda d: find(d, "quote-peelland-mes-1").update(status="sent")), "a Sent Quote on a lost deal")
+        self.assertTrue(broken(lambda d: find(d, "quote-devries-2").update(number="Q-00009")), "a Revised Quote without its next revision")
+        self.assertTrue(broken(lambda d: find(d, "qline-devries-2-1").update(product="prod-nope")))
+        self.assertTrue(broken(lambda d: find(d, "qline-devries-2-1").update(quantity=0)))
+        self.assertTrue(broken(lambda d: find(d, "qline-devries-2-1").update(discountPercent=101)))
+
+        def no_lines(d):
+            d["quoteLines"] = [l for l in d["quoteLines"] if l["quote"] != "quote-vandijk-erp-1"]
+
+        self.assertTrue(broken(no_lines), "a Sent Quote without lines")
+
     def test_load_order_puts_parents_first(self):
         order = [r.table.section for r in sd.build_records(DATA, USERS, NAV, CLOCK)]
         first = {s: order.index(s) for s in set(order)}
@@ -296,6 +360,8 @@ class Payloads(unittest.TestCase):
         self.assertLess(first["opportunities"], first["productLines"])
         self.assertLess(first["products"], first["productLines"])
         self.assertLess(first["productLines"], first["notes"])
+        self.assertLess(first["opportunities"], first["quotes"])
+        self.assertLess(first["quotes"], first["quoteLines"])
 
 
 if __name__ == "__main__":

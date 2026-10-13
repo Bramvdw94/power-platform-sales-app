@@ -8,7 +8,7 @@ const NOW = new Date(2026, 9, 9, 10, 30)
 const TODAY = "2026-10-09"
 
 const { megan, adele, alex, diego, bram } = SEED_USERS
-const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR, productLines: PL } = SEED_IDS
+const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR, productLines: PL, quotes: Q, quoteLines: QL } = SEED_IDS
 
 let store: InMemorySalesStore
 const as = (userId: Id): SalesGateway => new InMemorySalesGateway(store, { userId, now: () => NOW })
@@ -696,5 +696,187 @@ describe("Product lines", () => {
     const lines = await as(alex.id).listProductLines(O.proposal)
     expect(lines.find((l) => l.id === PL.proposalConsulting)?.productName).toBe("Consulting")
     await as(alex.id).updateProductLine(PL.proposalConsulting, { quantity: 50 })
+  })
+})
+
+describe("Quotes", () => {
+  it("makes a Draft from an open Opportunity with its Account, Primary Contact and Product lines, valid for 30 days", async () => {
+    const quote = await as(alex.id).createQuote(O.proposal)
+    expect(quote).toMatchObject({
+      number: "Q-00006",
+      revision: 0,
+      status: "draft",
+      accountId: A.fabrikam,
+      contactId: C.pieter,
+      contactName: "Pieter Claes",
+      validUntil: "2026-11-08",
+      ownerId: alex.id,
+      netTotal: 20000,
+      vat21: 4200,
+      grossTotal: 24200,
+    })
+    const { lines } = await as(alex.id).getQuote(quote.id)
+    expect(lines.map((l) => [l.productName, l.quantity, l.lineAmount, l.vatRate])).toEqual([
+      ["Consulting", 100, 12500, 21],
+      ["Workshop day", 5, 7250, 21],
+      ["Cloud licence", 10, 250, 21],
+    ])
+    expect((await as(alex.id).getOpportunity(O.proposal)).productLines).toHaveLength(3)
+  })
+
+  it("gives an Opportunity without lines an empty Draft, and allows several Quotes per Opportunity", async () => {
+    const first = await as(adele.id).createQuote(O.qualification)
+    const second = await as(adele.id).createQuote(O.qualification)
+    expect(first).toMatchObject({ netTotal: 0, grossTotal: 0 })
+    expect([first.number, second.number]).toEqual(["Q-00006", "Q-00007"])
+    expect((await as(adele.id).listQuotes(O.qualification)).map((q) => q.id)).toHaveLength(2)
+  })
+
+  it("follows the Opportunity's Owner: a manager makes it for the report, a peer cannot", async () => {
+    expect((await as(megan.id).createQuote(O.proposal)).ownerId).toBe(alex.id)
+    expect((await errorOf(as(adele.id).createQuote(O.proposal))).code).toBe("forbidden")
+    expect((await errorOf(as(diego.id).createQuote(O.proposal))).code).toBe("forbidden")
+  })
+
+  it("refuses a new Quote on a closed Opportunity, and reopening leaves its Quotes alone", async () => {
+    expect((await errorOf(as(alex.id).createQuote(O.won))).code).toBe("invalid")
+    await as(alex.id).reopenOpportunity(O.won, "negotiation")
+    expect((await as(alex.id).listQuotes(O.won)).map((q) => [q.number, q.status])).toEqual([["Q-00004", "accepted"]])
+  })
+
+  it("changes the Contact and Valid until of a Draft, never of a Sent Quote", async () => {
+    const draft = await as(alex.id).updateQuote(Q.draft, { contactId: "", validUntil: "2026-12-01" })
+    expect(draft.contactId).toBeUndefined()
+    expect(draft.validUntil).toBe("2026-12-01")
+    expect((await as(alex.id).updateQuote(Q.draft, { contactId: C.lotte })).contactName).toBe("Lotte de Groot")
+    expect((await errorOf(as(alex.id).updateQuote(Q.draft, { validUntil: "2026-02-30" }))).fieldErrors).toHaveProperty("validUntil")
+    expect((await errorOf(as(alex.id).updateQuote(Q.sent, { validUntil: "2026-12-01" }))).code).toBe("invalid")
+  })
+
+  it("edits lines on the Quote alone while it is a Draft: price, quantity, discount, and VAT per rate on the net total per rate", async () => {
+    const gateway = as(alex.id)
+    const line = await gateway.addQuoteLine(Q.draft, { productId: PR.consultingHour, quantity: 3, unitPrice: 100, discountPercent: 10 })
+    expect(line).toMatchObject({ vatRate: 21, lineAmount: 270, description: "Senior consultant, billed per hour." })
+    expect((await gateway.getQuote(Q.draft)).quote).toMatchObject({ netTotal: 7520, vat21: 56.7, vat9: 652.5, grossTotal: 8229.2 })
+    await gateway.updateQuoteLine(line.id, { quantity: 1 })
+    expect((await gateway.getQuote(Q.draft)).quote).toMatchObject({ netTotal: 7340, vat21: 18.9, grossTotal: 8011.4 })
+    await gateway.removeQuoteLine(QL.draftWorkshop)
+    expect((await gateway.getQuote(Q.draft)).quote).toMatchObject({ netTotal: 90, vat9: 0, vat21: 18.9, grossTotal: 108.9 })
+    // The Opportunity's own lines and Estimated value never move.
+    const opportunity = await gateway.getOpportunity(O.proposal)
+    expect(opportunity.productLines).toHaveLength(3)
+    expect(opportunity.opportunity.estimatedValue).toBe(20000)
+  })
+
+  it("refuses bad line values and a retired Product on a Quote line", async () => {
+    const gateway = as(alex.id)
+    expect((await errorOf(gateway.addQuoteLine(Q.draft, { productId: PR.consultingHour, quantity: 0 }))).fieldErrors).toHaveProperty("quantity")
+    expect((await errorOf(gateway.addQuoteLine(Q.draft, { productId: PR.retired, quantity: 1 }))).fieldErrors).toHaveProperty("productId")
+  })
+
+  it.each([
+    ["Sent", Q.sent],
+    ["Revised", Q.revised],
+    ["Accepted", Q.accepted],
+    ["Rejected", Q.rejected],
+  ])("only a Draft can be edited or deleted: %s is final as sent", async (_label, id) => {
+    const gateway = as(megan.id)
+    expect((await errorOf(gateway.addQuoteLine(id, { productId: PR.consultingHour, quantity: 1 }))).code).toBe("invalid")
+    expect((await errorOf(gateway.deleteQuote(id))).code).toBe("invalid")
+    expect((await errorOf(gateway.updateQuote(id, { validUntil: "2027-01-01" }))).code).toBe("invalid")
+  })
+
+  it("deletes a Draft with its lines", async () => {
+    await as(alex.id).deleteQuote(Q.draft)
+    expect(store.quotes.has(Q.draft)).toBe(false)
+    expect(store.quoteLines.has(QL.draftWorkshop)).toBe(false)
+  })
+
+  it("Send sets Sent, the sent date and who sent it; only a Draft can be sent", async () => {
+    const sent = await as(alex.id).sendQuote(Q.draft)
+    expect(sent).toMatchObject({ status: "sent", sentOn: NOW.toISOString(), sentById: alex.id, sentByName: "Alex Wilber" })
+    expect((await errorOf(as(alex.id).sendQuote(Q.draft))).code).toBe("invalid")
+  })
+
+  it("Revise keeps the number, adds 1 to the Revision, copies the lines and marks the old Quote Revised", async () => {
+    const draft = await as(alex.id).reviseQuote(Q.sent)
+    expect(draft).toMatchObject({ number: "Q-00001", revision: 2, status: "draft", netTotal: 12750, validUntil: "2026-11-08" })
+    expect(draft.sentOn).toBeUndefined()
+    expect((await as(alex.id).getQuote(draft.id)).lines).toHaveLength(2)
+    expect((await as(alex.id).getQuote(Q.sent)).quote.status).toBe("revised")
+    expect((await errorOf(as(alex.id).reviseQuote(Q.sent))).code).toBe("invalid")
+    expect((await errorOf(as(alex.id).reviseQuote(draft.id))).code).toBe("invalid")
+  })
+
+  it("Accept rejects the Opportunity's other Sent Quotes and leaves Drafts and other Opportunities alone", async () => {
+    const accepted = await as(alex.id).acceptQuote(Q.sent)
+    expect(accepted.status).toBe("accepted")
+    const quotes = new Map((await as(alex.id).listQuotes(O.proposal)).map((q) => [q.id, q.status]))
+    expect(quotes.get(Q.expired)).toBe("rejected")
+    expect(quotes.get(Q.draft)).toBe("draft")
+    expect(quotes.get(Q.revised)).toBe("revised")
+    expect(store.quotes.get(Q.accepted)?.status).toBe("accepted")
+  })
+
+  it("Reject sets Rejected, and a Draft or final Quote cannot be accepted or rejected", async () => {
+    expect((await as(alex.id).rejectQuote(Q.sent)).status).toBe("rejected")
+    expect((await errorOf(as(alex.id).acceptQuote(Q.draft))).code).toBe("invalid")
+    expect((await errorOf(as(alex.id).rejectQuote(Q.sent))).code).toBe("invalid")
+    expect((await errorOf(as(alex.id).acceptQuote(Q.revised))).code).toBe("invalid")
+  })
+
+  it("only the Owner and the Owner's manager send, revise, accept and reject", async () => {
+    for (const userId of [adele.id, diego.id]) {
+      const gateway = as(userId)
+      for (const act of [() => gateway.sendQuote(Q.draft), () => gateway.reviseQuote(Q.sent), () => gateway.acceptQuote(Q.sent), () => gateway.rejectQuote(Q.sent)]) {
+        expect((await errorOf(act())).code).toBe("forbidden")
+      }
+    }
+    expect((await as(megan.id).acceptQuote(Q.sent)).status).toBe("accepted")
+    expect((await as(diego.id).getQuote(Q.sent)).canEdit).toBe(false)
+  })
+
+  it("acts on no Quote of a closed Opportunity", async () => {
+    await as(alex.id).closeOpportunity(O.proposal, { outcome: "won", actualValue: 1 })
+    expect((await errorOf(as(alex.id).acceptQuote(Q.sent))).code).toBe("invalid")
+    expect((await errorOf(as(alex.id).sendQuote(Q.draft))).code).toBe("invalid")
+    expect((await errorOf(as(alex.id).addQuoteLine(Q.draft, { productId: PR.consultingHour, quantity: 1 }))).code).toBe("invalid")
+  })
+
+  it("Close as lost rejects the Sent Quotes; Close as won leaves them", async () => {
+    await as(alex.id).closeOpportunity(O.proposal, { outcome: "lost", lostReason: "price" })
+    const statuses = (await as(alex.id).listQuotes(O.proposal)).map((q) => [q.id, q.status] as const)
+    expect(new Map(statuses).get(Q.sent)).toBe("rejected")
+    expect(new Map(statuses).get(Q.expired)).toBe("rejected")
+    expect(new Map(statuses).get(Q.draft)).toBe("draft")
+    expect(new Map(statuses).get(Q.revised)).toBe("revised")
+  })
+
+  it("Close as won leaves Sent Quotes as they are", async () => {
+    await as(alex.id).closeOpportunity(O.proposal, { outcome: "won" })
+    expect(store.quotes.get(Q.sent)?.status).toBe("sent")
+  })
+
+  it("a Quote never changes the Opportunity's Estimated value", async () => {
+    await as(alex.id).acceptQuote(Q.sent)
+    await as(alex.id).createQuote(O.proposal)
+    expect((await as(alex.id).getOpportunity(O.proposal)).opportunity.estimatedValue).toBe(20000)
+  })
+
+  it("Reassign moves the Opportunity's Quotes to the new Owner, also the sent ones", async () => {
+    await as(megan.id).reassign({ type: "opportunity", id: O.proposal }, diego.id)
+    const quotes = await as(diego.id).listQuotes(O.proposal)
+    expect(quotes.length).toBeGreaterThan(0)
+    expect(quotes.every((q) => q.ownerId === diego.id && q.ownerName === "Diego Siciliani")).toBe(true)
+    expect((await as(diego.id).acceptQuote(Q.sent)).status).toBe("accepted")
+  })
+
+  it("everyone reads every Quote", async () => {
+    const details = await as(diego.id).getQuote(Q.sent)
+    expect(details.quote.number).toBe("Q-00001")
+    expect(details.lines).toHaveLength(2)
+    expect(details.opportunity.id).toBe(O.proposal)
+    expect(details.canEdit).toBe(false)
+    expect((await as(diego.id).getOpportunity(O.proposal)).quotes.map((q) => q.id)).toEqual([Q.draft, Q.sent, Q.revised, Q.expired])
   })
 })

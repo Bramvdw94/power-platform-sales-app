@@ -15,6 +15,8 @@ import {
   Vibe_productlinesService,
   Vibe_productsService,
   Vibe_quotasService,
+  Vibe_quotelinesService,
+  Vibe_quotesService,
   WhoAmIService,
 } from "@/generated"
 import type { IGetAllOptions } from "@/generated/models/CommonModels"
@@ -29,6 +31,8 @@ import {
   PRODUCT_COLUMNS,
   PRODUCT_LINE_COLUMNS,
   QUOTA_COLUMNS,
+  QUOTE_COLUMNS,
+  QUOTE_LINE_COLUMNS,
   SYSTEM_USER_COLUMNS,
   TASK_COLUMNS,
   type DataverseClient,
@@ -118,6 +122,8 @@ export function createGeneratedClient(): DataverseClient {
     products: table(Vibe_productsService, "vibe_product", PRODUCT_COLUMNS),
     productLines: table(Vibe_productlinesService, "vibe_productline", PRODUCT_LINE_COLUMNS),
     quotas: table(Vibe_quotasService, "vibe_quota", QUOTA_COLUMNS),
+    quotes: table(Vibe_quotesService, "vibe_quote", QUOTE_COLUMNS),
+    quoteLines: table(Vibe_quotelinesService, "vibe_quoteline", QUOTE_LINE_COLUMNS),
     notes: table(AnnotationsService, "annotation", NOTE_COLUMNS),
     tasks: table(TasksService, "task", TASK_COLUMNS),
     phoneCalls: table(PhonecallsService, "phonecall", PHONE_CALL_COLUMNS),

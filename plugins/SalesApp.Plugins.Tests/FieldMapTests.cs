@@ -85,6 +85,18 @@ namespace SalesApp.Plugins.Tests
         }
 
         [Fact]
+        public void A_Quotes_status_reason_reads_as_its_name()
+        {
+            var quote = new Entity("vibe_quote", Guid.NewGuid());
+            quote["statuscode"] = new OptionSetValue(2);
+
+            var record = FieldMap.ToRecord("quote", quote);
+
+            Assert.Equal("sent", record["status"]);
+            Assert.Equal(new[] { "draft", "sent", "accepted", "rejected", "revised" }, FieldMap.Catalogue()["quote"]["status"].Options);
+        }
+
+        [Fact]
         public void The_catalogue_knows_the_four_tables_and_the_related_lists()
         {
             var catalogue = FieldMap.Catalogue();

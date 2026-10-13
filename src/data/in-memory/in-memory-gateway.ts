@@ -6,6 +6,10 @@ import {
   productLineErrors,
   productLinesTotal,
   productErrors,
+  defaultValidUntil,
+  quoteErrors,
+  quoteTotals,
+  requireQuoteMove,
   canApplyLeadAction,
   canEdit,
   changeStage,
@@ -65,6 +69,12 @@ import {
   type ProductLineInput,
   type ProductLineUpdate,
   type PipelineFilter,
+  type Quote,
+  type QuoteLine,
+  type QuoteLineInput,
+  type QuoteLineUpdate,
+  type QuoteStatus,
+  type QuoteUpdate,
   type Quota,
   type RecordRef,
   type Task,
@@ -92,6 +102,7 @@ import {
   type ProductListQuery,
   type ProductUpdate,
   type PhoneCallInput,
+  type QuoteDetails,
   type QualifyInput,
   type QualifyResult,
   type QualifyStep,
@@ -101,7 +112,7 @@ import {
   type SearchResults,
   type TaskInput,
 } from "../gateway"
-import type { AccountRow, ActivityRow, ContactRow, InMemorySalesStore, LeadRow, OpportunityRow } from "./store"
+import type { AccountRow, ActivityRow, ContactRow, InMemorySalesStore, LeadRow, OpportunityRow, QuoteRow } from "./store"
 
 export type InMemoryGatewayOptions = {
   /** The signed-in user. */
@@ -273,6 +284,7 @@ export class InMemorySalesGateway implements SalesGateway {
       primaryContact: contact && this.toContact(contact),
       originatingLead: lead && this.toLead(lead),
       productLines: this.linesOf(id),
+      quotes: this.quotesOf(id),
       canEdit: this.mayEdit(opportunity.ownerId),
     }
   }
@@ -405,6 +417,156 @@ export class InMemorySalesGateway implements SalesGateway {
     const opportunity = this.editableOpportunityForLines(line.opportunityId)
     this.store.productLines.delete(id)
     this.syncEstimatedValue(opportunity)
+  }
+
+  // ---- Quotes ---------------------------------------------------------------------
+
+  async listQuotes(opportunityId: Id): Promise<Quote[]> {
+    this.opportunityRow(opportunityId)
+    return this.quotesOf(opportunityId)
+  }
+
+  async getQuote(id: Id): Promise<QuoteDetails> {
+    const row = this.quoteRow(id)
+    const opportunity = this.opportunityRow(row.opportunityId)
+    const contact = row.contactId ? this.store.contacts.get(row.contactId) : undefined
+    return {
+      quote: this.toQuote(row),
+      lines: this.quoteLinesOf(id),
+      opportunity: this.toOpportunity(opportunity),
+      contact: contact && this.toContact(contact),
+      canEdit: this.mayEdit(row.ownerId),
+    }
+  }
+
+  async createQuote(opportunityId: Id): Promise<Quote> {
+    const opportunity = this.opportunityRow(opportunityId)
+    this.requireEdit(opportunity.ownerId)
+    if (isOpportunityReadOnly(opportunity)) throw new GatewayError("invalid", "A closed Opportunity can't get new Quotes.")
+    const row: QuoteRow = {
+      id: this.store.newId("quote"),
+      opportunityId,
+      number: this.store.nextQuoteNumber(),
+      revision: 0,
+      status: "draft",
+      accountId: opportunity.accountId,
+      contactId: opportunity.primaryContactId,
+      validUntil: defaultValidUntil(this.today()),
+      netTotal: 0,
+      vat21: 0,
+      vat9: 0,
+      grossTotal: 0,
+      ownerId: opportunity.ownerId,
+      createdOn: this.now().toISOString(),
+    }
+    this.store.quotes.set(row.id, withoutBlanks(row))
+    for (const line of this.linesOf(opportunityId)) {
+      const product = this.productRow(line.productId)
+      this.addCopiedLine(row.id, { ...line, vatRate: product.vatRate })
+    }
+    return this.toQuote(this.syncQuoteTotals(row.id))
+  }
+
+  async updateQuote(id: Id, update: QuoteUpdate): Promise<Quote> {
+    const row = this.draftQuote(id)
+    if (update.contactId) this.contactRow(update.contactId)
+    invalid("The Quote cannot be saved.", quoteErrors(update))
+    const next = withoutBlanks({
+      ...row,
+      ...defined(clone({ contactId: update.contactId, validUntil: update.validUntil })),
+    }) as QuoteRow
+    this.store.quotes.set(id, next)
+    return this.toQuote(next)
+  }
+
+  async deleteQuote(id: Id): Promise<void> {
+    this.draftQuote(id)
+    for (const line of this.quoteLinesOf(id)) this.store.quoteLines.delete(line.id)
+    this.store.quotes.delete(id)
+  }
+
+  async addQuoteLine(quoteId: Id, input: QuoteLineInput): Promise<QuoteLine> {
+    this.draftQuote(quoteId)
+    const product = this.productRow(input.productId)
+    if (product.retired) throw new GatewayError("invalid", "The Quote line cannot be saved.", { productId: "A retired Product can't be added." })
+    const defaults = newProductLineDefaults(product)
+    const values = {
+      quantity: input.quantity,
+      unitPrice: input.unitPrice ?? defaults.unitPrice,
+      discountPercent: input.discountPercent ?? defaults.discountPercent,
+    }
+    invalid("The Quote line cannot be saved.", productLineErrors(values))
+    const line = this.addCopiedLine(quoteId, {
+      productId: product.id,
+      productName: product.name,
+      description: input.description?.trim() || (input.description === undefined ? defaults.description : undefined),
+      ...values,
+      vatRate: product.vatRate,
+    })
+    this.syncQuoteTotals(quoteId)
+    return clone(line)
+  }
+
+  async updateQuoteLine(id: Id, update: QuoteLineUpdate): Promise<QuoteLine> {
+    const line = this.quoteLineRow(id)
+    this.draftQuote(line.quoteId)
+    const next: QuoteLine = withoutBlanks({ ...line, ...defined(clone(update)) })
+    invalid("The Quote line cannot be saved.", productLineErrors(next))
+    next.lineAmount = lineAmount(next.quantity, next.unitPrice, next.discountPercent)
+    this.store.quoteLines.set(id, next)
+    this.syncQuoteTotals(line.quoteId)
+    return clone(next)
+  }
+
+  async removeQuoteLine(id: Id): Promise<void> {
+    const line = this.quoteLineRow(id)
+    this.draftQuote(line.quoteId)
+    this.store.quoteLines.delete(id)
+    this.syncQuoteTotals(line.quoteId)
+  }
+
+  async sendQuote(id: Id): Promise<Quote> {
+    const row = this.movableQuote(id, "sent")
+    const sent: QuoteRow = { ...row, status: "sent", sentOn: this.now().toISOString(), sentById: this.userId }
+    this.store.quotes.set(id, sent)
+    return this.toQuote(sent)
+  }
+
+  async reviseQuote(id: Id): Promise<Quote> {
+    const row = this.movableQuote(id, "revised")
+    const draft: QuoteRow = {
+      ...row,
+      id: this.store.newId("quote"),
+      revision: row.revision + 1,
+      status: "draft",
+      validUntil: defaultValidUntil(this.today()),
+      sentOn: undefined,
+      sentById: undefined,
+      createdOn: this.now().toISOString(),
+    }
+    this.store.quotes.set(draft.id, withoutBlanks(draft))
+    for (const line of this.quoteLinesOf(id)) this.addCopiedLine(draft.id, line)
+    this.store.quotes.set(id, { ...row, status: "revised" })
+    return this.toQuote(this.syncQuoteTotals(draft.id))
+  }
+
+  async acceptQuote(id: Id): Promise<Quote> {
+    const row = this.movableQuote(id, "accepted")
+    const accepted: QuoteRow = { ...row, status: "accepted" }
+    this.store.quotes.set(id, accepted)
+    for (const other of this.store.quotes.values()) {
+      if (other.opportunityId === row.opportunityId && other.id !== id && other.status === "sent") {
+        this.store.quotes.set(other.id, { ...other, status: "rejected" })
+      }
+    }
+    return this.toQuote(accepted)
+  }
+
+  async rejectQuote(id: Id): Promise<Quote> {
+    const row = this.movableQuote(id, "rejected")
+    const rejected: QuoteRow = { ...row, status: "rejected" }
+    this.store.quotes.set(id, rejected)
+    return this.toQuote(rejected)
   }
 
   // ---- Accounts and Contacts -------------------------------------------------
@@ -609,7 +771,13 @@ export class InMemorySalesGateway implements SalesGateway {
     const row = this.opportunityRow(id)
     this.requireEdit(row.ownerId)
     const change = rule(() => closeOpportunity(row, input, { today: this.today(), userId: this.userId }))
-    return this.saveOpportunity({ ...row, ...change })
+    const closed = this.saveOpportunity({ ...row, ...change })
+    if (input.outcome === "lost") {
+      for (const quote of this.store.quotes.values()) {
+        if (quote.opportunityId === id && quote.status === "sent") this.store.quotes.set(quote.id, { ...quote, status: "rejected" })
+      }
+    }
+    return closed
   }
 
   async reopenOpportunity(id: Id, stage: OpenStage): Promise<Opportunity> {
@@ -661,6 +829,12 @@ export class InMemorySalesGateway implements SalesGateway {
     }
     // Read-only records (Qualified Leads, closed Opportunities) can still be reassigned.
     row.ownerId = newOwnerId
+    // A Quote follows its Opportunity's Owner, also once sent.
+    if (record.type === "opportunity") {
+      for (const quote of this.store.quotes.values()) {
+        if (quote.opportunityId === record.id) quote.ownerId = newOwnerId
+      }
+    }
     // Open Tasks and Phone Calls move along; completed ones and Notes keep their Owner.
     // Reassigning an Account leaves its Contacts and Opportunities alone.
     for (const activity of this.store.activities.values()) {
@@ -830,6 +1004,84 @@ export class InMemorySalesGateway implements SalesGateway {
     this.store.opportunities.set(opportunity.id, { ...opportunity, estimatedValue: productLinesTotal(lines) })
   }
 
+  private quotesOf(opportunityId: Id): Quote[] {
+    return [...this.store.quotes.values()]
+      .filter((q) => q.opportunityId === opportunityId)
+      .sort((a, b) => b.createdOn.localeCompare(a.createdOn) || b.id.localeCompare(a.id))
+      .map((q) => this.toQuote(q))
+  }
+
+  private quoteRow(id: Id): QuoteRow {
+    const row = this.store.quotes.get(id)
+    if (!row) throw new GatewayError("notFound", `Quote ${id} not found.`)
+    return row
+  }
+
+  private quoteLinesOf(quoteId: Id): QuoteLine[] {
+    return clone(
+      [...this.store.quoteLines.values()]
+        .filter((l) => l.quoteId === quoteId)
+        .sort((a, b) => a.createdOn.localeCompare(b.createdOn) || a.id.localeCompare(b.id)),
+    )
+  }
+
+  private quoteLineRow(id: Id): QuoteLine {
+    const row = this.store.quoteLines.get(id)
+    if (!row) throw new GatewayError("notFound", `Quote line ${id} not found.`)
+    return row
+  }
+
+  /** A Quote its Owner or manager may change, while it is a Draft on an open Opportunity. */
+  private draftQuote(id: Id): QuoteRow {
+    const row = this.quoteRow(id)
+    this.requireEdit(row.ownerId)
+    if (row.status !== "draft") throw new GatewayError("invalid", "Only a Draft Quote can be changed.")
+    this.requireOpenOpportunityOfQuote(row)
+    return row
+  }
+
+  /** A Quote moving to another status: allowed by the rules, by this user, on an open Opportunity. */
+  private movableQuote(id: Id, to: QuoteStatus): QuoteRow {
+    const row = this.quoteRow(id)
+    this.requireEdit(row.ownerId)
+    rule(() => requireQuoteMove(row.status, to))
+    this.requireOpenOpportunityOfQuote(row)
+    return row
+  }
+
+  private requireOpenOpportunityOfQuote(row: QuoteRow): void {
+    if (isOpportunityReadOnly(this.opportunityRow(row.opportunityId))) {
+      throw new GatewayError("invalid", "A closed Opportunity's Quotes are read-only.")
+    }
+  }
+
+  private addCopiedLine(quoteId: Id, line: Pick<QuoteLine, "productId" | "productName" | "description" | "quantity" | "unitPrice" | "discountPercent" | "vatRate">): QuoteLine {
+    const row: QuoteLine = withoutBlanks({
+      id: this.store.newId("qline"),
+      quoteId,
+      productId: line.productId,
+      productName: line.productName,
+      description: line.description,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      discountPercent: line.discountPercent,
+      vatRate: line.vatRate,
+      lineAmount: lineAmount(line.quantity, line.unitPrice, line.discountPercent),
+      createdOn: this.now().toISOString(),
+    })
+    this.store.quoteLines.set(row.id, row)
+    return row
+  }
+
+  /** What the plug-in does in Dataverse: the totals are the lines' net, VAT per rate and gross. */
+  private syncQuoteTotals(quoteId: Id): QuoteRow {
+    const totals = quoteTotals(this.quoteLinesOf(quoteId))
+    const vat = (rate: number) => totals.byRate.find((l) => l.rate === rate)?.vat ?? 0
+    const next: QuoteRow = { ...this.quoteRow(quoteId), netTotal: totals.net, vat21: vat(21), vat9: vat(9), grossTotal: totals.gross }
+    this.store.quotes.set(quoteId, next)
+    return next
+  }
+
   private requireCatalogueManager(): void {
     if (!this.user(this.userId).isCatalogueManager) {
       throw new GatewayError("forbidden", "Only a Catalogue manager can change Products.")
@@ -938,6 +1190,17 @@ export class InMemorySalesGateway implements SalesGateway {
       accountName: this.store.accounts.get(row.accountId)?.name ?? "",
       primaryContactName: contact && fullName(contact),
       closedByName: row.closedById && this.ownerName(row.closedById),
+    })
+  }
+
+  private toQuote(row: QuoteRow): Quote {
+    const contact = row.contactId ? this.store.contacts.get(row.contactId) : undefined
+    return clone({
+      ...row,
+      ownerName: this.ownerName(row.ownerId),
+      accountName: this.store.accounts.get(row.accountId)?.name ?? "",
+      contactName: contact && fullName(contact),
+      sentByName: row.sentById && this.ownerName(row.sentById),
     })
   }
 

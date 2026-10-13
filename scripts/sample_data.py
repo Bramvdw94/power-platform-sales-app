@@ -21,6 +21,7 @@ the end import `security_check` (and through it `auth`) only when called.
 """
 
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
@@ -51,6 +52,9 @@ STAGE_DEFAULT_PROBABILITY = {
 USER_KEYS = ["megan", "adele", "alex", "diego"]
 PRODUCT_UNITS = ["piece", "hour", "day", "month", "year"]
 VAT_RATES = [21, 9, 0]
+# Status reasons of a Quote: 1 Draft (the Active state), then Sent, Accepted, Rejected, Revised (Inactive).
+QUOTE_STATUSES = ["draft", "sent", "accepted", "rejected", "revised"]
+QUOTE_STATUS_STATE = {"draft": (0, 1), "sent": (1, 2), "accepted": (1, 3), "rejected": (1, 4), "revised": (1, 5)}
 
 
 @dataclass(frozen=True)
@@ -75,6 +79,10 @@ TABLES = [
     # After the Opportunities, which are closed only once everything is loaded. Owned by the
     # Opportunity's owner; written with the plug-in bypass, so the amounts are worked out here.
     Table("productLines", "line-", "vibe_productline", "vibe_productlines", "vibe_productlineid", (0, 1)),
+    # Quotes follow their Opportunity's owner; their totals and Line amounts are worked out here
+    # because the plug-ins are bypassed. Non-Draft Quotes are deactivated once everything is loaded.
+    Table("quotes", "quote-", "vibe_quote", "vibe_quotes", "vibe_quoteid", (0, 1)),
+    Table("quoteLines", "qline-", "vibe_quoteline", "vibe_quotelines", "vibe_quotelineid", (0, 1)),
     Table("notes", "note-", "annotation", "annotations", "annotationid", None),
     Table("tasks", "task-", "task", "tasks", "activityid", (0, 2)),
     Table("phoneCalls", "call-", "phonecall", "phonecalls", "activityid", (0, 1)),
@@ -99,6 +107,20 @@ def lines_total(data, opportunity_key):
     amounts = [line_amount(l["quantity"], l.get("unitPrice", products[l["product"]]["listPrice"]), l.get("discountPercent"))
                for l in data.get("productLines", []) if l.get("opportunity") == opportunity_key and l.get("product") in products]
     return sum(amounts) if amounts else None
+
+
+def quote_totals(data, quote_key):
+    """(net, vat 21, vat 9, gross) of a Quote's lines: VAT per rate on the net total of that rate, in cents."""
+    products = {p["key"]: p for p in data.get("products", [])}
+    net = {21: Decimal(0), 9: Decimal(0), 0: Decimal(0)}
+    for l in data.get("quoteLines", []):
+        if l.get("quote") != quote_key or l.get("product") not in products:
+            continue
+        product = products[l["product"]]
+        net[product["vatRate"]] += line_amount(l["quantity"], l.get("unitPrice", product["listPrice"]), l.get("discountPercent"))
+    vat = {r: (net[r] * r / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) for r in net}
+    total = sum(net.values())
+    return total, vat[21], vat[9], total + vat[21] + vat[9]
 
 
 def record_id(key):
@@ -268,6 +290,62 @@ def validate(data):
         total = lines_total(data, opp_key)
         if total is not None and Decimal(str(opp["estimatedValue"])) != total:
             err(f"{opp_key}: estimatedValue {opp['estimatedValue']} must equal its Product lines' total {total}")
+
+
+    quote_by_key = {q["key"]: q for q in data.get("quotes", [])}
+    seen_numbers = set()
+    for quote in data.get("quotes", []):
+        key = quote["key"]
+        required(quote, "opportunity", "number", "status", "validUntilInDays")
+        opp = ref(quote, "opportunity", "opp-", required=True)
+        status = quote.get("status")
+        if status not in QUOTE_STATUSES:
+            err(f"{key}: unknown status {status!r}")
+            continue
+        number, revision = quote.get("number", ""), quote.get("revision", 0)
+        if not re.fullmatch(r"Q-\d{5}", number):
+            err(f"{key}: number must look like Q-00001")
+        if not isinstance(revision, int) or revision < 0:
+            err(f"{key}: revision must be a whole number >= 0")
+        if (number, revision) in seen_numbers:
+            err(f"{key}: a second Quote {number} revision {revision}")
+        seen_numbers.add((number, revision))
+        if not isinstance(quote.get("validUntilInDays"), int):
+            err(f"{key}: validUntilInDays must be a whole number")
+        if status == "draft":
+            if "sentDaysAgo" in quote:
+                err(f"{key}: a Draft has not been sent")
+        else:
+            if not isinstance(quote.get("sentDaysAgo"), int) or quote["sentDaysAgo"] > quote.get("createdDaysAgo", 0):
+                err(f"{key}: a {status} Quote needs sentDaysAgo, after it was created")
+        if opp and opp["stage"] == "closedLost" and status in ("draft", "sent"):
+            err(f"{key}: Close as lost rejects Sent Quotes; a {status} Quote cannot be on a lost deal")
+        if status == "revised" and not any(
+            o.get("opportunity") == quote.get("opportunity") and o.get("number") == number and o.get("revision") == revision + 1
+            for o in data["quotes"]
+        ):
+            err(f"{key}: a Revised Quote needs the next revision of {number}")
+    for opp_key in {q["opportunity"] for q in data.get("quotes", []) if q.get("opportunity")}:
+        accepted = [q["key"] for q in data["quotes"] if q.get("opportunity") == opp_key and q.get("status") == "accepted"]
+        if len(accepted) > 1:
+            err(f"{opp_key}: more than one Accepted Quote {accepted}")
+    for line in data.get("quoteLines", []):
+        key = line["key"]
+        required(line, "quote", "product", "quantity")
+        quote = ref(line, "quote", "quote-", required=True)
+        if line.get("product") not in product_keys:
+            err(f"{key}: product {line.get('product')!r} is not a known prod-* record")
+            continue
+        quantity, price, discount = line.get("quantity"), line.get("unitPrice", product_keys[line["product"]]["listPrice"]), line.get("discountPercent", 0)
+        if not isinstance(quantity, (int, float)) or quantity <= 0 or abs(quantity * 100 - round(quantity * 100)) > 1e-6:
+            err(f"{key}: quantity must be above 0, with at most 2 decimals")
+        if not isinstance(price, (int, float)) or price < 0 or abs(price * 100 - round(price * 100)) > 1e-6:
+            err(f"{key}: unitPrice must be 0 or more, in whole cents")
+        if not isinstance(discount, (int, float)) or not 0 <= discount <= 100:
+            err(f"{key}: discountPercent must be 0-100")
+    for key in quote_by_key:
+        if not any(l.get("quote") == key for l in data.get("quoteLines", [])) and quote_by_key[key].get("status") != "draft":
+            err(f"{key}: a sent Quote needs at least one line")
 
     for lead in data.get("leads", []):
         if lead.get("status") == "qualified" and lead["key"] not in originating:
@@ -501,6 +579,44 @@ def build_records(data, users, nav, clock):
             **bind(nav["productline.product"], "vibe_products", line["product"]),
         })
 
+    for quote in data.get("quotes", []):
+        opp = next(o for o in data["opportunities"] if o["key"] == quote["opportunity"])
+        net, vat21, vat9, gross = quote_totals(data, quote["key"])
+        body = {
+            "vibe_name": quote["number"],
+            "vibe_revision": quote.get("revision", 0),
+            "vibe_validuntil": clock.date_only(quote["validUntilInDays"]),
+            "vibe_nettotal": float(net),
+            "vibe_vat21": float(vat21),
+            "vibe_vat9": float(vat9),
+            "vibe_grosstotal": float(gross),
+            **bind(nav["quote.opportunity"], "vibe_opportunities", quote["opportunity"]),
+            **bind(nav["quote.account"], "accounts", opp["account"]),
+        }
+        if opp.get("primaryContact"):
+            body.update(bind(nav["quote.contact"], "contacts", opp["primaryContact"]))
+        if "sentDaysAgo" in quote:
+            body["vibe_senton"] = clock.moment(-quote["sentDaysAgo"], 11)
+            body.update(user_bind(nav["quote.sentby"], users[opp["owner"]]))
+        final = QUOTE_STATUS_STATE[quote["status"]] if quote["status"] != "draft" else None
+        add("quotes", quote, body, final)
+
+    for line in data.get("quoteLines", []):
+        product = products[line["product"]]
+        price = line.get("unitPrice", product["listPrice"])
+        discount = line.get("discountPercent", 0)
+        add("quoteLines", line, {
+            "vibe_name": product["name"],
+            "vibe_description": line.get("description") or product.get("description"),
+            "vibe_quantity": line["quantity"],
+            "vibe_unitprice": price,
+            "vibe_discountpercent": discount,
+            "vibe_vatrate": choice(VAT_RATES, product["vatRate"]),
+            "vibe_lineamount": float(line_amount(line["quantity"], price, discount)),
+            **bind(nav["quoteline.quote"], "vibe_quotes", line["quote"]),
+            **bind(nav["quoteline.product"], "vibe_products", line["product"]),
+        })
+
     for note in data["notes"]:
         target = regarding_table(note["regarding"])
         add("notes", note, {
@@ -575,6 +691,9 @@ def owner_of(data, rec):
         return rec["salesperson"]
     if "opportunity" in rec:
         return next(o for o in data["opportunities"] if o["key"] == rec["opportunity"])["owner"]
+    if "quote" in rec:
+        quote = next(q for q in data["quotes"] if q["key"] == rec["quote"])
+        return next(o for o in data["opportunities"] if o["key"] == quote["opportunity"])["owner"]
     return _find(data, rec["regarding"])["owner"]
 
 
@@ -596,6 +715,12 @@ NAV_LOOKUPS = {
     "opportunity.originatinglead": ("vibe_opportunity", "vibe_originatingleadid", "vibe_lead"),
     "opportunity.closedby": ("vibe_opportunity", "vibe_closedby", "systemuser"),
     "quota.salesperson": ("vibe_quota", "vibe_salespersonid", "systemuser"),
+    "quote.opportunity": ("vibe_quote", "vibe_opportunityid", "vibe_opportunity"),
+    "quote.account": ("vibe_quote", "vibe_accountid", "account"),
+    "quote.contact": ("vibe_quote", "vibe_contactid", "contact"),
+    "quote.sentby": ("vibe_quote", "vibe_sentby", "systemuser"),
+    "quoteline.quote": ("vibe_quoteline", "vibe_quoteid", "vibe_quote"),
+    "quoteline.product": ("vibe_quoteline", "vibe_productid", "vibe_product"),
     "productline.opportunity": ("vibe_productline", "vibe_opportunityid", "vibe_opportunity"),
     "productline.product": ("vibe_productline", "vibe_productid", "vibe_product"),
     **{f"note.{t}": ("annotation", "objectid", t) for t in ("account", "contact", "vibe_lead", "vibe_opportunity")},
@@ -614,6 +739,7 @@ def summary(data):
         f"{len(leads)} Leads: {by(leads, 'status', LEAD_STATUSES)}",
         f"{len(opps)} Opportunities: {by(opps, 'stage', STAGES)}",
         f"{len(data.get('productLines', []))} Product lines on {len({l['opportunity'] for l in data.get('productLines', [])})} Opportunities",
+        f"{len(data.get('quotes', []))} Quotes: {by(data.get('quotes', []), 'status', QUOTE_STATUSES)}",
         f"{len(data['products'])} Products ({sum(bool(p.get('retired')) for p in data['products'])} retired)",
         f"{len(data['notes'])} Notes, {len(data['tasks'])} Tasks, {len(data['phoneCalls'])} Phone Calls",
         f"{len(data.get('quotas', []))} Quotas",

@@ -2968,5 +2968,230 @@
     { "key": "quota-megan-3", "salesperson": "megan", "monthOffset": 3, "amount": 20000, "createdDaysAgo": 14 },
     { "key": "quota-megan-4", "salesperson": "megan", "monthOffset": 4, "amount": 20000, "createdDaysAgo": 14 },
     { "key": "quota-megan-5", "salesperson": "megan", "monthOffset": 5, "amount": 20000, "createdDaysAgo": 14 }
+  ],
+  "quotes": [
+    {
+      "key": "quote-devries-1",
+      "opportunity": "opp-devries",
+      "number": "Q-00001",
+      "revision": 0,
+      "status": "revised",
+      "validUntilInDays": -12,
+      "createdDaysAgo": 40,
+      "sentDaysAgo": 32
+    },
+    {
+      "key": "quote-devries-2",
+      "opportunity": "opp-devries",
+      "number": "Q-00001",
+      "revision": 1,
+      "status": "sent",
+      "validUntilInDays": 18,
+      "createdDaysAgo": 14,
+      "sentDaysAgo": 12
+    },
+    {
+      "key": "quote-devries-3",
+      "opportunity": "opp-devries",
+      "number": "Q-00002",
+      "revision": 0,
+      "status": "draft",
+      "validUntilInDays": 27,
+      "createdDaysAgo": 3
+    },
+    {
+      "key": "quote-vandijk-erp-1",
+      "opportunity": "opp-vandijk-erp",
+      "number": "Q-00003",
+      "revision": 0,
+      "status": "sent",
+      "validUntilInDays": -3,
+      "createdDaysAgo": 36,
+      "sentDaysAgo": 33
+    },
+    {
+      "key": "quote-veluwe-1",
+      "opportunity": "opp-veluwe",
+      "number": "Q-00004",
+      "revision": 0,
+      "status": "accepted",
+      "validUntilInDays": -8,
+      "createdDaysAgo": 40,
+      "sentDaysAgo": 38
+    },
+    {
+      "key": "quote-peelland-mes-1",
+      "opportunity": "opp-peelland-mes",
+      "number": "Q-00005",
+      "revision": 0,
+      "status": "rejected",
+      "validUntilInDays": -28,
+      "createdDaysAgo": 60,
+      "sentDaysAgo": 58
+    },
+    {
+      "key": "quote-rijnmond-1",
+      "opportunity": "opp-rijnmond",
+      "number": "Q-00006",
+      "revision": 0,
+      "status": "sent",
+      "validUntilInDays": 14,
+      "createdDaysAgo": 12,
+      "sentDaysAgo": 9
+    }
+  ],
+  "quoteLines": [
+    {
+      "key": "qline-devries-1-1",
+      "quote": "quote-devries-1",
+      "product": "prod-workplace",
+      "quantity": 1200,
+      "description": "Managed workplace, 100 users for 12 months",
+      "discountPercent": 5,
+      "createdDaysAgo": 40
+    },
+    {
+      "key": "qline-devries-1-2",
+      "quote": "quote-devries-1",
+      "product": "prod-migration",
+      "quantity": 1,
+      "createdDaysAgo": 40
+    },
+    {
+      "key": "qline-devries-1-3",
+      "quote": "quote-devries-1",
+      "product": "prod-training",
+      "quantity": 2,
+      "description": "Admin training, two sessions",
+      "createdDaysAgo": 40
+    },
+    {
+      "key": "qline-devries-2-1",
+      "quote": "quote-devries-2",
+      "product": "prod-workplace",
+      "quantity": 1200,
+      "description": "Managed workplace, 100 users for 12 months",
+      "discountPercent": 8,
+      "createdDaysAgo": 14
+    },
+    {
+      "key": "qline-devries-2-2",
+      "quote": "quote-devries-2",
+      "product": "prod-migration",
+      "quantity": 1,
+      "createdDaysAgo": 14
+    },
+    {
+      "key": "qline-devries-2-3",
+      "quote": "quote-devries-2",
+      "product": "prod-training",
+      "quantity": 2,
+      "description": "Admin training, two sessions",
+      "createdDaysAgo": 14
+    },
+    {
+      "key": "qline-devries-3-1",
+      "quote": "quote-devries-3",
+      "product": "prod-workplace",
+      "quantity": 1200,
+      "description": "Managed workplace, 100 users for 12 months",
+      "discountPercent": 5,
+      "createdDaysAgo": 3
+    },
+    {
+      "key": "qline-devries-3-2",
+      "quote": "quote-devries-3",
+      "product": "prod-training",
+      "quantity": 2,
+      "description": "Admin training, two sessions",
+      "createdDaysAgo": 3
+    },
+    {
+      "key": "qline-vandijk-erp-1-1",
+      "quote": "quote-vandijk-erp-1",
+      "product": "prod-senior",
+      "quantity": 280,
+      "description": "ERP integration, 10% volume discount",
+      "discountPercent": 10,
+      "createdDaysAgo": 36
+    },
+    {
+      "key": "qline-vandijk-erp-1-2",
+      "quote": "quote-vandijk-erp-1",
+      "product": "prod-pm-day",
+      "quantity": 30,
+      "createdDaysAgo": 36
+    },
+    {
+      "key": "qline-vandijk-erp-1-3",
+      "quote": "quote-vandijk-erp-1",
+      "product": "prod-services",
+      "quantity": 1,
+      "description": "Data migration scripts (fixed price)",
+      "unitPrice": 9500,
+      "createdDaysAgo": 36
+    },
+    {
+      "key": "qline-veluwe-1-1",
+      "quote": "quote-veluwe-1",
+      "product": "prod-senior",
+      "quantity": 240,
+      "createdDaysAgo": 40
+    },
+    {
+      "key": "qline-veluwe-1-2",
+      "quote": "quote-veluwe-1",
+      "product": "prod-pm-day",
+      "quantity": 12,
+      "createdDaysAgo": 40
+    },
+    {
+      "key": "qline-veluwe-1-3",
+      "quote": "quote-veluwe-1",
+      "product": "prod-secaudit",
+      "quantity": 2,
+      "description": "Security audits, two sites",
+      "createdDaysAgo": 40
+    },
+    {
+      "key": "qline-peelland-mes-1-1",
+      "quote": "quote-peelland-mes-1",
+      "product": "prod-consultant",
+      "quantity": 800,
+      "description": "MES integration, 800 consultant hours",
+      "createdDaysAgo": 60
+    },
+    {
+      "key": "qline-rijnmond-1-1",
+      "quote": "quote-rijnmond-1",
+      "product": "prod-senior",
+      "quantity": 320,
+      "description": "Senior consultants for the platform build",
+      "createdDaysAgo": 12
+    },
+    {
+      "key": "qline-rijnmond-1-2",
+      "quote": "quote-rijnmond-1",
+      "product": "prod-pm-day",
+      "quantity": 45,
+      "description": "Project management",
+      "createdDaysAgo": 12
+    },
+    {
+      "key": "qline-rijnmond-1-3",
+      "quote": "quote-rijnmond-1",
+      "product": "prod-support",
+      "quantity": 1,
+      "createdDaysAgo": 12
+    },
+    {
+      "key": "qline-rijnmond-1-4",
+      "quote": "quote-rijnmond-1",
+      "product": "prod-workshop",
+      "quantity": 4,
+      "description": "Discovery workshops, agreed day rate",
+      "unitPrice": 1300,
+      "createdDaysAgo": 12
+    }
   ]
 }

@@ -1,4 +1,5 @@
-import { quotaMonths, toDateOnly, type DateOnly, type Timestamp, type User } from "@/sales"
+import { lineAmount, quoteTotals, quotaMonths, toDateOnly, type DateOnly, type QuoteLine, type QuoteStatus, type Timestamp, type User } from "@/sales"
+import type { QuoteRow } from "./store"
 import type { InMemoryData } from "./store"
 
 // A small fixed data set for tests and local development, mirroring the
@@ -36,6 +37,21 @@ export const SEED_IDS = {
     wonWorkshop: "line-won-workshop",
     wonConsulting: "line-won-consulting",
   },
+  quotes: {
+    /** Fabrikam security audit (Alex's): Q-00001 revision 1, Sent. */
+    sent: "quote-sent",
+    /** Q-00001 revision 0, Revised by the one above. */
+    revised: "quote-revised",
+    /** Q-00002, Sent and past its Valid until. */
+    expired: "quote-expired",
+    /** Q-00003, a Draft with one line. */
+    draft: "quote-draft",
+    /** Fabrikam laptops (won). */
+    accepted: "quote-accepted",
+    /** Tailwind network refresh (lost). */
+    rejected: "quote-rejected",
+  },
+  quoteLines: { sentConsulting: "qline-sent-consulting", sentLicences: "qline-sent-licences", draftWorkshop: "qline-draft-workshop" },
   products: { consultingHour: "prod-consulting-hour", workshopDay: "prod-workshop-day", licence: "prod-licence-month", retired: "prod-retired-support" },
 } as const
 
@@ -51,12 +67,41 @@ function at(date: DateOnly): Timestamp {
 /** The seed data, with dates relative to today so Home and the Pipeline look current. */
 export function createSeedData(today: DateOnly): InMemoryData {
   const { megan, adele, alex, diego } = SEED_USERS
-  const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR, productLines: PL } = SEED_IDS
+  const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR, productLines: PL, quotes: Q, quoteLines: QL } = SEED_IDS
   const daysAgo = (n: number) => at(addDays(today, -n))
   const inDays = (n: number) => addDays(today, n)
 
   const [thisMonth, nextMonth] = quotaMonths(today, 2)
+
+  const quoteLine = (id: string, quoteId: string, productId: string, productName: string, quantity: number, unitPrice: number, vatRate: QuoteLine["vatRate"], created: number): QuoteLine => ({
+    id, quoteId, productId, productName, quantity, unitPrice, discountPercent: 0, vatRate,
+    lineAmount: lineAmount(quantity, unitPrice, 0), createdOn: daysAgo(created),
+  })
+  const quoteLines: QuoteLine[] = [
+    quoteLine(QL.sentConsulting, Q.sent, PR.consultingHour, "Consulting", 100, 125, 21, 8),
+    quoteLine(QL.sentLicences, Q.sent, PR.licence, "Cloud licence", 10, 25, 21, 8),
+    quoteLine(QL.draftWorkshop, Q.draft, PR.workshopDay, "Workshop day", 5, 1450, 9, 1),
+  ]
+  const quote = (id: string, number: string, revision: number, status: QuoteStatus, opportunityId: string, accountId: string, contactId: string | undefined, ownerId: string, validUntil: DateOnly, created: number, extra: Partial<QuoteRow> = {}): QuoteRow => {
+    const totals = quoteTotals(quoteLines.filter((l) => l.quoteId === id))
+    const vat = (rate: number) => totals.byRate.find((l) => l.rate === rate)?.vat ?? 0
+    return {
+      id, opportunityId, number, revision, status, accountId, contactId, validUntil,
+      netTotal: totals.net, vat21: vat(21), vat9: vat(9), grossTotal: totals.gross,
+      ownerId, createdOn: daysAgo(created), ...extra,
+    }
+  }
+  const sentAt = (days: number) => ({ sentOn: daysAgo(days), sentById: alex.id })
   return {
+    quoteLines,
+    quotes: [
+      quote(Q.revised, "Q-00001", 0, "revised", O.proposal, A.fabrikam, C.pieter, alex.id, inDays(-20), 15, sentAt(14)),
+      quote(Q.sent, "Q-00001", 1, "sent", O.proposal, A.fabrikam, C.pieter, alex.id, inDays(20), 8, sentAt(7)),
+      quote(Q.expired, "Q-00002", 0, "sent", O.proposal, A.fabrikam, C.pieter, alex.id, inDays(-2), 33, sentAt(32)),
+      quote(Q.draft, "Q-00003", 0, "draft", O.proposal, A.fabrikam, C.pieter, alex.id, inDays(29), 1),
+      quote(Q.accepted, "Q-00004", 0, "accepted", O.won, A.fabrikam, undefined, alex.id, inDays(-18), 60, sentAt(58)),
+      quote(Q.rejected, "Q-00005", 0, "rejected", O.lost, A.tailwind, undefined, adele.id, inDays(-27), 90, { sentOn: daysAgo(88), sentById: adele.id }),
+    ],
     users: Object.values(SEED_USERS),
     quotas: [
       { id: "quota-adele-1", salespersonId: adele.id, month: thisMonth, amount: 40000 },

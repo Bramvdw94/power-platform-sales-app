@@ -12,7 +12,11 @@
     <RolePrivilege name="prvCreateSharePointData" level="Global" />
     <RolePrivilege name="prvCreatevibe_ProductLine" level="Local" />
     <RolePrivilege name="prvCreatevibe_Quota" level="Local" />
+    <RolePrivilege name="prvCreatevibe_Quote" level="Local" />
+    <RolePrivilege name="prvCreatevibe_QuoteLine" level="Local" />
     <RolePrivilege name="prvDeletevibe_ProductLine" level="Local" />
+    <RolePrivilege name="prvDeletevibe_Quote" level="Local" />
+    <RolePrivilege name="prvDeletevibe_QuoteLine" level="Local" />
     <RolePrivilege name="prvReadSharePointData" level="Global" />
     <RolePrivilege name="prvReadSharePointDocument" level="Global" />
     <RolePrivilege name="prvWriteSharePointData" level="Global" />

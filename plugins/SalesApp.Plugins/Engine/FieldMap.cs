@@ -6,7 +6,7 @@ using Microsoft.Xrm.Sdk;
 
 namespace SalesApp.Plugins.Engine
 {
-    public enum FieldKind { Text, Number, Money, Date, DateTime, Choice, Lookup, Bool, AccountType, Industry, StateDone, Direction }
+    public enum FieldKind { Text, Number, Money, Date, DateTime, Choice, Lookup, Bool, AccountType, Industry, StateDone, Direction, QuoteStatus }
 
     public class FieldDef
     {
@@ -31,6 +31,8 @@ namespace SalesApp.Plugins.Engine
         public static readonly string[] Stages = { "qualification", "needsAnalysis", "proposal", "negotiation", "closedWon", "closedLost" };
         public static readonly string[] ForecastCategories = { "pipeline", "bestCase", "commit", "omitted" };
         public static readonly string[] LostReasons = { "price", "choseCompetitor", "noBudget", "noDecision", "other" };
+        /// <summary>A Quote's status reasons 1 to 5, in order. Its status is the table's own statuscode, not a choice column.</summary>
+        public static readonly string[] QuoteStatuses = { "draft", "sent", "accepted", "rejected", "revised" };
         public static readonly string[] AccountTypes = { "prospect", "customer", "partner", "reseller", "supplier", "competitor", "other" };
         public static readonly int[] AccountTypeCodes = { 8, 3, 5, 9, 10, 1, 12 };
         public static readonly string[] Industries =
@@ -100,12 +102,18 @@ namespace SalesApp.Plugins.Engine
                 T("notes", "description"), D("completed", "statecode", FieldKind.StateDone), D("createdOn", "createdon", FieldKind.DateTime),
             },
             ["note"] = new[] { T("title", "subject"), T("text", "notetext"), D("createdOn", "createdon", FieldKind.DateTime) },
+            ["quote"] = new[]
+            {
+                D("status", "statuscode", FieldKind.QuoteStatus), D("validUntil", "vibe_validuntil", FieldKind.Date),
+                D("netTotal", "vibe_nettotal", FieldKind.Money), D("grossTotal", "vibe_grosstotal", FieldKind.Money),
+                D("revision", "vibe_revision", FieldKind.Number), D("createdOn", "createdon", FieldKind.DateTime),
+            },
         };
 
         public static readonly Dictionary<string, string> LogicalNames = new Dictionary<string, string>
         {
             ["lead"] = "vibe_lead", ["opportunity"] = "vibe_opportunity", ["account"] = "account", ["contact"] = "contact",
-            ["task"] = "task", ["phoneCall"] = "phonecall", ["note"] = "annotation",
+            ["task"] = "task", ["phoneCall"] = "phonecall", ["note"] = "annotation", ["quote"] = "vibe_quote",
         };
 
         public static string[] Columns(string table)
@@ -123,11 +131,12 @@ namespace SalesApp.Plugins.Engine
                 case "contact": return "contactid";
                 case "task": return "activityid";
                 case "phoneCall": return "activityid";
+                case "quote": return "vibe_quoteid";
                 default: return "annotationid";
             }
         }
 
-        /// <summary>The field catalogue the engine checks definitions against: what the adapter can map. Product lines and Quotes aren't mapped yet, so their tables are not checked.</summary>
+        /// <summary>The field catalogue the engine checks definitions against: what the adapter can map. Product lines aren't mapped yet, so that table is not checked; Quotes are, by status.</summary>
         public static FieldCatalogue Catalogue()
         {
             var catalogue = new FieldCatalogue();
@@ -148,6 +157,7 @@ namespace SalesApp.Plugins.Engine
                         case FieldKind.AccountType: info = new FieldInfo { Type = "choice", Options = AccountTypes.ToList() }; break;
                         case FieldKind.Industry: info = new FieldInfo { Type = "choice", Options = Industries.ToList() }; break;
                         case FieldKind.Direction: info = new FieldInfo { Type = "choice", Options = new List<string> { "incoming", "outgoing" } }; break;
+                        case FieldKind.QuoteStatus: info = new FieldInfo { Type = "choice", Options = QuoteStatuses.ToList() }; break;
                     }
                     fields[def.Name] = info;
                 }
@@ -186,6 +196,11 @@ namespace SalesApp.Plugins.Engine
                 }
                 case FieldKind.StateDone: return ((OptionSetValue)value).Value == 1;
                 case FieldKind.Direction: return (bool)value ? "outgoing" : "incoming";
+                case FieldKind.QuoteStatus:
+                {
+                    var index = ((OptionSetValue)value).Value - 1;
+                    return index >= 0 && index < QuoteStatuses.Length ? QuoteStatuses[index] : null;
+                }
             }
             return null;
         }

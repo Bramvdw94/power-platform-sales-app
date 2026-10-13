@@ -31,15 +31,18 @@ export function CloseOpportunityDialog({
   open,
   onOpenChange,
   initialOutcome = "won",
+  initialActualValue,
 }: {
   opportunity: Opportunity
   open: boolean
   onOpenChange: (open: boolean) => void
   initialOutcome?: Outcome
+  /** What the Actual value starts as: the Estimated value unless a Quote was just accepted. */
+  initialActualValue?: number
 }) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
-  const initialValues = () => ({ actualValue: String(opportunity.estimatedValue), closeDate: toDateOnly(new Date()), lostComment: "" })
+  const initialValues = () => ({ actualValue: String(initialActualValue ?? opportunity.estimatedValue), closeDate: toDateOnly(new Date()), lostComment: "" })
   const [outcome, setOutcome] = useState<Outcome>(initialOutcome)
   const [values, setValues] = useState<Partial<Record<CloseField, string>>>(initialValues)
   const [lostReason, setLostReason] = useState<LostReason | "">("")

@@ -383,6 +383,13 @@ namespace SalesApp.Plugins
                         items = system.RetrieveMultiple(query).Entities.Select(e => FieldMap.ToRecord(itemTable, e)).ToList();
                         break;
                     }
+                    case "quotes":
+                    {
+                        var query = new QueryExpression("vibe_quote") { ColumnSet = new ColumnSet(FieldMap.Columns("quote")), TopCount = 500 };
+                        query.Criteria.AddCondition("vibe_opportunityid", ConditionOperator.Equal, id);
+                        items = system.RetrieveMultiple(query).Entities.Select(e => FieldMap.ToRecord("quote", e)).ToList();
+                        break;
+                    }
                     case "contacts":
                     {
                         var query = new QueryExpression("contact") { ColumnSet = new ColumnSet(FieldMap.Columns("contact")), TopCount = 500 };

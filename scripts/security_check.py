@@ -310,6 +310,7 @@ def run(dv, report, created):
 
     products(dv, report, users, track)
     product_lines(dv, report, users, track, account)
+    quotes(dv, report, users, track, account)
     run_quota(dv, report, track, users)
     import engine_check  # imported here: it imports this module
     engine_check.run(dv, report, users, track)
@@ -558,10 +559,178 @@ def run_quota(dv, report, track, users):
     report.check("Diego sees neither Adele's nor Alex's", months(diego) == [])
 
 
+def quotes(dv, report, users, track, account):
+    """Quotes (#101): follow the Opportunity's security; only a Draft changes; the plug-ins keep the totals."""
+    print("Quotes: follow the Opportunity; only a Draft changes; totals follow the lines", flush=True)
+    adele, megan, alex, diego = users["adele"], users["megan"], users["alex"], users["diego"]
+    unit = dv.get("GlobalOptionSetDefinitions(Name='vibe_productunit')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    vat_options = dv.get("GlobalOptionSetDefinitions(Name='vibe_vatrate')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"]
+    vat21, vat9 = vat_options[0]["Value"], vat_options[1]["Value"]
+    stage = dv.get("GlobalOptionSetDefinitions(Name='vibe_stage')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    opportunity_account = nav_property(dv, "vibe_opportunity", "account", "vibe_accountid")
+    SENT, ACCEPTED, REJECTED, REVISED = 2, 3, 4, 5
+
+    def product(n, price, vat):
+        return track("vibe_products", dv.create("vibe_products", {
+            "vibe_name": f"{TAG} Quote product {n}", "vibe_productcode": f"{TAG}-Q{n}", "vibe_unit": unit,
+            "vibe_vatrate": vat, "vibe_listprice": price}, as_user=megan))
+
+    product_21, product_21b, product_9 = product(1, 100, vat21), product(2, 40, vat21), product(3, 100, vat9)
+
+    def opportunity(owner, name):
+        return track("vibe_opportunities", dv.create("vibe_opportunities", {
+            "vibe_name": f"{TAG} {name}", f"{opportunity_account}@odata.bind": f"/accounts({account})",
+            "vibe_stage": stage, "vibe_estimatedvalue": 1000, "vibe_expectedclosedate": "2026-12-31"}, as_user=owner))
+
+    def quote_body(opp, **extra):
+        return {"vibe_OpportunityId@odata.bind": f"/vibe_opportunities({opp})",
+                "vibe_AccountId@odata.bind": f"/accounts({account})", "vibe_validuntil": "2026-12-31", **extra}
+
+    def line(quote, prod, quantity=1, price=None, discount=0):
+        body = {"vibe_QuoteId@odata.bind": f"/vibe_quotes({quote})", "vibe_ProductId@odata.bind": f"/vibe_products({prod})",
+                "vibe_quantity": quantity, "vibe_discountpercent": discount}
+        if price is not None:
+            body["vibe_unitprice"] = price
+        return body
+
+    def row(quote):
+        return dv.get(f"vibe_quotes({quote})?$select=vibe_name,vibe_revision,statuscode,statecode,vibe_nettotal,vibe_vat21,"
+                      "vibe_vat9,vibe_grosstotal,_ownerid_value,vibe_validuntil")
+
+    def move(quote, status, caller):
+        return dv.call("PATCH", f"vibe_quotes({quote})", {"statecode": 0 if status == 1 else 1, "statuscode": status}, as_user=caller)
+
+    def new_quote(opp, caller, **extra):
+        result = dv.call("POST", "vibe_quotes", quote_body(opp, **extra), as_user=caller)
+        return (track("vibe_quotes", result[3]) if result[3] else None), result
+
+    opp = opportunity(adele, "Quotes Opportunity")
+    first, result = new_quote(opp, adele)
+    report.expect_status("Adele makes a Quote on her Opportunity", result, 204)
+    if not first:
+        return
+    created = row(first)
+    report.check("A new Quote is a Draft, Revision 0, active", (created["statuscode"], created["statecode"], created["vibe_revision"]) == (1, 0, 0))
+    report.check("The Quote number is an autonumber (Q-00001 style)", len(created["vibe_name"] or "") == 7 and created["vibe_name"].startswith("Q-"), created["vibe_name"] or "")
+    report.check("The Quote is owned by the Opportunity's Owner", created["_ownerid_value"] == adele)
+    second, result = new_quote(opp, adele)
+    report.expect_status("Adele makes a second Quote on the same Opportunity", result, 204)
+    if second:
+        report.check("The next Quote gets the next number", int(row(second)["vibe_name"][2:]) == int(created["vibe_name"][2:]) + 1)
+
+    for key in ("alex", "diego"):
+        who = USERS[key]
+        _, result = new_quote(opp, users[key])
+        report.expect_status(f"{who} makes a Quote on Adele's Opportunity", result, 403)
+    mine, result = new_quote(opp, megan)
+    report.expect_status("Megan (Adele's manager) makes a Quote on Adele's Opportunity", result, 204)
+    if mine:
+        report.check("Megan's Quote is owned by Adele", row(mine)["_ownerid_value"] == adele)
+        report.expect_status("Megan adds a line to it", dv.call("POST", "vibe_quotelines", line(mine, product_21), as_user=megan), 204)
+
+    result = dv.call("POST", "vibe_quotelines", line(first, product_21, 2, 100, 10), as_user=adele)
+    report.expect_status("Adele adds a Quote line", result, 204)
+    if not result[3]:
+        return
+    one = track("vibe_quotelines", result[3])
+    line_row = dv.get(f"vibe_quotelines({one})?$select=vibe_lineamount,vibe_vatrate,vibe_description,_ownerid_value")
+    report.check("Line amount is 2 x 100 less 10% = 180", line_row["vibe_lineamount"] == 180)
+    report.check("The line keeps the Product's VAT rate (21 %)", line_row["vibe_vatrate"] == vat21)
+    report.check("The line is owned by the Quote's Owner", line_row["_ownerid_value"] == adele)
+    result = dv.call("POST", "vibe_quotelines", line(first, product_21b, 1.5, 33.33), as_user=adele)
+    report.expect_status("Adele adds a second line (1.5 x 33.33)", result, 204)
+    two = track("vibe_quotelines", result[3]) if result[3] else None
+    result = dv.call("POST", "vibe_quotelines", line(first, product_9, 1, 100), as_user=adele)
+    report.expect_status("Adele adds a line at 9 % VAT", result, 204)
+    if result[3]:
+        track("vibe_quotelines", result[3])
+    totals = row(first)
+    report.check("Net total is the lines added up (180 + 50 + 100 = 330)", totals["vibe_nettotal"] == 330, str(totals["vibe_nettotal"]))
+    report.check("VAT 21 % is on the net of the 21 % lines (230 x 21 % = 48.30)", totals["vibe_vat21"] == 48.3, str(totals["vibe_vat21"]))
+    report.check("VAT 9 % is on the net of the 9 % lines (100 x 9 % = 9.00)", totals["vibe_vat9"] == 9, str(totals["vibe_vat9"]))
+    report.check("Gross total is net plus VAT (387.30)", totals["vibe_grosstotal"] == 387.3, str(totals["vibe_grosstotal"]))
+    report.expect_status("Adele changes a quantity", dv.call("PATCH", f"vibe_quotelines({one})", {"vibe_quantity": 3}, as_user=adele), 204)
+    report.check("Totals follow the update (270 + 50 + 100 = 420)", row(first)["vibe_nettotal"] == 420)
+    report.expect_status("Adele writes a total directly", dv.call("PATCH", f"vibe_quotes({first})", {"vibe_nettotal": 1}, as_user=adele), 400)
+    report.expect_status("Adele writes Line amount directly", dv.call("PATCH", f"vibe_quotelines({one})", {"vibe_lineamount": 1}, as_user=adele), 204)
+    report.check("Line amount is recalculated, not taken (net still 420)", row(first)["vibe_nettotal"] == 420)
+    report.expect_status("Adele moves the Quote to another Opportunity", dv.call(
+        "PATCH", f"vibe_quotes({first})", {"vibe_OpportunityId@odata.bind": f"/vibe_opportunities({opportunity(adele, 'Other Opportunity')})"}, as_user=adele), 400)
+    report.expect_status("Adele gives the Quote to Alex", dv.call(
+        "PATCH", f"vibe_quotes({first})", {"ownerid@odata.bind": f"/systemusers({alex})"}, as_user=adele), 400)
+    report.expect_status("Adele sets a quantity of zero", dv.call("PATCH", f"vibe_quotelines({one})", {"vibe_quantity": 0}, as_user=adele), 400)
+    report.expect_status("Adele sets a discount of 101%", dv.call("PATCH", f"vibe_quotelines({one})", {"vibe_discountpercent": 101}, as_user=adele), 400)
+    report.expect_status("Adele changes Valid until on the Draft", dv.call(
+        "PATCH", f"vibe_quotes({first})", {"vibe_validuntil": "2027-01-31"}, as_user=adele), 204)
+
+    for key in ("alex", "diego"):
+        who, caller = USERS[key], users[key]
+        report.expect_status(f"{who} reads Adele's Quote", dv.call("GET", f"vibe_quotes({first})?$select=vibe_name", as_user=caller), 200)
+        report.expect_status(f"{who} reads Adele's Quote line", dv.call("GET", f"vibe_quotelines({one})?$select=vibe_name", as_user=caller), 200)
+        report.expect_status(f"{who} changes Adele's Quote", dv.call("PATCH", f"vibe_quotes({first})", {"vibe_validuntil": "2027-02-01"}, as_user=caller), 403)
+        report.expect_status(f"{who} adds a line to Adele's Quote", dv.call("POST", "vibe_quotelines", line(first, product_21), as_user=caller), 403)
+        report.expect_status(f"{who} changes Adele's Quote line", dv.call("PATCH", f"vibe_quotelines({one})", {"vibe_quantity": 9}, as_user=caller), 403)
+        report.expect_status(f"{who} sends Adele's Quote", move(first, SENT, caller), 403)
+        report.expect_status(f"{who} deletes Adele's Quote", dv.call("DELETE", f"vibe_quotes({first})", as_user=caller), 403)
+
+    report.expect_status("Adele skips Sent and accepts a Draft", move(first, ACCEPTED, adele), 400)
+    report.expect_status("Adele sends the Quote", move(first, SENT, adele), 204)
+    sent = row(first)
+    report.check("A Sent Quote is Sent and inactive", (sent["statuscode"], sent["statecode"]) == (SENT, 1))
+    report.expect_status("Adele changes Valid until on the Sent Quote", dv.call("PATCH", f"vibe_quotes({first})", {"vibe_validuntil": "2027-03-01"}, as_user=adele), 400)
+    report.expect_status("Adele adds a line to the Sent Quote", dv.call("POST", "vibe_quotelines", line(first, product_21), as_user=adele), 400)
+    report.expect_status("Adele changes a line of the Sent Quote", dv.call("PATCH", f"vibe_quotelines({one})", {"vibe_quantity": 5}, as_user=adele), 400)
+    report.expect_status("Adele removes a line of the Sent Quote", dv.call("DELETE", f"vibe_quotelines({two})", as_user=adele), 400)
+    report.expect_status("Adele deletes the Sent Quote", dv.call("DELETE", f"vibe_quotes({first})", as_user=adele), 400)
+    report.expect_status("Adele sets the Sent Quote back to Draft", move(first, 1, adele), 400)
+    report.expect_status("Alex accepts Adele's Sent Quote", move(first, ACCEPTED, alex), 403)
+    report.expect_status("Adele accepts the Sent Quote", move(first, ACCEPTED, adele), 204)
+    report.expect_status("An Accepted Quote can't be Rejected", move(first, REJECTED, adele), 400)
+    report.expect_status("An Accepted Quote can't be Sent again", move(first, SENT, adele), 400)
+
+    if second:
+        report.expect_status("Adele sends the second Quote", move(second, SENT, adele), 204)
+        report.expect_status("Adele revises it (Sent to Revised)", move(second, REVISED, adele), 204)
+        number = row(second)["vibe_name"]
+        revision, result = new_quote(opp, adele, vibe_name=number, vibe_revision=1)
+        report.expect_status("Adele makes the new Revision with the same number", result, 204)
+        if revision:
+            report.check("The Revision keeps the number and adds 1", (row(revision)["vibe_name"], row(revision)["vibe_revision"]) == (number, 1))
+        rejected, result = new_quote(opp, adele)
+        if rejected:
+            dv.call("PATCH", f"vibe_quotes({rejected})", {"statecode": 1, "statuscode": SENT}, as_user=adele)
+            report.expect_status("Adele rejects a Sent Quote", move(rejected, REJECTED, adele), 204)
+
+    reassigned = opportunity(adele, "Reassigned Quotes")
+    draft, _ = new_quote(reassigned, adele)
+    sent_one, _ = new_quote(reassigned, adele)
+    if draft and sent_one:
+        dv.call("POST", "vibe_quotelines", line(sent_one, product_21), as_user=adele)
+        move(sent_one, SENT, adele)
+        report.expect_status("Megan reassigns the Opportunity to Alex", dv.call(
+            "PATCH", f"vibe_opportunities({reassigned})", {"ownerid@odata.bind": f"/systemusers({alex})"}, as_user=megan), 204)
+        report.check("Its Draft Quote moved to Alex (parental cascade)", owner_of(dv, "vibe_quotes", draft) == alex)
+        report.check("Its Sent Quote moved to Alex too", owner_of(dv, "vibe_quotes", sent_one) == alex)
+        report.expect_status("Alex now changes the Draft", dv.call("PATCH", f"vibe_quotes({draft})", {"vibe_validuntil": "2027-04-01"}, as_user=alex), 204)
+        report.expect_status("Alex accepts the Sent Quote", move(sent_one, ACCEPTED, alex), 204)
+        report.expect_status("Adele can no longer change the Draft", dv.call("PATCH", f"vibe_quotes({draft})", {"vibe_validuntil": "2027-05-01"}, as_user=adele), 403)
+
+    closed = opportunity(adele, "Closed Quotes")
+    report.expect_status("Adele closes the Opportunity", dv.call(
+        "PATCH", f"vibe_opportunities({closed})", {"statecode": 1, "statuscode": 2}, as_user=adele), 204)
+    _, result = new_quote(closed, adele)
+    report.expect_status("Adele makes a Quote on a closed Opportunity", result, 400)
+
+    deletable, result = new_quote(opp, adele)
+    report.expect_status("Adele makes a Draft to delete", result, 204)
+    if deletable:
+        report.expect_status("Adele deletes the Draft", dv.call("DELETE", f"vibe_quotes({deletable})", as_user=adele), 204)
+
+
 def cleanup(dv, created):
     for entity_set, record_id in reversed(created):
         # Lines on a closed Opportunity can only be removed with the plug-ins bypassed.
-        bypass = {"MSCRM.BypassCustomPluginExecution": "true"} if entity_set == "vibe_productlines" else None
+        bypass = {"MSCRM.BypassCustomPluginExecution": "true"} if entity_set in ("vibe_productlines", "vibe_quotes", "vibe_quotelines") else None
         status, _, code, _ = dv.call("DELETE", f"{entity_set}({record_id})", headers=bypass)
         if status not in (204, 404):
             print(f"  cleanup: could not delete {entity_set}({record_id}): {status} {code}", flush=True)

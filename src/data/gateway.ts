@@ -37,6 +37,11 @@ import type {
   ProductLineUpdate,
   QualifyOpportunityDetails,
   Quota,
+  Quote,
+  QuoteLine,
+  QuoteLineInput,
+  QuoteLineUpdate,
+  QuoteUpdate,
   RecordRef,
   Stage,
   Task,
@@ -93,6 +98,16 @@ export type OpportunityDetails = Editable & {
   originatingLead?: Lead
   /** Oldest first. While there are any, the Estimated value is their total and can't be typed over. */
   productLines: ProductLine[]
+  /** Newest first. */
+  quotes: Quote[]
+}
+
+export type QuoteDetails = Editable & {
+  quote: Quote
+  /** Oldest first. */
+  lines: QuoteLine[]
+  opportunity: Opportunity
+  contact?: Contact
 }
 
 export type AccountDetails = Editable & {
@@ -222,6 +237,7 @@ export interface SalesGateway {
   updateOpportunity(id: Id, update: OpportunityUpdate): Promise<Opportunity>
   /** Between open Stages; resets Probability to the Stage default. */
   changeStage(id: Id, stage: OpenStage): Promise<Opportunity>
+  /** Closing as lost sets the Opportunity's Sent Quotes to Rejected; reopening leaves Quotes as they are. */
   closeOpportunity(id: Id, input: CloseInput): Promise<Opportunity>
   reopenOpportunity(id: Id, stage: OpenStage): Promise<Opportunity>
 
@@ -246,6 +262,31 @@ export interface SalesGateway {
   updateProductLine(id: Id, update: ProductLineUpdate): Promise<ProductLine>
   /** Removing the last line leaves the Estimated value as it was, and typeable again. */
   removeProductLine(id: Id): Promise<void>
+
+  // Quotes follow their Opportunity: its Owner (and manager) create, change, send, revise, accept and reject
+  // them; everyone reads. Only a Draft is edited or deleted. A closed Opportunity takes no new Quotes.
+  /** Newest first. */
+  listQuotes(opportunityId: Id): Promise<Quote[]>
+  getQuote(id: Id): Promise<QuoteDetails>
+  /**
+   * A Draft Quote from an open Opportunity: its Account, Primary Contact and Product lines are copied,
+   * Valid until is 30 days from today, the number is automatic (Q-00001) and the Revision 0.
+   */
+  createQuote(opportunityId: Id): Promise<Quote>
+  updateQuote(id: Id, update: QuoteUpdate): Promise<Quote>
+  deleteQuote(id: Id): Promise<void>
+  /** Lines are edited on the Quote alone; the Opportunity's lines and Estimated value never change. */
+  addQuoteLine(quoteId: Id, input: QuoteLineInput): Promise<QuoteLine>
+  updateQuoteLine(id: Id, update: QuoteLineUpdate): Promise<QuoteLine>
+  removeQuoteLine(id: Id): Promise<void>
+  /** Draft to Sent. Sending the PDF is a later ticket; this sets the status, the sent date and who sent it. */
+  sendQuote(id: Id): Promise<Quote>
+  /** Sent to Revised, and a new Draft with the same number, Revision + 1 and a copy of the lines. Returns the new Draft. */
+  reviseQuote(id: Id): Promise<Quote>
+  /** Sent to Accepted; the Opportunity's other Sent Quotes become Rejected. Closing the Opportunity as won is a separate step. */
+  acceptQuote(id: Id): Promise<Quote>
+  /** Sent to Rejected. */
+  rejectQuote(id: Id): Promise<Quote>
 
   // Ownership
   /** Makes another salesperson the Owner; open Tasks and Phone Calls on the record move along. */

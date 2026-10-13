@@ -86,7 +86,8 @@ Then wire it into `src/data/dataverse/generated-client.ts`. Tables so far:
 `systemuser`, `account`, `contact`, `vibe_lead` (registered as `leads`) and
 `vibe_opportunity` (registered as `opportunities`), `annotation` (Notes),
 `task` and `phonecall`, `vibe_product` (registered as `products`), `vibe_quota`
-(registered as `quotas`), `vibe_productline` (registered as `productLines`), plus
+(registered as `quotas`), `vibe_productline` (registered as `productLines`), `vibe_quote` (`quotes`),
+`vibe_quoteline` (`quoteLines`), plus
 the `WhoAmI` function.
 
 The generated models list no bind key for polymorphic lookups such as a

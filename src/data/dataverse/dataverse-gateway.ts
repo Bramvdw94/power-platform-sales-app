@@ -27,6 +27,7 @@ import {
   type QualifyStep,
   type QualifySuggestions,
   type QuotaQuery,
+  type QuoteDetails,
   type SalesGateway,
   type SearchResults,
   type TaskInput,
@@ -42,7 +43,11 @@ import {
   STAGES,
   OPEN_STAGES,
   PRODUCT_UNITS,
+  QUOTE_STATUSES,
   VAT_RATES,
+  defaultValidUntil,
+  quoteErrors,
+  requireQuoteMove,
   newProductLineDefaults,
   productLineErrors,
   productErrors,
@@ -97,6 +102,12 @@ import {
   type FieldErrors,
   type ForecastCategory,
   type Quota,
+  type Quote,
+  type QuoteLine,
+  type QuoteLineInput,
+  type QuoteLineUpdate,
+  type QuoteStatus,
+  type QuoteUpdate,
   type Id,
   type Lead,
   type LeadAction,
@@ -127,6 +138,8 @@ import {
   LEAD_DISQUALIFIED_BY_NAVIGATION,
   OPPORTUNITY_NAVIGATION,
   PRODUCT_LINE_NAVIGATION,
+  QUOTE_LINE_NAVIGATION,
+  QUOTE_NAVIGATION,
   RECORD_TABLES,
   regardingNavigation,
   type AccountRow,
@@ -142,6 +155,8 @@ import {
   type ProductLineRow,
   type ProductRow,
   type QuotaRow,
+  type QuoteLineRow,
+  type QuoteRow,
   type RowPage,
   type SystemUserRow,
   type TableClient,
@@ -502,6 +517,60 @@ export function toProductLine(row: ProductLineRow): ProductLine {
   }
 }
 
+const QUOTE_ORDER = ["createdon desc", "vibe_quoteid desc"]
+const QUOTE_LINE_ORDER = ["createdon asc", "vibe_quotelineid asc"]
+
+/** A Quote's status is the table's own status reason: 1 Draft (Active), then Sent, Accepted, Rejected, Revised (Inactive). */
+function quoteStatusOf(code: number | null | undefined): QuoteStatus {
+  return QUOTE_STATUSES[(code ?? 1) - 1] ?? "draft"
+}
+
+/** What moves a Quote to a status: its state is Active only while it is a Draft, so anything else is read-only. */
+function quoteStatusFields(status: QuoteStatus): Fields {
+  return { statecode: status === "draft" ? 0 : 1, statuscode: QUOTE_STATUSES.indexOf(status) + 1 }
+}
+
+export function toQuote(row: QuoteRow): Quote {
+  return {
+    id: row.vibe_quoteid,
+    opportunityId: row._vibe_opportunityid_value ?? "",
+    number: row.vibe_name ?? "",
+    revision: row.vibe_revision ?? 0,
+    status: quoteStatusOf(row.statuscode),
+    accountId: row._vibe_accountid_value ?? "",
+    accountName: lookupName(row, "vibe_accountid") ?? "",
+    contactId: optional(row._vibe_contactid_value),
+    contactName: lookupName(row, "vibe_contactid"),
+    validUntil: optional(row.vibe_validuntil)?.slice(0, 10),
+    netTotal: row.vibe_nettotal ?? 0,
+    vat21: row.vibe_vat21 ?? 0,
+    vat9: row.vibe_vat9 ?? 0,
+    grossTotal: row.vibe_grosstotal ?? 0,
+    sentOn: optional(row.vibe_senton),
+    sentById: optional(row._vibe_sentby_value),
+    sentByName: lookupName(row, "vibe_sentby"),
+    ownerId: row._ownerid_value ?? "",
+    ownerName: lookupName(row, "ownerid") ?? "",
+    createdOn: row.createdon ?? "",
+  }
+}
+
+export function toQuoteLine(row: QuoteLineRow): QuoteLine {
+  return {
+    id: row.vibe_quotelineid,
+    quoteId: row._vibe_quoteid_value ?? "",
+    productId: row._vibe_productid_value ?? "",
+    productName: row.vibe_name ?? lookupName(row, "vibe_productid") ?? "",
+    description: optional(row.vibe_description),
+    quantity: row.vibe_quantity ?? 0,
+    unitPrice: row.vibe_unitprice ?? 0,
+    discountPercent: row.vibe_discountpercent ?? 0,
+    vatRate: (row.vibe_vatrate === null || row.vibe_vatrate === undefined ? undefined : VAT_RATES[row.vibe_vatrate - CHOICE_BASE]) ?? 21,
+    lineAmount: row.vibe_lineamount ?? 0,
+    createdOn: row.createdon ?? "",
+  }
+}
+
 function productFields(input: Partial<ProductInput>) {
   return {
     vibe_name: input.name?.trim(),
@@ -749,11 +818,12 @@ export class DataverseSalesGateway implements SalesGateway {
   async getOpportunity(id: Id): Promise<OpportunityDetails> {
     const row = await this.call(() => this.client.opportunities.get(guid(id)))
     const opportunity = toOpportunity(row)
-    const [account, contact, lead, lines, canEdit] = await Promise.all([
+    const [account, contact, lead, lines, quotes, canEdit] = await Promise.all([
       this.call(() => this.client.accounts.get(opportunity.accountId)),
       opportunity.primaryContactId ? this.call(() => this.client.contacts.get(opportunity.primaryContactId!)) : undefined,
       opportunity.originatingLeadId ? this.call(() => this.client.leads.get(opportunity.originatingLeadId!)) : undefined,
       this.related(this.client.productLines, `_vibe_opportunityid_value eq ${guid(id)}`, LINE_ORDER),
+      this.related(this.client.quotes, `_vibe_opportunityid_value eq ${guid(id)}`, QUOTE_ORDER),
       this.mayEdit(row._ownerid_value),
     ])
     return {
@@ -762,6 +832,7 @@ export class DataverseSalesGateway implements SalesGateway {
       primaryContact: contact && toContact(contact),
       originatingLead: lead && toLead(lead),
       productLines: lines.map(toProductLine),
+      quotes: quotes.map(toQuote),
       canEdit,
     }
   }
@@ -883,6 +954,229 @@ export class DataverseSalesGateway implements SalesGateway {
       this.client.productLines.list({ filter: `_vibe_opportunityid_value eq ${guid(opportunityId)}`, pageSize: 1 }),
     )
     return page.rows.length > 0
+  }
+
+  // ---- Quotes ---------------------------------------------------------------------
+  // Dataverse keeps Line amount, the Quote's totals and its Owner (QuoteLinePlugin, QuoteTotalPlugin,
+  // QuotePlugin), refuses changes to anything but a Draft, and makes every status but Draft inactive.
+
+  async listQuotes(opportunityId: Id): Promise<Quote[]> {
+    const rows = await this.related(this.client.quotes, `_vibe_opportunityid_value eq ${guid(opportunityId)}`, QUOTE_ORDER)
+    return rows.map(toQuote)
+  }
+
+  async getQuote(id: Id): Promise<QuoteDetails> {
+    const row = await this.call(() => this.client.quotes.get(guid(id)))
+    const quote = toQuote(row)
+    const [lines, opportunity, contact, canEdit] = await Promise.all([
+      this.related(this.client.quoteLines, `_vibe_quoteid_value eq ${guid(id)}`, QUOTE_LINE_ORDER),
+      this.readOpportunity(quote.opportunityId),
+      quote.contactId ? this.call(() => this.client.contacts.get(quote.contactId!)) : undefined,
+      this.mayEdit(row._ownerid_value),
+    ])
+    return { quote, lines: lines.map(toQuoteLine), opportunity, contact: contact && toContact(contact), canEdit }
+  }
+
+  async createQuote(opportunityId: Id): Promise<Quote> {
+    const opportunity = await this.readOpportunity(opportunityId)
+    if (!(await this.mayEdit(opportunity.ownerId))) throw forbidden()
+    if (isOpportunityReadOnly(opportunity)) throw new GatewayError("invalid", "A closed Opportunity can't get new Quotes.")
+    const created = await this.call(() =>
+      this.client.quotes.create(
+        fields({
+          vibe_revision: 0,
+          vibe_validuntil: defaultValidUntil(toDateOnly(new Date())),
+          ...bind(QUOTE_NAVIGATION.opportunity, "vibe_opportunities", opportunityId),
+          ...bind(QUOTE_NAVIGATION.account, "accounts", opportunity.accountId),
+          ...bind(QUOTE_NAVIGATION.contact, "contacts", opportunity.primaryContactId),
+        }),
+      ),
+    )
+    const lines = await this.related(this.client.productLines, `_vibe_opportunityid_value eq ${guid(opportunityId)}`, LINE_ORDER)
+    for (const row of lines.map(toProductLine)) {
+      const product = await this.getProduct(row.productId)
+      await this.copyLine(created.vibe_quoteid, { ...row, vatRate: product.vatRate })
+    }
+    return this.readQuote(created.vibe_quoteid)
+  }
+
+  async updateQuote(id: Id, update: QuoteUpdate): Promise<Quote> {
+    await this.draftQuote(id)
+    invalid("The Quote cannot be saved.", quoteErrors(update))
+    await this.call(() =>
+      this.client.quotes.update(
+        guid(id),
+        fields({
+          vibe_validuntil: update.validUntil === undefined ? undefined : column(update.validUntil),
+          ...bind(QUOTE_NAVIGATION.contact, "contacts", update.contactId === undefined ? undefined : column(update.contactId)),
+        }),
+      ),
+    )
+    return this.readQuote(id)
+  }
+
+  async deleteQuote(id: Id): Promise<void> {
+    await this.draftQuote(id)
+    await this.call(() => this.client.quotes.delete(guid(id)))
+  }
+
+  async addQuoteLine(quoteId: Id, input: QuoteLineInput): Promise<QuoteLine> {
+    await this.draftQuote(quoteId)
+    const product = await this.getProduct(input.productId)
+    if (product.retired) throw new GatewayError("invalid", "The Quote line cannot be saved.", { productId: "A retired Product can't be added." })
+    const defaults = newProductLineDefaults(product)
+    const values = {
+      quantity: input.quantity,
+      unitPrice: input.unitPrice ?? defaults.unitPrice,
+      discountPercent: input.discountPercent ?? defaults.discountPercent,
+    }
+    invalid("The Quote line cannot be saved.", productLineErrors(values))
+    const description = input.description === undefined ? defaults.description : input.description.trim() || undefined
+    const created = await this.copyLine(quoteId, { productId: product.id, productName: product.name, description, ...values, vatRate: product.vatRate })
+    return this.readQuoteLine(created)
+  }
+
+  async updateQuoteLine(id: Id, update: QuoteLineUpdate): Promise<QuoteLine> {
+    const key = guid(id)
+    const current = toQuoteLine(await this.call(() => this.client.quoteLines.get(key)))
+    await this.draftQuote(current.quoteId)
+    invalid("The Quote line cannot be saved.", productLineErrors({ ...current, ...defined(update) }))
+    await this.call(() =>
+      this.client.quoteLines.update(
+        key,
+        fields({
+          vibe_description: column(update.description),
+          vibe_quantity: update.quantity,
+          vibe_unitprice: update.unitPrice,
+          vibe_discountpercent: update.discountPercent,
+        }),
+      ),
+    )
+    return this.readQuoteLine(key)
+  }
+
+  async removeQuoteLine(id: Id): Promise<void> {
+    const key = guid(id)
+    const current = toQuoteLine(await this.call(() => this.client.quoteLines.get(key)))
+    await this.draftQuote(current.quoteId)
+    await this.call(() => this.client.quoteLines.delete(key))
+  }
+
+  async sendQuote(id: Id): Promise<Quote> {
+    await this.movableQuote(id, "sent")
+    const { user } = await this.getCurrentUser()
+    await this.call(() =>
+      this.client.quotes.update(guid(id), {
+        ...quoteStatusFields("sent"),
+        vibe_senton: new Date().toISOString(),
+        ...bind(QUOTE_NAVIGATION.sentBy, "systemusers", user.id),
+      }),
+    )
+    return this.readQuote(id)
+  }
+
+  /** The new Draft is made first and the old Quote marked Revised last, so a failure leaves the Sent Quote as it was. */
+  async reviseQuote(id: Id): Promise<Quote> {
+    const quote = await this.movableQuote(id, "revised")
+    const created = await this.call(() =>
+      this.client.quotes.create(
+        fields({
+          vibe_name: quote.number,
+          vibe_revision: quote.revision + 1,
+          vibe_validuntil: defaultValidUntil(toDateOnly(new Date())),
+          ...bind(QUOTE_NAVIGATION.opportunity, "vibe_opportunities", quote.opportunityId),
+          ...bind(QUOTE_NAVIGATION.account, "accounts", quote.accountId),
+          ...bind(QUOTE_NAVIGATION.contact, "contacts", quote.contactId),
+        }),
+      ),
+    )
+    const lines = await this.related(this.client.quoteLines, `_vibe_quoteid_value eq ${guid(id)}`, QUOTE_LINE_ORDER)
+    for (const line of lines.map(toQuoteLine)) await this.copyLine(created.vibe_quoteid, line)
+    await this.call(() => this.client.quotes.update(guid(id), quoteStatusFields("revised")))
+    return this.readQuote(created.vibe_quoteid)
+  }
+
+  async acceptQuote(id: Id): Promise<Quote> {
+    const quote = await this.movableQuote(id, "accepted")
+    await this.call(() => this.client.quotes.update(guid(id), quoteStatusFields("accepted")))
+    await this.rejectSentQuotes(quote.opportunityId, id)
+    return this.readQuote(id)
+  }
+
+  async rejectQuote(id: Id): Promise<Quote> {
+    await this.movableQuote(id, "rejected")
+    await this.call(() => this.client.quotes.update(guid(id), quoteStatusFields("rejected")))
+    return this.readQuote(id)
+  }
+
+  /** The Opportunity's Sent Quotes become Rejected, except the one just accepted. */
+  private async rejectSentQuotes(opportunityId: Id, except?: Id): Promise<void> {
+    const sent = QUOTE_STATUSES.indexOf("sent") + 1
+    const rows = await this.related(
+      this.client.quotes,
+      `_vibe_opportunityid_value eq ${guid(opportunityId)} and statuscode eq ${sent}`,
+      QUOTE_ORDER,
+    )
+    for (const row of rows) {
+      if (except && row.vibe_quoteid.toLowerCase() === except.toLowerCase()) continue
+      if (quoteStatusOf(row.statuscode) !== "sent") continue
+      await this.call(() => this.client.quotes.update(row.vibe_quoteid, quoteStatusFields("rejected")))
+    }
+  }
+
+  private async readQuote(id: Id): Promise<Quote> {
+    return toQuote(await this.call(() => this.client.quotes.get(guid(id))))
+  }
+
+  private async readQuoteLine(id: Id): Promise<QuoteLine> {
+    return toQuoteLine(await this.call(() => this.client.quoteLines.get(guid(id))))
+  }
+
+  /** A Quote its Owner or manager may change: a Draft on an open Opportunity. */
+  private async draftQuote(id: Id): Promise<Quote> {
+    const row = await this.call(() => this.client.quotes.get(guid(id)))
+    if (!(await this.mayEdit(row._ownerid_value))) throw forbidden()
+    const quote = toQuote(row)
+    if (quote.status !== "draft") throw new GatewayError("invalid", "Only a Draft Quote can be changed.")
+    await this.requireOpenOpportunityOf(quote)
+    return quote
+  }
+
+  /** A Quote moving to another status: allowed by the rules, by this user, on an open Opportunity. */
+  private async movableQuote(id: Id, to: QuoteStatus): Promise<Quote> {
+    const row = await this.call(() => this.client.quotes.get(guid(id)))
+    if (!(await this.mayEdit(row._ownerid_value))) throw forbidden()
+    const quote = toQuote(row)
+    rule(() => requireQuoteMove(quote.status, to))
+    await this.requireOpenOpportunityOf(quote)
+    return quote
+  }
+
+  private async requireOpenOpportunityOf(quote: Quote): Promise<void> {
+    if (isOpportunityReadOnly(await this.readOpportunity(quote.opportunityId))) {
+      throw new GatewayError("invalid", "A closed Opportunity's Quotes are read-only.")
+    }
+  }
+
+  private async copyLine(
+    quoteId: Id,
+    line: Pick<QuoteLine, "productId" | "productName" | "description" | "quantity" | "unitPrice" | "discountPercent" | "vatRate">,
+  ): Promise<Id> {
+    const created = await this.call(() =>
+      this.client.quoteLines.create(
+        fields({
+          vibe_name: line.productName,
+          vibe_description: line.description ?? null,
+          vibe_quantity: line.quantity,
+          vibe_unitprice: line.unitPrice,
+          vibe_discountpercent: line.discountPercent,
+          vibe_vatrate: CHOICE_BASE + VAT_RATES.indexOf(line.vatRate),
+          ...bind(QUOTE_LINE_NAVIGATION.quote, "vibe_quotes", quoteId),
+          ...bind(QUOTE_LINE_NAVIGATION.product, "vibe_products", line.productId),
+        }),
+      ),
+    )
+    return created.vibe_quotelineid
   }
 
   // ---- Accounts and Contacts ------------------------------------------------
@@ -1159,6 +1453,7 @@ export class DataverseSalesGateway implements SalesGateway {
     const { user } = await this.getCurrentUser()
     const change = rule(() => closeOpportunity(current, input, { today: toDateOnly(new Date()), userId: user.id }))
     await this.call(() => this.client.opportunities.update(guid(id), { ...closeFields(change), ...DEACTIVATED }))
+    if (input.outcome === "lost") await this.rejectSentQuotes(id)
     return this.readOpportunity(id)
   }
 

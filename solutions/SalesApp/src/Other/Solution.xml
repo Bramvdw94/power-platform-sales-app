@@ -100,6 +100,8 @@
       <RootComponent type="1" schemaName="vibe_product" behavior="0" />
       <RootComponent type="1" schemaName="vibe_productline" behavior="0" />
       <RootComponent type="1" schemaName="vibe_quota" behavior="0" />
+      <RootComponent type="1" schemaName="vibe_quote" behavior="0" />
+      <RootComponent type="1" schemaName="vibe_quoteline" behavior="0" />
       <RootComponent type="20" id="{10079eb6-b2c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="20" id="{366b2f26-93c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="20" id="{468142e9-dac3-f111-b377-7c1e5253a39d}" behavior="0" />
@@ -115,12 +117,19 @@
       <RootComponent type="9" schemaName="vibe_stage" behavior="0" />
       <RootComponent type="9" schemaName="vibe_vatrate" behavior="0" />
       <RootComponent type="91" id="{a986065a-7fc6-f111-b377-7c1e5253a39d}" schemaName="SalesApp.Plugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" behavior="0" />
+      <RootComponent type="92" id="{012d80fe-e8c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{042d80fe-e8c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{0fcac532-c7c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{27e27927-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{2ae27927-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{2d2ef793-91c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{32e27927-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{48593621-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{4f51a604-e9c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{5251a604-e9c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{5c6374f7-e8c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{5f6374f7-e8c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{8c51a604-e9c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{92cac532-c7c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{ab3dba7f-b1c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{ae3dba7f-b1c6-f111-b377-7c1e5253a39d}" behavior="0" />
@@ -136,6 +145,8 @@
       <RootComponent type="92" id="{ed10ad2d-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{f310ad2d-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{f610ad2d-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{fb2c80fe-e8c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{fe2c80fe-e8c6-f111-b377-7c1e5253a39d}" behavior="0" />
     </RootComponents>
     <MissingDependencies>
       <MissingDependency>

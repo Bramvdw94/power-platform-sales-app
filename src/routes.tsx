@@ -14,6 +14,7 @@ import OpportunityRecordPage from "@/pages/opportunities/opportunity-record"
 import PipelinePage from "@/pages/pipeline/pipeline-page"
 import ProductListPage from "@/pages/products/product-list"
 import ProductRecordPage from "@/pages/products/product-record"
+import QuoteRecordPage from "@/pages/quotes/quote-record"
 import SearchPage from "@/pages/search"
 
 /** Every page in the spec (#23). Placeholders are replaced by the ticket they name. */
@@ -34,6 +35,7 @@ export const routes: RouteObject[] = [
       { path: "contacts/:id", element: <ContactRecordPage /> },
       { path: "products", element: <ProductListPage /> },
       { path: "products/:id", element: <ProductRecordPage /> },
+      { path: "quotes/:id", element: <QuoteRecordPage /> },
       { path: "search", element: <SearchPage /> },
       { path: "menu", element: <MenuPage /> },
       { path: "*", element: <NotFoundPage /> },
