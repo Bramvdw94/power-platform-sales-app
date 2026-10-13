@@ -11,3 +11,8 @@ export function toInput<K extends string>(values: FormValues<K>, names: readonly
     names.map((name) => [name, values[name]?.trim()]).filter(([, value]) => value),
   ) as Partial<Record<K, string>>
 }
+
+/** A form value as a number: blank or not a number is NaN, which validation refuses. */
+export function toNumber(value: string | undefined): number {
+  return value?.trim() ? Number(value) : Number.NaN
+}

@@ -11,6 +11,7 @@ import type {
   NoteRow,
   OpportunityRow,
   PhoneCallRow,
+  ProductLineRow,
   ProductRow,
   QuotaRow,
   SystemUserRow,
@@ -64,6 +65,9 @@ function fakeTable<T extends Record<string, unknown>>(key: string, rows: T[]) {
       const row = { ...store.get(id)!, ...fields }
       store.set(id, row)
       return row
+    }),
+    delete: vi.fn(async (id: string) => {
+      store.delete(id)
     }),
   } satisfies TableClient<T>
   return table
@@ -168,13 +172,14 @@ const productRows: ProductRow[] = [
 ]
 
 /** A fake Dataverse that understands the one filter the gateway sends for direct reports. */
-function fakeClient(signedIn: string, quotaRows: QuotaRow[] = []) {
+function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = []) {
   return {
     accounts: fakeTable("accountid", accountRows),
     contacts: fakeTable("contactid", contactRows),
     leads: fakeTable("vibe_leadid", leadRows),
     opportunities: fakeTable("vibe_opportunityid", opportunityRows),
     products: fakeTable("vibe_productid", productRows),
+    productLines: fakeTable("vibe_productlineid", productLineRows),
     quotas: fakeTable("vibe_quotaid", quotaRows),
     notes: fakeTable("annotationid", noteRows),
     tasks: fakeTable("activityid", taskRows),
@@ -1208,5 +1213,102 @@ describe("DataverseSalesGateway, Quotas", () => {
     await expect(gateway.setQuota(DIEGO, "2026-10-01", 1)).rejects.toMatchObject({ code: "forbidden" })
     await expect(new DataverseSalesGateway(fakeClient(ADELE)).setQuota(ADELE, "2026-10-01", 1)).rejects.toMatchObject({ code: "forbidden" })
     expect(client.quotas.create).not.toHaveBeenCalled()
+  })
+})
+
+describe("DataverseSalesGateway, Product lines", () => {
+  const LINE = "99999999-2222-0000-0000-000000000001"
+  const lineRows: ProductLineRow[] = [
+    {
+      vibe_productlineid: LINE,
+      _vibe_opportunityid_value: OPP,
+      _vibe_productid_value: PRODUCT,
+      vibe_name: "Consulting",
+      vibe_description: "Per hour",
+      vibe_quantity: 2,
+      vibe_unitprice: 120,
+      vibe_listpriceatadd: 125,
+      vibe_discountpercent: 10,
+      vibe_lineamount: 216,
+      createdon: "2026-10-01T09:00:00Z",
+    },
+  ]
+
+  it("reads the lines of an Opportunity with its details, oldest first", async () => {
+    const client = fakeClient(ADELE, [], lineRows)
+    const details = await new DataverseSalesGateway(client).getOpportunity(OPP)
+    expect(details.productLines).toEqual([
+      {
+        id: LINE,
+        opportunityId: OPP,
+        productId: PRODUCT,
+        productName: "Consulting",
+        description: "Per hour",
+        quantity: 2,
+        unitPrice: 120,
+        listPriceAtAdd: 125,
+        discountPercent: 10,
+        lineAmount: 216,
+        createdOn: "2026-10-01T09:00:00Z",
+      },
+    ])
+    const options = client.productLines.list.mock.calls[0][0]
+    expect(options.filter).toBe(`_vibe_opportunityid_value eq ${OPP}`)
+    expect(options.orderBy).toEqual(["createdon asc", "vibe_productlineid asc"])
+  })
+
+  it("adds a line with the Product's description and List price, binding both lookups", async () => {
+    const client = fakeClient(ADELE)
+    await new DataverseSalesGateway(client).addProductLine(OPP, { productId: PRODUCT, quantity: 1.5 })
+    expect(client.productLines.create).toHaveBeenCalledWith({
+      vibe_name: "Consulting",
+      vibe_description: "Per hour",
+      vibe_quantity: 1.5,
+      vibe_unitprice: 125,
+      vibe_discountpercent: 0,
+      "vibe_OpportunityId@odata.bind": `/vibe_opportunities(${OPP})`,
+      "vibe_ProductId@odata.bind": `/vibe_products(${PRODUCT})`,
+    })
+  })
+
+  it("refuses a retired Product, bad values and a closed Opportunity before calling Dataverse", async () => {
+    const client = fakeClient(ADELE)
+    const gateway = new DataverseSalesGateway(client)
+    await expect(gateway.addProductLine(OPP, { productId: RETIRED_PRODUCT, quantity: 1 })).rejects.toMatchObject({
+      code: "invalid",
+      fieldErrors: { productId: expect.any(String) },
+    })
+    await expect(gateway.addProductLine(OPP, { productId: PRODUCT, quantity: 0, discountPercent: 101 })).rejects.toMatchObject({
+      fieldErrors: { quantity: expect.any(String), discountPercent: expect.any(String) },
+    })
+    await client.opportunities.update(OPP, { vibe_stage: 841200004 })
+    await expect(gateway.addProductLine(OPP, { productId: PRODUCT, quantity: 1 })).rejects.toMatchObject({ code: "invalid" })
+    expect(client.productLines.create).not.toHaveBeenCalled()
+  })
+
+  it("changes only what is edited, and removes a line", async () => {
+    const client = fakeClient(ADELE, [], lineRows)
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.updateProductLine(LINE, { quantity: 3, description: "" })
+    expect(client.productLines.update).toHaveBeenCalledWith(LINE, { vibe_quantity: 3, vibe_description: null })
+    await gateway.removeProductLine(LINE)
+    expect(client.productLines.delete).toHaveBeenCalledWith(LINE)
+  })
+
+  it("does not send an unchanged Estimated value, and refuses a changed one while lines exist", async () => {
+    const client = fakeClient(ADELE, [], lineRows)
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.updateOpportunity(OPP, { estimatedValue: 48000, nextStep: "Call" })
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, { vibe_nextstep: "Call" })
+    await expect(gateway.updateOpportunity(OPP, { estimatedValue: 1 })).rejects.toMatchObject({
+      code: "invalid",
+      fieldErrors: { estimatedValue: expect.any(String) },
+    })
+  })
+
+  it("lets the Estimated value be typed when there are no lines", async () => {
+    const client = fakeClient(ADELE)
+    await new DataverseSalesGateway(client).updateOpportunity(OPP, { estimatedValue: 50000 })
+    expect(client.opportunities.update).toHaveBeenLastCalledWith(OPP, { vibe_estimatedvalue: 50000 })
   })
 })

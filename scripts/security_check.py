@@ -309,6 +309,7 @@ def run(dv, report, created):
         "PATCH", f"vibe_leads({diego_lead})", {"vibe_jobtitle": "Updated by Adele"}, as_user=adele), 403)
 
     products(dv, report, users, track)
+    product_lines(dv, report, users, track, account)
     run_quota(dv, report, track, users)
     import engine_check  # imported here: it imports this module
     engine_check.run(dv, report, users, track)
@@ -354,6 +355,133 @@ def products(dv, report, users, track):
         "DELETE", f"vibe_products({product})", as_user=megan), 403)
 
 
+
+
+def product_lines(dv, report, users, track, account):
+    """Product lines (#100): follow the Opportunity's security; the plug-in keeps Estimated value."""
+    print("Product lines: follow the Opportunity; Estimated value follows the lines", flush=True)
+    adele, megan, alex = users["adele"], users["megan"], users["alex"]
+    unit = dv.get("GlobalOptionSetDefinitions(Name='vibe_productunit')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    vat = dv.get("GlobalOptionSetDefinitions(Name='vibe_vatrate')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    stage = dv.get("GlobalOptionSetDefinitions(Name='vibe_stage')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+    opportunity_account = nav_property(dv, "vibe_opportunity", "account", "vibe_accountid")
+
+    def product(n, price):
+        return track("vibe_products", dv.create("vibe_products", {
+            "vibe_name": f"{TAG} Line product {n}", "vibe_productcode": f"{TAG}-L{n}", "vibe_unit": unit,
+            "vibe_vatrate": vat, "vibe_listprice": price}, as_user=megan))
+
+    product_1, product_2 = product(1, 100), product(2, 40)
+    retired = product(3, 10)
+    dv.call("PATCH", f"vibe_products({retired})", {"statecode": 1, "statuscode": 2}, as_user=megan)
+
+    def opportunity(owner, name):
+        return track("vibe_opportunities", dv.create("vibe_opportunities", {
+            "vibe_name": f"{TAG} {name}", f"{opportunity_account}@odata.bind": f"/accounts({account})",
+            "vibe_stage": stage, "vibe_estimatedvalue": 1000, "vibe_expectedclosedate": "2026-12-31"}, as_user=owner))
+
+    def line(opp, prod, quantity=1, price=None, discount=0):
+        body = {"vibe_name": f"{TAG} Line", "vibe_OpportunityId@odata.bind": f"/vibe_opportunities({opp})",
+                "vibe_ProductId@odata.bind": f"/vibe_products({prod})", "vibe_quantity": quantity,
+                "vibe_discountpercent": discount}
+        if price is not None:
+            body["vibe_unitprice"] = price
+        return body
+
+    def value(opp):
+        return dv.get(f"vibe_opportunities({opp})?$select=vibe_estimatedvalue")["vibe_estimatedvalue"]
+
+    opp = opportunity(adele, "Lines Opportunity")
+    result = dv.call("POST", "vibe_productlines", line(opp, product_1, 2, 100, 10), as_user=adele)
+    report.expect_status("Adele adds a Product line", result, 204)
+    if not result[3]:
+        return
+    first = track("vibe_productlines", result[3])
+    row = dv.get(f"vibe_productlines({first})?$select=vibe_lineamount,vibe_listpriceatadd,vibe_description,_ownerid_value")
+    report.check("Line amount is 2 x 100 less 10% = 180", row["vibe_lineamount"] == 180)
+    report.check("List price at add is the Product's List price", row["vibe_listpriceatadd"] == 100)
+    report.check("The line is owned by the Opportunity's Owner", row["_ownerid_value"] == adele)
+    report.check("Estimated value is now the line total (180)", value(opp) == 180)
+
+    result = dv.call("POST", "vibe_productlines", line(opp, product_2, 1.5, 33.33), as_user=adele)
+    report.expect_status("Adele adds a second line (1.5 x 33.33)", result, 204)
+    second = track("vibe_productlines", result[3]) if result[3] else None
+    report.check("Each line is rounded to cents, then summed (180 + 50.00)", value(opp) == 230)
+
+    report.expect_status("Adele types over the Estimated value while lines exist", dv.call(
+        "PATCH", f"vibe_opportunities({opp})", {"vibe_estimatedvalue": 5}, as_user=adele), 400)
+    report.expect_status("Adele saves the Estimated value unchanged", dv.call(
+        "PATCH", f"vibe_opportunities({opp})", {"vibe_estimatedvalue": 230, "vibe_nextstep": "Call"}, as_user=adele), 204)
+    report.expect_status("A system administrator types over the Estimated value", dv.call(
+        "PATCH", f"vibe_opportunities({opp})", {"vibe_estimatedvalue": 5}), 400)
+
+    report.expect_status("Adele changes the quantity to 3", dv.call(
+        "PATCH", f"vibe_productlines({first})", {"vibe_quantity": 3}, as_user=adele), 204)
+    report.check("Estimated value follows the update (270 + 50 = 320)", value(opp) == 320)
+    report.expect_status("Adele writes Line amount directly", dv.call(
+        "PATCH", f"vibe_productlines({first})", {"vibe_lineamount": 1}, as_user=adele), 204)
+    report.check("Line amount is recalculated, not taken (still 320)", value(opp) == 320)
+    report.expect_status("Adele changes the List price at add", dv.call(
+        "PATCH", f"vibe_productlines({first})", {"vibe_listpriceatadd": 1}, as_user=adele), 400)
+    report.expect_status("Adele sets a quantity of zero", dv.call(
+        "PATCH", f"vibe_productlines({first})", {"vibe_quantity": 0}, as_user=adele), 400)
+    report.expect_status("Adele sets a discount of 101%", dv.call(
+        "PATCH", f"vibe_productlines({first})", {"vibe_discountpercent": 101}, as_user=adele), 400)
+    report.expect_status("Adele adds a retired Product", dv.call(
+        "POST", "vibe_productlines", line(opp, retired), as_user=adele), 400)
+
+    for key in ("alex", "diego"):
+        who, caller = USERS[key], users[key]
+        report.expect_status(f"{who} adds a line to Adele's Opportunity", dv.call(
+            "POST", "vibe_productlines", line(opp, product_1), as_user=caller), 403)
+        report.expect_status(f"{who} changes Adele's line", dv.call(
+            "PATCH", f"vibe_productlines({first})", {"vibe_quantity": 9}, as_user=caller), 403)
+        report.expect_status(f"{who} removes Adele's line", dv.call(
+            "DELETE", f"vibe_productlines({first})", as_user=caller), 403)
+        report.expect_status(f"{who} reads Adele's line", dv.call(
+            "GET", f"vibe_productlines({first})?$select=vibe_lineamount", as_user=caller), 200)
+
+    result = dv.call("POST", "vibe_productlines", line(opp, product_2, 2), as_user=megan)
+    report.expect_status("Megan adds a line to Adele's Opportunity", result, 204)
+    if result[3]:
+        by_megan = track("vibe_productlines", result[3])
+        report.check("Megan's line is owned by Adele", owner_of(dv, "vibe_productlines", by_megan) == adele)
+        report.check("Estimated value includes it (320 + 80)", value(opp) == 400)
+        report.expect_status("Megan removes it", dv.call("DELETE", f"vibe_productlines({by_megan})", as_user=megan), 204)
+        report.check("Estimated value drops back to 320", value(opp) == 320)
+
+    report.expect_status("Adele removes the second line", dv.call("DELETE", f"vibe_productlines({second})", as_user=adele), 204)
+    report.check("Estimated value follows the removal (270)", value(opp) == 270)
+    report.expect_status("Adele removes the last line", dv.call("DELETE", f"vibe_productlines({first})", as_user=adele), 204)
+    report.check("The Estimated value keeps its last total (270)", value(opp) == 270)
+    report.expect_status("Adele types the Estimated value again (no lines)", dv.call(
+        "PATCH", f"vibe_opportunities({opp})", {"vibe_estimatedvalue": 777}, as_user=adele), 204)
+
+    reassigned = opportunity(adele, "Reassigned lines")
+    result = dv.call("POST", "vibe_productlines", line(reassigned, product_1), as_user=adele)
+    if result[3]:
+        moving = track("vibe_productlines", result[3])
+        report.expect_status("Megan reassigns the Opportunity to Alex", dv.call(
+            "PATCH", f"vibe_opportunities({reassigned})", {"ownerid@odata.bind": f"/systemusers({alex})"}, as_user=megan), 204)
+        report.check("Its line moved to Alex (parental cascade)", owner_of(dv, "vibe_productlines", moving) == alex)
+        report.expect_status("Alex now changes the line", dv.call(
+            "PATCH", f"vibe_productlines({moving})", {"vibe_quantity": 2}, as_user=alex), 204)
+
+    closed = opportunity(adele, "Closed lines")
+    result = dv.call("POST", "vibe_productlines", line(closed, product_1), as_user=adele)
+    if result[3]:
+        stuck = track("vibe_productlines", result[3])
+        report.expect_status("Adele closes the Opportunity", dv.call(
+            "PATCH", f"vibe_opportunities({closed})", {"statecode": 1, "statuscode": 2}, as_user=adele), 204)
+        report.expect_status("Adele adds a line to a closed Opportunity", dv.call(
+            "POST", "vibe_productlines", line(closed, product_2), as_user=adele), 400)
+        report.expect_status("Adele changes a line on a closed Opportunity", dv.call(
+            "PATCH", f"vibe_productlines({stuck})", {"vibe_quantity": 5}, as_user=adele), 400)
+        report.expect_status("Adele removes a line from a closed Opportunity", dv.call(
+            "DELETE", f"vibe_productlines({stuck})", as_user=adele), 400)
+
+    report.expect_status("Megan deletes a Product that is on a line", dv.call(
+        "DELETE", f"vibe_products({product_1})", as_user=megan), 403)
 
 
 QUOTA_MONTH = "2099-01-01"
@@ -432,7 +560,9 @@ def run_quota(dv, report, track, users):
 
 def cleanup(dv, created):
     for entity_set, record_id in reversed(created):
-        status, _, code, _ = dv.call("DELETE", f"{entity_set}({record_id})")
+        # Lines on a closed Opportunity can only be removed with the plug-ins bypassed.
+        bypass = {"MSCRM.BypassCustomPluginExecution": "true"} if entity_set == "vibe_productlines" else None
+        status, _, code, _ = dv.call("DELETE", f"{entity_set}({record_id})", headers=bypass)
         if status not in (204, 404):
             print(f"  cleanup: could not delete {entity_set}({record_id}): {status} {code}", flush=True)
 

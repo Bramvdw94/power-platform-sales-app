@@ -202,6 +202,38 @@ export const PRODUCT_COLUMNS = [
   "statecode",
   "createdon",
 ] as const
+/** The vibe_productline columns the app reads. */
+export type ProductLineRow = Row & {
+  vibe_productlineid: Id
+  _vibe_opportunityid_value?: Id | null
+  _vibe_productid_value?: Id | null
+  vibe_name?: string | null
+  vibe_description?: string | null
+  vibe_quantity?: number | null
+  vibe_unitprice?: number | null
+  vibe_listpriceatadd?: number | null
+  vibe_discountpercent?: number | null
+  vibe_lineamount?: number | null
+  createdon?: string | null
+}
+
+export const PRODUCT_LINE_COLUMNS = [
+  "vibe_productlineid",
+  "_vibe_opportunityid_value",
+  "_vibe_productid_value",
+  "vibe_name",
+  "vibe_description",
+  "vibe_quantity",
+  "vibe_unitprice",
+  "vibe_listpriceatadd",
+  "vibe_discountpercent",
+  "vibe_lineamount",
+  "createdon",
+] as const
+
+/** A Product line's lookups, as navigation properties for `@odata.bind` writes. */
+export const PRODUCT_LINE_NAVIGATION = { opportunity: "vibe_OpportunityId", product: "vibe_ProductId" } as const
+
 /** The vibe_quota columns the app reads. */
 export type QuotaRow = Row & {
   vibe_quotaid: Id
@@ -293,6 +325,8 @@ export interface TableClient<T> {
   list(options: ListOptions): Promise<RowPage<T>>
   create(fields: Fields): Promise<T>
   update(id: Id, fields: Fields): Promise<T>
+  /** Only Product lines are removed; every other table is deactivated instead. */
+  delete(id: Id): Promise<void>
 }
 
 export interface DataverseClient {
@@ -306,6 +340,7 @@ export interface DataverseClient {
   leads: TableClient<LeadRow>
   opportunities: TableClient<OpportunityRow>
   products: TableClient<ProductRow>
+  productLines: TableClient<ProductLineRow>
   quotas: TableClient<QuotaRow>
   notes: TableClient<NoteRow>
   tasks: TableClient<ActivityRow>

@@ -253,13 +253,49 @@ class Payloads(unittest.TestCase):
         self.assertEqual(recs["prod-training"].body["vibe_vatrate"], 841200001)  # 9 %
         self.assertEqual(legacy.final_state, (1, 2))
 
+    def test_line_amounts_round_to_cents_per_line(self):
+        self.assertEqual(str(sd.line_amount(1.5, 33.33, 0)), "50.00")
+        self.assertEqual(str(sd.line_amount(1, 0.15, 50)), "0.08")
+        self.assertEqual(str(sd.line_amount(3, 99.99, 10)), "269.97")
+        self.assertEqual(str(sd.line_amount(2, 110, None)), "220.00")
+
+    def test_product_lines_cover_open_and_won_deals_and_add_up_to_the_estimated_value(self):
+        by_opp = Counter(l["opportunity"] for l in DATA["productLines"])
+        stages = {find(DATA, k)["stage"] for k in by_opp}
+        self.assertTrue({"closedWon", "proposal", "negotiation", "needsAnalysis", "qualification"} & stages >= {"closedWon", "proposal"})
+        self.assertLess(len(by_opp), len(DATA["opportunities"]), "lines are optional")
+        for key in by_opp:
+            with self.subTest(opportunity=key):
+                self.assertEqual(sd.lines_total(DATA, key), find(DATA, key)["estimatedValue"])
+
+    def test_a_line_payload_has_the_amounts_the_plug_in_would_set_and_the_opportunity_owner(self):
+        recs = records()
+        line = recs["line-devries-1"]
+        self.assertEqual(line.body["vibe_lineamount"], 61560.0)  # 1200 x 54 less 5 %
+        self.assertEqual(line.body["vibe_listpriceatadd"], 54)
+        self.assertEqual(line.body["vibe_unitprice"], 54)
+        self.assertEqual(line.body["ownerid@odata.bind"], f"/systemusers({USERS['adele']})")  # the Opportunity's owner
+        self.assertEqual(line.body["nav_productline_opportunity@odata.bind"], f"/vibe_opportunities({sd.record_id('opp-devries')})")
+        self.assertEqual(line.body["nav_productline_product@odata.bind"], f"/vibe_products({sd.record_id('prod-workplace')})")
+        override = recs["line-rijnmond-4"]
+        self.assertEqual((override.body["vibe_unitprice"], override.body["vibe_listpriceatadd"]), (1300, 1450))
+
+    def test_a_line_needs_a_known_active_product_and_must_not_move_the_estimated_value(self):
+        self.assertTrue(broken(lambda d: d["productLines"][0].update(product="prod-legacy")))
+        self.assertTrue(broken(lambda d: d["productLines"][0].update(product="prod-nope")))
+        self.assertTrue(broken(lambda d: d["productLines"][0].update(quantity=0)))
+        self.assertTrue(broken(lambda d: d["productLines"][0].update(discountPercent=101)))
+        self.assertTrue(broken(lambda d: find(d, "opp-devries").update(estimatedValue=1)))
+
     def test_load_order_puts_parents_first(self):
         order = [r.table.section for r in sd.build_records(DATA, USERS, NAV, CLOCK)]
         first = {s: order.index(s) for s in set(order)}
         self.assertLess(first["accounts"], first["contacts"])
         self.assertLess(first["contacts"], first["leads"])
         self.assertLess(first["leads"], first["opportunities"])
-        self.assertLess(first["opportunities"], first["notes"])
+        self.assertLess(first["opportunities"], first["productLines"])
+        self.assertLess(first["products"], first["productLines"])
+        self.assertLess(first["productLines"], first["notes"])
 
 
 if __name__ == "__main__":

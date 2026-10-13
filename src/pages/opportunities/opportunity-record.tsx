@@ -22,6 +22,7 @@ import type { OpportunityDetails } from "@/data/gateway"
 import { ExpectedCloseDate } from "./expected-close-date"
 import { CloseOpportunityDialog, ReopenOpportunityDialog } from "./close-dialogs"
 import { EditOpportunityForm } from "./opportunity-form"
+import { ProductLinesPanel } from "./product-lines"
 
 export default function OpportunityRecordPage() {
   const { id = "" } = useParams()
@@ -96,11 +97,13 @@ export default function OpportunityRecordPage() {
 
       <RecordSection title="Details">
         {editing ? (
-          <EditOpportunityForm opportunity={opportunity} onDone={() => setEditing(false)} />
+          <EditOpportunityForm opportunity={opportunity} onDone={() => setEditing(false)} hasProductLines={data.productLines.length > 0} />
         ) : (
           <OpportunityDetailList details={data} accountLink={accountLink} />
         )}
       </RecordSection>
+
+      <ProductLinesPanel opportunityId={opportunity.id} lines={data.productLines} canEdit={canEdit && isOpen} />
 
       {isOpen ? (
         <CloseOpportunityDialog opportunity={opportunity} open={closing} onOpenChange={setClosing} />
@@ -211,7 +214,17 @@ function OpportunityDetailList({ details, accountLink }: { details: OpportunityD
             </Link>
           ),
         },
-        { label: "Estimated value", value: formatEuro(opportunity.estimatedValue) },
+        {
+          label: "Estimated value",
+          value: (
+            <>
+              {formatEuro(opportunity.estimatedValue)}
+              {details.productLines.length > 0 && (
+                <span className="block text-xs text-muted-foreground">Total of {details.productLines.length} Product {details.productLines.length === 1 ? "line" : "lines"}</span>
+              )}
+            </>
+          ),
+        },
         { label: "Expected close date", value: formatDate(opportunity.expectedCloseDate) },
         { label: "Probability", value: `${opportunity.probability}%` },
         ...(opportunity.forecastCategory ? [{ label: "Forecast category", value: FORECAST_CATEGORY_LABELS[opportunity.forecastCategory] }] : []),

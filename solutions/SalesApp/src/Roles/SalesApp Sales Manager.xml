@@ -10,7 +10,9 @@
     <RolePrivilege name="prvAssignvibe_Lead" level="Local" />
     <RolePrivilege name="prvAssignvibe_Opportunity" level="Local" />
     <RolePrivilege name="prvCreateSharePointData" level="Global" />
+    <RolePrivilege name="prvCreatevibe_ProductLine" level="Local" />
     <RolePrivilege name="prvCreatevibe_Quota" level="Local" />
+    <RolePrivilege name="prvDeletevibe_ProductLine" level="Local" />
     <RolePrivilege name="prvReadSharePointData" level="Global" />
     <RolePrivilege name="prvReadSharePointDocument" level="Global" />
     <RolePrivilege name="prvWriteSharePointData" level="Global" />

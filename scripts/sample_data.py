@@ -23,6 +23,7 @@ the end import `security_check` (and through it `auth`) only when called.
 import json
 import uuid
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
@@ -71,6 +72,9 @@ TABLES = [
     Table("contacts", "con-", "contact", "contacts", "contactid", (0, 1)),
     Table("leads", "lead-", "vibe_lead", "vibe_leads", "vibe_leadid", (0, 1)),
     Table("opportunities", "opp-", "vibe_opportunity", "vibe_opportunities", "vibe_opportunityid", (0, 1)),
+    # After the Opportunities, which are closed only once everything is loaded. Owned by the
+    # Opportunity's owner; written with the plug-in bypass, so the amounts are worked out here.
+    Table("productLines", "line-", "vibe_productline", "vibe_productlines", "vibe_productlineid", (0, 1)),
     Table("notes", "note-", "annotation", "annotations", "annotationid", None),
     Table("tasks", "task-", "task", "tasks", "activityid", (0, 2)),
     Table("phoneCalls", "call-", "phonecall", "phonecalls", "activityid", (0, 1)),
@@ -81,6 +85,20 @@ TABLES = [
 TABLE_BY_SECTION = {t.section: t for t in TABLES}
 # Things a record can be "regarding" (Notes, Tasks, Phone Calls).
 REGARDING_PREFIXES = {"acc-": "accounts", "con-": "contacts", "lead-": "leads", "opp-": "opportunities"}
+
+
+def line_amount(quantity, unit_price, discount_percent):
+    """Quantity x unit price x (1 - discount %), rounded to cents: the plug-in's sum."""
+    amount = Decimal(str(quantity)) * Decimal(str(unit_price)) * (100 - Decimal(str(discount_percent or 0))) / 100
+    return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def lines_total(data, opportunity_key):
+    """The Estimated value an Opportunity with Product lines must have, or None without lines."""
+    products = {p["key"]: p for p in data.get("products", [])}
+    amounts = [line_amount(l["quantity"], l.get("unitPrice", products[l["product"]]["listPrice"]), l.get("discountPercent"))
+               for l in data.get("productLines", []) if l.get("opportunity") == opportunity_key and l.get("product") in products]
+    return sum(amounts) if amounts else None
 
 
 def record_id(key):
@@ -225,6 +243,31 @@ def validate(data):
                 err(f"{lead['key']}: is the originating Lead of two Opportunities")
             originating[lead["key"]] = opp
             check_carry_over(lead, opp, account, contact, err)
+
+    product_keys = {p["key"]: p for p in data.get("products", [])}
+    opportunity_by_key = {o["key"]: o for o in data.get("opportunities", [])}
+    for line in data.get("productLines", []):
+        key = line["key"]
+        required(line, "opportunity", "product", "quantity")
+        opp = ref(line, "opportunity", "opp-", required=True)
+        if line.get("product") not in product_keys:
+            err(f"{key}: product {line.get('product')!r} is not a known prod-* record")
+            continue
+        if product_keys[line["product"]].get("retired"):
+            err(f"{key}: a Retired Product cannot be on a line")
+        quantity, price, discount = line.get("quantity"), line.get("unitPrice", product_keys[line["product"]]["listPrice"]), line.get("discountPercent", 0)
+        if not isinstance(quantity, (int, float)) or quantity <= 0 or abs(quantity * 100 - round(quantity * 100)) > 1e-6:
+            err(f"{key}: quantity must be above 0, with at most 2 decimals")
+        if not isinstance(price, (int, float)) or price < 0 or abs(price * 100 - round(price * 100)) > 1e-6:
+            err(f"{key}: unitPrice must be 0 or more, in whole cents")
+        if not isinstance(discount, (int, float)) or not 0 <= discount <= 100:
+            err(f"{key}: discountPercent must be 0-100")
+        if opp and opp.get("owner") and line.get("owner", opp["owner"]) != opp["owner"]:
+            err(f"{key}: a line belongs to its Opportunity's owner")
+    for opp_key, opp in opportunity_by_key.items():
+        total = lines_total(data, opp_key)
+        if total is not None and Decimal(str(opp["estimatedValue"])) != total:
+            err(f"{opp_key}: estimatedValue {opp['estimatedValue']} must equal its Product lines' total {total}")
 
     for lead in data.get("leads", []):
         if lead.get("status") == "qualified" and lead["key"] not in originating:
@@ -441,6 +484,23 @@ def build_records(data, users, nav, clock):
             final = (1, 2)  # closed deals are read-only: deactivated (spec #23)
         add("opportunities", opp, body, final)
 
+    products = {p["key"]: p for p in data["products"]}
+    for line in data.get("productLines", []):
+        product = products[line["product"]]
+        price = line.get("unitPrice", product["listPrice"])
+        discount = line.get("discountPercent", 0)
+        add("productLines", line, {
+            "vibe_name": product["name"],
+            "vibe_description": line.get("description") or product.get("description"),
+            "vibe_quantity": line["quantity"],
+            "vibe_unitprice": price,
+            "vibe_listpriceatadd": product["listPrice"],
+            "vibe_discountpercent": discount,
+            "vibe_lineamount": float(line_amount(line["quantity"], price, discount)),
+            **bind(nav["productline.opportunity"], "vibe_opportunities", line["opportunity"]),
+            **bind(nav["productline.product"], "vibe_products", line["product"]),
+        })
+
     for note in data["notes"]:
         target = regarding_table(note["regarding"])
         add("notes", note, {
@@ -513,6 +573,8 @@ def owner_of(data, rec):
     """Activities without an owner belong to the owner of what they are regarding; a Quota to its salesperson."""
     if "salesperson" in rec:
         return rec["salesperson"]
+    if "opportunity" in rec:
+        return next(o for o in data["opportunities"] if o["key"] == rec["opportunity"])["owner"]
     return _find(data, rec["regarding"])["owner"]
 
 
@@ -534,6 +596,8 @@ NAV_LOOKUPS = {
     "opportunity.originatinglead": ("vibe_opportunity", "vibe_originatingleadid", "vibe_lead"),
     "opportunity.closedby": ("vibe_opportunity", "vibe_closedby", "systemuser"),
     "quota.salesperson": ("vibe_quota", "vibe_salespersonid", "systemuser"),
+    "productline.opportunity": ("vibe_productline", "vibe_opportunityid", "vibe_opportunity"),
+    "productline.product": ("vibe_productline", "vibe_productid", "vibe_product"),
     **{f"note.{t}": ("annotation", "objectid", t) for t in ("account", "contact", "vibe_lead", "vibe_opportunity")},
     **{f"task.{t}": ("task", "regardingobjectid", t) for t in ("account", "contact", "vibe_lead", "vibe_opportunity")},
     **{f"phonecall.{t}": ("phonecall", "regardingobjectid", t) for t in ("account", "contact", "vibe_lead", "vibe_opportunity")},
@@ -549,6 +613,7 @@ def summary(data):
         f"{len(data['accounts'])} Accounts, {len(data['contacts'])} Contacts",
         f"{len(leads)} Leads: {by(leads, 'status', LEAD_STATUSES)}",
         f"{len(opps)} Opportunities: {by(opps, 'stage', STAGES)}",
+        f"{len(data.get('productLines', []))} Product lines on {len({l['opportunity'] for l in data.get('productLines', [])})} Opportunities",
         f"{len(data['products'])} Products ({sum(bool(p.get('retired')) for p in data['products'])} retired)",
         f"{len(data['notes'])} Notes, {len(data['tasks'])} Tasks, {len(data['phoneCalls'])} Phone Calls",
         f"{len(data.get('quotas', []))} Quotas",

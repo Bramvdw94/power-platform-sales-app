@@ -29,6 +29,13 @@ export const SEED_IDS = {
   tasks: { overdue: "task-call-back", dueLater: "task-send-proposal", done: "task-intro" },
   notes: { kickoff: "note-kickoff" },
   phoneCalls: { open: "call-planned", logged: "call-logged" },
+  productLines: {
+    proposalConsulting: "line-proposal-consulting",
+    proposalWorkshop: "line-proposal-workshop",
+    proposalLicences: "line-proposal-licences",
+    wonWorkshop: "line-won-workshop",
+    wonConsulting: "line-won-consulting",
+  },
   products: { consultingHour: "prod-consulting-hour", workshopDay: "prod-workshop-day", licence: "prod-licence-month", retired: "prod-retired-support" },
 } as const
 
@@ -44,7 +51,7 @@ function at(date: DateOnly): Timestamp {
 /** The seed data, with dates relative to today so Home and the Pipeline look current. */
 export function createSeedData(today: DateOnly): InMemoryData {
   const { megan, adele, alex, diego } = SEED_USERS
-  const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR } = SEED_IDS
+  const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR, productLines: PL } = SEED_IDS
   const daysAgo = (n: number) => at(addDays(today, -n))
   const inDays = (n: number) => addDays(today, n)
 
@@ -87,6 +94,14 @@ export function createSeedData(today: DateOnly): InMemoryData {
       { id: PR.workshopDay, name: "Workshop day", code: "WS-DAY", description: "On-site workshop of one day, up to 12 people.", unit: "day", listPrice: 1450, vatRate: 21, retired: false, createdOn: daysAgo(200) },
       { id: PR.licence, name: "Cloud licence", code: "LIC-M365", unit: "month", listPrice: 22.5, vatRate: 21, retired: false, createdOn: daysAgo(190) },
       { id: PR.retired, name: "Legacy support", code: "SUP-OLD", description: "Support contract we no longer sell.", unit: "year", listPrice: 4800, vatRate: 9, retired: true, createdOn: daysAgo(400) },
+    ],
+    // Lines add up to the Opportunity's Estimated value, as the plug-in keeps it.
+    productLines: [
+      { id: PL.proposalConsulting, opportunityId: O.proposal, productId: PR.consultingHour, productName: "Consulting", description: "Senior consultant, billed per hour.", quantity: 100, unitPrice: 125, listPriceAtAdd: 125, discountPercent: 0, lineAmount: 12500, createdOn: daysAgo(45) },
+      { id: PL.proposalWorkshop, opportunityId: O.proposal, productId: PR.workshopDay, productName: "Workshop day", description: "On-site workshop of one day, up to 12 people.", quantity: 5, unitPrice: 1450, listPriceAtAdd: 1450, discountPercent: 0, lineAmount: 7250, createdOn: daysAgo(44) },
+      { id: PL.proposalLicences, opportunityId: O.proposal, productId: PR.licence, productName: "Cloud licence", quantity: 10, unitPrice: 25, listPriceAtAdd: 22.5, discountPercent: 0, lineAmount: 250, createdOn: daysAgo(43) },
+      { id: PL.wonWorkshop, opportunityId: O.won, productId: PR.workshopDay, productName: "Workshop day", description: "On-site workshop of one day, up to 12 people.", quantity: 10, unitPrice: 1450, listPriceAtAdd: 1450, discountPercent: 0, lineAmount: 14500, createdOn: daysAgo(75) },
+      { id: PL.wonConsulting, opportunityId: O.won, productId: PR.consultingHour, productName: "Consulting", description: "Senior consultant, billed per hour.", quantity: 124, unitPrice: 125, listPriceAtAdd: 125, discountPercent: 0, lineAmount: 15500, createdOn: daysAgo(74) },
     ],
     activities: [
       { id: T.overdue, kind: "task", subject: "Call Thomas back", dueDate: inDays(-2), completed: false, regarding: { type: "lead", id: L.working }, ownerId: alex.id, createdOn: daysAgo(6) },

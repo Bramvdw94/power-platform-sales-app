@@ -26,6 +26,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sample_data as sd  # noqa: E402
 
 
+# Lines on a closed Opportunity can only be removed with the custom plug-ins skipped.
+BYPASS = {"MSCRM.BypassCustomPluginExecution": "true"}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--apply", action="store_true", help="delete from Dataverse (default: dry run)")
@@ -49,7 +53,7 @@ def main():
                 else:
                     deleted += 1
                 continue
-            status, err, code, _ = dv.call("DELETE", path)
+            status, err, code, _ = dv.call("DELETE", path, headers=BYPASS)
             if status == 204:
                 deleted += 1
             elif status == 404:

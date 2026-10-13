@@ -32,6 +32,9 @@ import type {
   PipelineFilter,
   Product,
   ProductInput,
+  ProductLine,
+  ProductLineInput,
+  ProductLineUpdate,
   QualifyOpportunityDetails,
   Quota,
   RecordRef,
@@ -88,6 +91,8 @@ export type OpportunityDetails = Editable & {
   account: Account
   primaryContact?: Contact
   originatingLead?: Lead
+  /** Oldest first. While there are any, the Estimated value is their total and can't be typed over. */
+  productLines: ProductLine[]
 }
 
 export type AccountDetails = Editable & {
@@ -229,6 +234,18 @@ export interface SalesGateway {
   updateProduct(id: Id, update: ProductUpdate): Promise<Product>
   /** The Product can't be added to new lines; existing lines keep it. */
   retireProduct(id: Id): Promise<Product>
+
+  // Product lines: editable by whoever may edit the Opportunity, read-only once it is closed.
+  /** Oldest first. */
+  listProductLines(opportunityId: Id): Promise<ProductLine[]>
+  /**
+   * Adds a line for an active Product; its description and unit price default to the Product's.
+   * The Opportunity's Estimated value becomes the total of its lines.
+   */
+  addProductLine(opportunityId: Id, input: ProductLineInput): Promise<ProductLine>
+  updateProductLine(id: Id, update: ProductLineUpdate): Promise<ProductLine>
+  /** Removing the last line leaves the Estimated value as it was, and typeable again. */
+  removeProductLine(id: Id): Promise<void>
 
   // Ownership
   /** Makes another salesperson the Owner; open Tasks and Phone Calls on the record move along. */

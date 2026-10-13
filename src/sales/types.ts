@@ -243,3 +243,36 @@ export type Quota = {
   month: DateOnly
   amount: number
 }
+
+/** One Product on an Opportunity. Amounts are in euros excluding VAT. */
+export type ProductLine = {
+  id: Id
+  opportunityId: Id
+  productId: Id
+  productName: string
+  /** Copied from the Product when added; the Owner may change it. */
+  description?: string
+  /** Positive, up to 2 decimals. */
+  quantity: number
+  /** Starts at the Product's List price; the Owner may change it. */
+  unitPrice: number
+  /** The Product's List price when the line was added. Never changes. */
+  listPriceAtAdd: number
+  /** Percentage 0-100. */
+  discountPercent: number
+  /** Quantity x unit price x (1 - discount %), rounded to cents. */
+  lineAmount: number
+  createdOn: Timestamp
+}
+
+/** The unit price and description default to the Product's; the discount to 0. */
+export type ProductLineInput = {
+  productId: Id
+  description?: string
+  quantity: number
+  unitPrice?: number
+  discountPercent?: number
+}
+
+/** A blank description clears it. The Product never changes: remove the line and add another. */
+export type ProductLineUpdate = Partial<Pick<ProductLine, "description" | "quantity" | "unitPrice" | "discountPercent">>

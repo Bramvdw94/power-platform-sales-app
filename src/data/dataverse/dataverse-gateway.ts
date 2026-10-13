@@ -43,6 +43,8 @@ import {
   OPEN_STAGES,
   PRODUCT_UNITS,
   VAT_RATES,
+  newProductLineDefaults,
+  productLineErrors,
   productErrors,
   SalesRuleError,
   STAGE_DEFAULT_PROBABILITY,
@@ -107,6 +109,9 @@ import {
   type PhoneCall,
   type Product,
   type ProductInput,
+  type ProductLine,
+  type ProductLineInput,
+  type ProductLineUpdate,
   type RecordRef,
   type RecordType,
   type Task,
@@ -121,6 +126,7 @@ import {
   QUOTA_SALESPERSON_NAVIGATION,
   LEAD_DISQUALIFIED_BY_NAVIGATION,
   OPPORTUNITY_NAVIGATION,
+  PRODUCT_LINE_NAVIGATION,
   RECORD_TABLES,
   regardingNavigation,
   type AccountRow,
@@ -133,6 +139,7 @@ import {
   type NoteRow,
   type OpportunityRow,
   type PhoneCallRow,
+  type ProductLineRow,
   type ProductRow,
   type QuotaRow,
   type RowPage,
@@ -220,6 +227,11 @@ function optional<T>(value: T | null | undefined): T | undefined {
 function column(value: string | undefined): string | null | undefined {
   if (value === undefined) return undefined
   return value.trim() === "" ? null : value.trim()
+}
+
+/** Drops keys whose value is undefined. */
+function defined<T extends object>(patch: T): Partial<T> {
+  return Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as Partial<T>
 }
 
 /** Leaves out columns the patch doesn't touch. */
@@ -472,6 +484,24 @@ export function toProduct(row: ProductRow): Product {
   }
 }
 
+const LINE_ORDER = ["createdon asc", "vibe_productlineid asc"]
+
+export function toProductLine(row: ProductLineRow): ProductLine {
+  return {
+    id: row.vibe_productlineid,
+    opportunityId: row._vibe_opportunityid_value ?? "",
+    productId: row._vibe_productid_value ?? "",
+    productName: row.vibe_name ?? lookupName(row, "vibe_productid") ?? "",
+    description: optional(row.vibe_description),
+    quantity: row.vibe_quantity ?? 0,
+    unitPrice: row.vibe_unitprice ?? 0,
+    listPriceAtAdd: row.vibe_listpriceatadd ?? 0,
+    discountPercent: row.vibe_discountpercent ?? 0,
+    lineAmount: row.vibe_lineamount ?? 0,
+    createdOn: row.createdon ?? "",
+  }
+}
+
 function productFields(input: Partial<ProductInput>) {
   return {
     vibe_name: input.name?.trim(),
@@ -719,10 +749,11 @@ export class DataverseSalesGateway implements SalesGateway {
   async getOpportunity(id: Id): Promise<OpportunityDetails> {
     const row = await this.call(() => this.client.opportunities.get(guid(id)))
     const opportunity = toOpportunity(row)
-    const [account, contact, lead, canEdit] = await Promise.all([
+    const [account, contact, lead, lines, canEdit] = await Promise.all([
       this.call(() => this.client.accounts.get(opportunity.accountId)),
       opportunity.primaryContactId ? this.call(() => this.client.contacts.get(opportunity.primaryContactId!)) : undefined,
       opportunity.originatingLeadId ? this.call(() => this.client.leads.get(opportunity.originatingLeadId!)) : undefined,
+      this.related(this.client.productLines, `_vibe_opportunityid_value eq ${guid(id)}`, LINE_ORDER),
       this.mayEdit(row._ownerid_value),
     ])
     return {
@@ -730,6 +761,7 @@ export class DataverseSalesGateway implements SalesGateway {
       account: toAccount(account),
       primaryContact: contact && toContact(contact),
       originatingLead: lead && toLead(lead),
+      productLines: lines.map(toProductLine),
       canEdit,
     }
   }
@@ -781,6 +813,76 @@ export class DataverseSalesGateway implements SalesGateway {
     const key = guid(id)
     await this.call(() => this.client.products.update(key, { ...DEACTIVATED }))
     return this.getProduct(key)
+  }
+
+  // ---- Product lines ----------------------------------------------------------------
+  // Dataverse keeps Line amount, List price at add and the Opportunity's Estimated value (ProductLinePlugin).
+
+  async listProductLines(opportunityId: Id): Promise<ProductLine[]> {
+    const rows = await this.related(this.client.productLines, `_vibe_opportunityid_value eq ${guid(opportunityId)}`, LINE_ORDER)
+    return rows.map(toProductLine)
+  }
+
+  async addProductLine(opportunityId: Id, input: ProductLineInput): Promise<ProductLine> {
+    const opportunity = toOpportunity(await this.call(() => this.client.opportunities.get(guid(opportunityId))))
+    if (isOpportunityReadOnly(opportunity)) throw new GatewayError("invalid", "A closed Opportunity's Product lines are read-only.")
+    const product = await this.getProduct(input.productId)
+    if (product.retired) throw new GatewayError("invalid", "The Product line cannot be saved.", { productId: "A retired Product can't be added." })
+    const defaults = newProductLineDefaults(product)
+    const values = {
+      quantity: input.quantity,
+      unitPrice: input.unitPrice ?? defaults.unitPrice,
+      discountPercent: input.discountPercent ?? defaults.discountPercent,
+    }
+    invalid("The Product line cannot be saved.", productLineErrors(values))
+    const description = input.description === undefined ? defaults.description : input.description.trim() || undefined
+    const created = await this.call(() =>
+      this.client.productLines.create(
+        fields({
+          vibe_name: product.name,
+          vibe_description: description ?? null,
+          vibe_quantity: values.quantity,
+          vibe_unitprice: values.unitPrice,
+          vibe_discountpercent: values.discountPercent,
+          ...bind(PRODUCT_LINE_NAVIGATION.opportunity, "vibe_opportunities", opportunityId),
+          ...bind(PRODUCT_LINE_NAVIGATION.product, "vibe_products", product.id),
+        }),
+      ),
+    )
+    return this.readProductLine(created.vibe_productlineid)
+  }
+
+  async updateProductLine(id: Id, update: ProductLineUpdate): Promise<ProductLine> {
+    const key = guid(id)
+    const current = toProductLine(await this.call(() => this.client.productLines.get(key)))
+    invalid("The Product line cannot be saved.", productLineErrors({ ...current, ...defined(update) }))
+    await this.call(() =>
+      this.client.productLines.update(
+        key,
+        fields({
+          vibe_description: column(update.description),
+          vibe_quantity: update.quantity,
+          vibe_unitprice: update.unitPrice,
+          vibe_discountpercent: update.discountPercent,
+        }),
+      ),
+    )
+    return this.readProductLine(key)
+  }
+
+  async removeProductLine(id: Id): Promise<void> {
+    await this.call(() => this.client.productLines.delete(guid(id)))
+  }
+
+  private async readProductLine(id: Id): Promise<ProductLine> {
+    return toProductLine(await this.call(() => this.client.productLines.get(guid(id))))
+  }
+
+  private async hasProductLines(opportunityId: Id): Promise<boolean> {
+    const page = await this.call(() =>
+      this.client.productLines.list({ filter: `_vibe_opportunityid_value eq ${guid(opportunityId)}`, pageSize: 1 }),
+    )
+    return page.rows.length > 0
   }
 
   // ---- Accounts and Contacts ------------------------------------------------
@@ -1029,7 +1131,12 @@ export class DataverseSalesGateway implements SalesGateway {
     const next = { ...current, ...Object.fromEntries(Object.entries(update).filter(([, v]) => v !== undefined)) }
     invalid("The Opportunity cannot be saved.", opportunityErrors({ ...next, stage: current.stage } as OpportunityInput))
     if (update.forecastCategory) rule(() => overrideForecastCategory(current, update.forecastCategory!))
-    await this.call(() => this.client.opportunities.update(guid(id), fields(opportunityFields(update))))
+    // With lines the plug-in owns the Estimated value; leave it out unless it changes, so a save of the other fields passes.
+    const patch = update.estimatedValue === current.estimatedValue ? { ...update, estimatedValue: undefined } : update
+    if (patch.estimatedValue !== undefined && (await this.hasProductLines(id))) {
+      invalid("The Opportunity cannot be saved.", { estimatedValue: "The Estimated value is the total of the Product lines. Change the lines instead." })
+    }
+    await this.call(() => this.client.opportunities.update(guid(id), fields(opportunityFields(patch))))
     return this.readOpportunity(id)
   }
 

@@ -115,11 +115,13 @@
       <RootComponent type="9" schemaName="vibe_stage" behavior="0" />
       <RootComponent type="9" schemaName="vibe_vatrate" behavior="0" />
       <RootComponent type="91" id="{a986065a-7fc6-f111-b377-7c1e5253a39d}" schemaName="SalesApp.Plugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" behavior="0" />
+      <RootComponent type="92" id="{0fcac532-c7c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{27e27927-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{2ae27927-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{2d2ef793-91c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{32e27927-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{48593621-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{92cac532-c7c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{ab3dba7f-b1c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{ae3dba7f-b1c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{b13dba7f-b1c6-f111-b377-7c1e5253a39d}" behavior="0" />
@@ -129,6 +131,7 @@
       <RootComponent type="92" id="{c21b3534-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{c81b3534-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{c955978d-91c6-f111-b377-7c1e5253a39d}" behavior="0" />
+      <RootComponent type="92" id="{ce4bcf2c-c7c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{e910ad2d-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{ed10ad2d-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="92" id="{f310ad2d-b3c6-f111-b377-7c1e5253a39d}" behavior="0" />
