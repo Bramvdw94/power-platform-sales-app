@@ -69,6 +69,7 @@ export interface TasksBase {
   "TransactionCurrencyId@odata.bind"?: string;
   traversedpath?: string;
   utcconversiontimezonecode?: number;
+  vibe_actionid?: string;
 }
 
 export interface Tasks extends TasksBase {

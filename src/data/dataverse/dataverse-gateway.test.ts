@@ -20,6 +20,10 @@ import type {
   QuoteTemplateRow,
   SystemUserRow,
   TableClient,
+  ProcessRow,
+  ProcessVersionRow,
+  EnvironmentVariableDefinitionRow,
+  EnvironmentVariableValueRow,
 } from "./client"
 import { DataverseSalesGateway, toAccount, toMoment } from "./dataverse-gateway"
 
@@ -176,7 +180,7 @@ const productRows: ProductRow[] = [
 ]
 
 /** A fake Dataverse that understands the one filter the gateway sends for direct reports. */
-function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = []) {
+function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = [], processRows: ProcessRow[] = [], processVersionRows: ProcessVersionRow[] = [], envDefinitionRows: EnvironmentVariableDefinitionRow[] = [], envValueRows: EnvironmentVariableValueRow[] = []) {
   return {
     accounts: fakeTable("accountid", accountRows),
     contacts: fakeTable("contactid", contactRows),
@@ -189,6 +193,10 @@ function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRow
     quoteLines: fakeTable("vibe_quotelineid", quoteLineRows),
     quoteTemplates: fakeTable("vibe_quotetemplateid", [] as QuoteTemplateRow[]),
     quoteSettings: fakeTable("vibe_quotesettingsid", [] as QuoteSettingsRow[]),
+    processes: fakeTable("vibe_processid", processRows),
+    processVersions: fakeTable("vibe_processversionid", processVersionRows),
+    environmentVariableDefinitions: fakeTable("environmentvariabledefinitionid", envDefinitionRows),
+    environmentVariableValues: fakeTable("environmentvariablevalueid", envValueRows),
     uploadQuotePdf: vi.fn(async () => undefined),
     downloadQuotePdf: vi.fn(async () => new Uint8Array([1, 2, 3])),
     sendEmail: vi.fn(async () => undefined),
@@ -203,6 +211,7 @@ function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRow
     }),
     listSystemUsers: vi.fn(async (filter: string) => {
       // Megan alone holds the SalesApp Catalogue Manager role.
+      if (filter.includes("SalesApp Process Builder")) return filter.includes(MEGAN) ? users.filter((u) => u.systemuserid === MEGAN) : []
       if (filter.includes("SalesApp Catalogue Manager")) return filter.includes(MEGAN) ? users.filter((u) => u.systemuserid === MEGAN) : []
       // Everyone in the fixture holds the SalesApp Salesperson role.
       if (filter.includes("systemuserroles_association/any(")) return users

@@ -26,6 +26,20 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "environmentvariabledefinitions": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "environmentvariabledefinitionid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "environmentvariablevalues": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "environmentvariablevalueid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "office365": {
     "tableId": "",
     "version": "",
@@ -5418,6 +5432,20 @@ export const dataSourcesInfo = {
     "tableId": "",
     "version": "",
     "primaryKey": "vibe_opportunityid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "vibe_processes": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "vibe_processid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "vibe_processversions": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "vibe_processversionid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },

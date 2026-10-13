@@ -747,6 +747,14 @@
           "x-ms-dataverse-type": "BigIntType",
           "x-ms-schema-name": "VersionNumber",
           "x-ms-read-only": true
+        },
+        "vibe_actionid": {
+          "type": "string",
+          "title": "Action id",
+          "x-ms-dataverse-attribute": "vibe_actionid",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "vibe_ActionId",
+          "maxLength": 64
         }
       },
       "required": [
