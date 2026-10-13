@@ -30,7 +30,7 @@ export function quotaTotal(quotas: readonly { amount: number }[]): number {
   return Math.round(quotas.reduce((sum, q) => sum + q.amount, 0) * 100) / 100
 }
 
-/** Nobody sets their own Quota; a manager sets their direct reports'. */
+/** Nobody sets their own Quota; a manager sets their direct reports'. An administrator's reports are everyone else, so this holds for them too. */
 export function canSetQuota(actor: Pick<User, "id">, salesperson: Pick<User, "id" | "managerId">): boolean {
   return salesperson.id !== actor.id && salesperson.managerId === actor.id
 }

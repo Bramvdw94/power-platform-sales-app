@@ -218,6 +218,11 @@ def _run(dv, report, users, track, records, rules):
     row = read(opportunity)
     report.check("... the record is on the new version, on the same Step", row["_vibe_processversionid_value"] == opp_version_2 and row["vibe_currentstep"] == "s2")
 
+    for version, label in ((opp_version, "back to the first version"), (opp_version_2, "to the second again")):
+        report.expect_status(f"A System Administrator can Switch Process too ({label})", dv.call(
+            "PATCH", f"vibe_opportunities({opportunity})", {"vibe_ProcessVersionId@odata.bind": f"/vibe_processversions({version})"}), 204)
+    report.check("... and the record ends on the second version", read(opportunity)["_vibe_processversionid_value"] == opp_version_2)
+
     print("Process engine: Business rules", flush=True)
     result = dv.call("PATCH", f"vibe_opportunities({plain})", {"vibe_description": f"{NAME} blocked"}, as_user=adele)
     report.expect_status("A block save rule rejects a Web API write", result, 400)

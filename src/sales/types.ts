@@ -18,6 +18,8 @@ export type User = {
   isCatalogueManager: boolean
   /** Holds the SalesApp Process Builder role: builds Processes and Business rules, and may Switch Process. */
   isProcessBuilder: boolean
+  /** Holds Dataverse's System Administrator role: may do everything, and counts as the manager of every salesperson. */
+  isAdministrator?: boolean
   /** The business phone on the user's record, printed on a Quote PDF. */
   phone?: string
 }

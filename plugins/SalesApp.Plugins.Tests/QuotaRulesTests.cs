@@ -39,9 +39,16 @@ public class QuotaRulesTests
     }
 
     [Fact]
-    public void A_system_administrator_is_not_a_manager()
+    public void A_system_administrator_may_set_the_quota_of_someone_who_has_a_manager()
     {
-        Assert.NotNull(QuotaRules.Check(Guid.NewGuid(), Adele, Megan, true, October, 5000m));
+        Assert.Null(QuotaRules.Check(Guid.NewGuid(), Adele, Megan, true, October, 5000m));
+    }
+
+    [Fact]
+    public void A_system_administrator_still_needs_a_valid_month_and_amount()
+    {
+        Assert.NotNull(QuotaRules.Check(Guid.NewGuid(), Adele, Megan, true, new DateTime(2026, 10, 15), 5000m));
+        Assert.NotNull(QuotaRules.Check(Guid.NewGuid(), Adele, Megan, true, October, -1m));
     }
 
     [Fact]

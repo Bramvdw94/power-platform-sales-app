@@ -21,6 +21,7 @@ namespace SalesApp.Plugins
     {
         public const string KillSwitch = "vibe_ProcessEngineEnabled";
         public const string ProcessBuilderRole = "SalesApp Process Builder";
+        public const string SystemAdministratorRole = "System Administrator";
         const string TasksVariable = "SalesApp.EngineTasks";
         const int ChoiceBase = FieldMap.ChoiceBase;
         static readonly string[] ProcessTables = { "lead", "opportunity" };
@@ -131,7 +132,7 @@ namespace SalesApp.Plugins
             };
 
             var touchesVersion = change.ContainsKey("processVersionId");
-            if (touchesVersion) input.Caller.IsProcessBuilder = HasRole(system, context.UserId, ProcessBuilderRole);
+            if (touchesVersion) input.Caller.IsProcessBuilder = HasRole(system, context.UserId, ProcessBuilderRole) || HasRole(system, context.UserId, SystemAdministratorRole);
 
             var versionIds = new HashSet<Guid>();
             if (ProcessTables.Contains(table))

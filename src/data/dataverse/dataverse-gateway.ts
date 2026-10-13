@@ -213,6 +213,8 @@ export const SALESPERSON_ROLE = "SalesApp Salesperson"
 /** The security role that creates, edits and retires Products. */
 export const CATALOGUE_MANAGER_ROLE = "SalesApp Catalogue Manager"
 export const PROCESS_BUILDER_ROLE = "SalesApp Process Builder"
+/** Dataverse's own administrator role: may do everything in the app. */
+export const SYSTEM_ADMINISTRATOR_ROLE = "System Administrator"
 
 const PIPELINE_VIEW: Record<PipelineOwnerFilter, ListView> = { mine: "my", myTeam: "myTeam", everyone: "all" }
 
@@ -728,7 +730,7 @@ export class DataverseSalesGateway implements SalesGateway {
 
   private async loadCurrentUser(): Promise<CurrentUser> {
     const userId = await this.client.whoAmI()
-    const [user, reports, catalogueManager, processBuilder] = await Promise.all([
+    const [user, reports, catalogueManager, processBuilder, administrator] = await Promise.all([
       this.client.getSystemUser(userId),
       this.client.listSystemUsers(`_parentsystemuserid_value eq ${guid(userId)} and isdisabled eq false`),
       this.client.listSystemUsers(
@@ -737,11 +739,22 @@ export class DataverseSalesGateway implements SalesGateway {
       this.client.listSystemUsers(
         `systemuserid eq ${guid(userId)} and systemuserroles_association/any(r:r/name eq ${text(PROCESS_BUILDER_ROLE)})`,
       ),
+      this.client.listSystemUsers(
+        `systemuserid eq ${guid(userId)} and systemuserroles_association/any(r:r/name eq ${text(SYSTEM_ADMINISTRATOR_ROLE)})`,
+      ),
     ])
-    return {
-      user: { ...toUser(user), isCatalogueManager: catalogueManager.length > 0, isProcessBuilder: processBuilder.length > 0 },
-      directReports: reports.map(toUser).sort((a, b) => a.fullName.localeCompare(b.fullName)),
+    const isAdministrator = administrator.length > 0
+    const me = {
+      ...toUser(user),
+      isCatalogueManager: isAdministrator || catalogueManager.length > 0,
+      isProcessBuilder: isAdministrator || processBuilder.length > 0,
+      isAdministrator,
     }
+    // An administrator can act on everyone's records and Quotas, so every other salesperson counts as their report.
+    const team = isAdministrator
+      ? (await this.listSalespeople()).filter((u) => u.id !== me.id).map((u) => ({ ...u, managerId: me.id }))
+      : reports.map(toUser)
+    return { user: me, directReports: team.sort((a, b) => a.fullName.localeCompare(b.fullName)) }
   }
 
   /**

@@ -12,7 +12,7 @@ export const SEED_USERS = {
   adele: { id: "user-adele", fullName: "Adele Vance", email: "adele@contoso.example", managerId: "user-megan", isSalesperson: true, isCatalogueManager: false, isProcessBuilder: false },
   alex: { id: "user-alex", fullName: "Alex Wilber", email: "alex@contoso.example", managerId: "user-megan", isSalesperson: true, isCatalogueManager: false, isProcessBuilder: false },
   diego: { id: "user-diego", fullName: "Diego Siciliani", email: "diego@contoso.example", managerId: null, isSalesperson: true, isCatalogueManager: false, isProcessBuilder: false },
-  bram: { id: "user-bram", fullName: "Bram (admin)", email: "bram@contoso.example", managerId: null, isSalesperson: false, isCatalogueManager: false, isProcessBuilder: false },
+  bram: { id: "user-bram", fullName: "Bram (admin)", email: "bram@contoso.example", managerId: null, isSalesperson: false, isCatalogueManager: true, isProcessBuilder: true, isAdministrator: true },
 } satisfies Record<string, User>
 
 /** Fixed IDs of the seeded records, for tests. */

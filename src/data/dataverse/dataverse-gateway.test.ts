@@ -31,6 +31,7 @@ const MEGAN = "aaaaaaaa-0000-0000-0000-000000000001"
 const ADELE = "aaaaaaaa-0000-0000-0000-000000000002"
 const ALEX = "aaaaaaaa-0000-0000-0000-000000000003"
 const DIEGO = "aaaaaaaa-0000-0000-0000-000000000004"
+const BRAM = "aaaaaaaa-0000-0000-0000-000000000009"
 
 const users: SystemUserRow[] = [
   { systemuserid: MEGAN, fullname: "Megan Bowen", internalemailaddress: "megan@contoso.example", _parentsystemuserid_value: null },
@@ -38,6 +39,9 @@ const users: SystemUserRow[] = [
   { systemuserid: ALEX, fullname: "Alex Wilber", internalemailaddress: "alex@contoso.example", _parentsystemuserid_value: MEGAN },
   { systemuserid: DIEGO, fullname: "Diego Siciliani", internalemailaddress: "diego@contoso.example", _parentsystemuserid_value: null },
 ]
+
+/** A System Administrator who is no salesperson and has no reports. */
+const bram: SystemUserRow = { systemuserid: BRAM, fullname: "Bram (admin)", internalemailaddress: "bram@contoso.example", _parentsystemuserid_value: null }
 
 const TAILWIND = "bbbbbbbb-0000-0000-0000-000000000001"
 const NORTHWIND = "bbbbbbbb-0000-0000-0000-000000000002"
@@ -205,11 +209,12 @@ function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRow
     phoneCalls: fakeTable("activityid", phoneCallRows),
     whoAmI: vi.fn(async () => signedIn),
     getSystemUser: vi.fn(async (id: string) => {
-      const user = users.find((u) => u.systemuserid === id)
+      const user = [...users, bram].find((u) => u.systemuserid === id)
       if (!user) throw new Error("not found")
       return user
     }),
     listSystemUsers: vi.fn(async (filter: string) => {
+      if (filter.includes("System Administrator")) return filter.includes(BRAM) ? [bram] : []
       // Megan alone holds the SalesApp Catalogue Manager role.
       if (filter.includes("SalesApp Process Builder")) return filter.includes(MEGAN) ? users.filter((u) => u.systemuserid === MEGAN) : []
       if (filter.includes("SalesApp Catalogue Manager")) return filter.includes(MEGAN) ? users.filter((u) => u.systemuserid === MEGAN) : []
@@ -233,6 +238,14 @@ describe("DataverseSalesGateway.getCurrentUser", () => {
   it("knows who is a Catalogue manager", async () => {
     expect((await new DataverseSalesGateway(fakeClient(MEGAN)).getCurrentUser()).user.isCatalogueManager).toBe(true)
     expect((await new DataverseSalesGateway(fakeClient(ADELE)).getCurrentUser()).user.isCatalogueManager).toBe(false)
+  })
+
+  it("lets a System Administrator do everything: Catalogue and Process builder, and every salesperson counts as a report", async () => {
+    const { user, directReports } = await new DataverseSalesGateway(fakeClient(BRAM)).getCurrentUser()
+    expect(user).toMatchObject({ isAdministrator: true, isCatalogueManager: true, isProcessBuilder: true })
+    expect(directReports.map((u) => u.fullName)).toEqual(["Adele Vance", "Alex Wilber", "Diego Siciliani", "Megan Bowen"])
+    expect(directReports.every((u) => u.managerId === BRAM)).toBe(true)
+    expect((await new DataverseSalesGateway(fakeClient(ADELE)).getCurrentUser()).user.isAdministrator).toBe(false)
   })
 
   it("gives a salesperson without reports an empty team", async () => {

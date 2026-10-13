@@ -308,12 +308,50 @@ def run(dv, report, created):
     report.expect_status("Adele (no builder role) can't update Diego's Lead", dv.call(
         "PATCH", f"vibe_leads({diego_lead})", {"vibe_jobtitle": "Updated by Adele"}, as_user=adele), 403)
 
+    admin_id = dv.get("WhoAmI")["UserId"]
+    administrator(dv, report, users, track, admin_id, diego_lead)
     products(dv, report, users, track)
     product_lines(dv, report, users, track, account)
     quotes(dv, report, users, track, account)
-    run_quota(dv, report, track, users)
+    run_quota(dv, report, track, users, admin_id)
     import engine_check  # imported here: it imports this module
     engine_check.run(dv, report, users, track)
+
+
+def administrator(dv, report, users, track, admin_id, lead):
+    """The System Administrator (the user running this script) can do everything in the app."""
+    print("System Administrator: holds every privilege on every vibe_ table", flush=True)
+    admin_role = dv.get("roles?$select=roleid&$filter=name eq 'System Administrator'")["value"][0]["roleid"]
+    held = {p["PrivilegeName"].lower(): p["Depth"] for p in
+            dv.get(f"RetrieveRolePrivilegesRole(RoleId={admin_role})")["RolePrivileges"]}
+    report.check(f"The script runs as a System Administrator", bool(dv.get(
+        f"systemusers({admin_id})/systemuserroles_association?$select=name&$filter=name eq 'System Administrator'")["value"]))
+    wanted = sorted(admin_privileges(dv))
+    missing = [n for n in wanted if held.get(n.lower()) != "Global"]
+    report.check(f"System Administrator holds all {len(wanted)} vibe_ and kill-switch privileges at Organization depth",
+                 not missing, ", ".join(missing[:6]))
+
+    entities = dv.get("EntityDefinitions?$select=LogicalName,EntitySetName&$filter=IsCustomEntity eq true")["value"]
+    for e in sorted(entities, key=lambda e: e["LogicalName"]):
+        if e["LogicalName"].startswith("vibe_"):
+            report.expect_status(f"System Administrator reads {e['EntitySetName']}", dv.call(
+                "GET", f"{e['EntitySetName']}?$top=1&$select={e['LogicalName']}id"), 200)
+
+    print("System Administrator: changes and reassigns records they do not own", flush=True)
+    report.expect_status("System Administrator updates Diego's Lead", dv.call(
+        "PATCH", f"vibe_leads({lead})", {"vibe_jobtitle": "Updated by the administrator"}), 204)
+    report.expect_status("System Administrator reassigns Diego's Lead to Adele", dv.call(
+        "PATCH", f"vibe_leads({lead})", {"ownerid@odata.bind": f"/systemusers({users['adele']})"}), 204)
+    report.check("Lead owner is now Adele", owner_of(dv, "vibe_leads", lead) == users["adele"])
+
+
+def admin_privileges(dv):
+    """Every privilege on a vibe_ table, found in the environment so a new table is covered without editing this."""
+    names = set()
+    for row in dv.get("privileges?$select=name&$filter=contains(name,'vibe_')&$top=5000")["value"]:
+        names.add(row["name"])
+    names.add("prvReadEnvironmentVariableDefinition")
+    return names
 
 
 def products(dv, report, users, track):
@@ -488,7 +526,7 @@ def product_lines(dv, report, users, track, account):
 QUOTA_MONTH = "2099-01-01"
 
 
-def run_quota(dv, report, track, users):
+def run_quota(dv, report, track, users, admin_id):
     """Quota (#104): owned by the salesperson, set by their manager, QuotaGuardPlugin backs it up."""
     megan, adele, alex, diego = (users[k] for k in ("megan", "adele", "alex", "diego"))
     print("Quota: owned by the salesperson, set by the manager, never by oneself", flush=True)
@@ -513,8 +551,12 @@ def run_quota(dv, report, track, users):
     report.expect_status("Megan adds a second Quota for Adele and the same month", dv.call(
         "POST", "vibe_quotas", body(adele), as_user=megan), 412)
     report.expect_status("Adele sets her own Quota", dv.call("POST", "vibe_quotas", body(adele, "2099-03-01"), as_user=adele), 403)
-    report.expect_status("A system administrator sets Adele's Quota (she has a manager)", dv.call(
-        "POST", "vibe_quotas", body(adele, "2099-03-01")), 400)
+    result = dv.call("POST", "vibe_quotas", body(adele, "2099-03-01"))
+    report.expect_status("A system administrator sets Adele's Quota (she has a manager)", result, 204)
+    if result[3]:
+        track("vibe_quotas", result[3])
+    report.expect_status("A system administrator sets their own Quota", dv.call(
+        "POST", "vibe_quotas", body(admin_id)), 400)
     result = dv.call("POST", "vibe_quotas", body(megan))
     report.expect_status("A system administrator sets Megan's Quota (she has no manager)", result, 204)
     megan_quota = track("vibe_quotas", result[3]) if result[3] else None

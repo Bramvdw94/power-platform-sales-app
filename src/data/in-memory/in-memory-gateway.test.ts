@@ -537,12 +537,16 @@ describe("Products", () => {
   })
 
   it("lets only a Catalogue manager create, change and retire", async () => {
-    for (const user of [adele, alex, diego, bram]) {
+    for (const user of [adele, alex, diego]) {
       expect((await errorOf(as(user.id).createProduct(input))).code).toBe("forbidden")
       expect((await errorOf(as(user.id).updateProduct(products.licence, { listPrice: 1 }))).code).toBe("forbidden")
       expect((await errorOf(as(user.id).retireProduct(products.licence))).code).toBe("forbidden")
     }
     expect(store.products.get(products.licence)).toMatchObject({ listPrice: 22.5, retired: false })
+  })
+
+  it("lets a System Administrator manage the catalogue too", async () => {
+    await expect(as(bram.id).updateProduct(products.licence, { listPrice: 30 })).resolves.toBeDefined()
   })
 
   it("refuses a duplicate Product code, whatever its case", async () => {

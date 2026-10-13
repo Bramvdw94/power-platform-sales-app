@@ -31,6 +31,11 @@ namespace SalesApp.Plugins
                 return "Nobody sets their own Quota. It is set by your manager, or by a system administrator if you have none.";
             }
 
+            if (callerIsSystemAdministrator)
+            {
+                return null;
+            }
+
             if (salespersonManager.HasValue)
             {
                 return caller == salespersonManager.Value
@@ -38,9 +43,7 @@ namespace SalesApp.Plugins
                     : "A Quota can only be set by the salesperson's manager.";
             }
 
-            return callerIsSystemAdministrator
-                ? null
-                : "Someone without a manager gets their Quota from a system administrator.";
+            return "Someone without a manager gets their Quota from a system administrator.";
         }
     }
 }
