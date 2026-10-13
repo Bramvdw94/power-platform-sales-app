@@ -103,7 +103,7 @@ import {
   type Task,
   type User,
 } from "@/sales"
-import { evaluateSave, type EngineRecord, type Parents, type ProcessRow, type ProcessTable, type Related } from "@/sales/engine"
+import { evaluateSave, type EngineRecord, type EngineTable, type Parents, type ProcessRow, type ProcessTable, type Related } from "@/sales/engine"
 import {
   GatewayError,
   QualifyError,
@@ -126,6 +126,7 @@ import {
   type ProductListQuery,
   type ProductUpdate,
   type PhoneCallInput,
+  type BusinessRules,
   type ProcessDefinitions,
   type ProcessDraftUpdate,
   type PublishPreview,
@@ -351,6 +352,13 @@ export class InMemorySalesGateway implements SalesGateway {
       engineEnabled: this.store.engineEnabled,
       processes,
       versions: this.store.processVersions.filter((v) => ids.has(v.processId)),
+    })
+  }
+
+  async getBusinessRules(table: EngineTable): Promise<BusinessRules> {
+    return clone({
+      engineEnabled: this.store.engineEnabled,
+      rules: this.store.businessRules.filter((r) => r.definition.table === table),
     })
   }
 
@@ -928,7 +936,7 @@ export class InMemorySalesGateway implements SalesGateway {
 
   async createAccount(input: AccountInput): Promise<Account> {
     invalid("The Account cannot be saved.", accountErrors(input))
-    const row: AccountRow = { ...clone(input), name: input.name.trim(), ...this.newOwned("acc") }
+    const row = this.runEngine("account", null, { ...clone(input), name: input.name.trim(), ...this.newOwned("acc") } as AccountRow)
     this.store.accounts.set(row.id, row)
     return this.toAccount(row)
   }
@@ -938,14 +946,15 @@ export class InMemorySalesGateway implements SalesGateway {
     this.requireEdit(row.ownerId)
     const next = withoutBlanks({ ...row, ...defined(clone(update)) }) as AccountRow
     invalid("The Account cannot be saved.", accountErrors(next))
-    this.store.accounts.set(id, next)
-    return this.toAccount(next)
+    const saved = this.runEngine("account", row, next)
+    this.store.accounts.set(id, saved)
+    return this.toAccount(saved)
   }
 
   async createContact(input: ContactInput): Promise<Contact> {
     invalid("The Contact cannot be saved.", contactErrors(input))
     if (input.accountId) this.accountRow(input.accountId)
-    const row: ContactRow = { ...clone(input), ...this.newOwned("con") }
+    const row = this.runEngine("contact", null, { ...clone(input), ...this.newOwned("con") } as ContactRow)
     this.store.contacts.set(row.id, row)
     return this.toContact(row)
   }
@@ -956,8 +965,9 @@ export class InMemorySalesGateway implements SalesGateway {
     if (update.accountId) this.accountRow(update.accountId)
     const next = withoutBlanks({ ...row, ...defined(clone(update)) })
     invalid("The Contact cannot be saved.", contactErrors(next))
-    this.store.contacts.set(id, next)
-    return this.toContact(next)
+    const saved = this.runEngine("contact", row, next)
+    this.store.contacts.set(id, saved)
+    return this.toContact(saved)
   }
 
   // ---- Leads ----------------------------------------------------------------
@@ -1318,7 +1328,7 @@ export class InMemorySalesGateway implements SalesGateway {
    * What the plug-in does on Dataverse: picks the Process of a new record, checks Gates on a Step move, makes the
    * Stage or Lead status follow the Step, and creates Action Tasks, all in the save. A refusal throws and stores nothing.
    */
-  private runEngine<R extends LeadRow | OpportunityRow>(table: ProcessTable, before: R | null, next: R, createTasks = false): R {
+  private runEngine<R extends LeadRow | OpportunityRow | AccountRow | ContactRow>(table: EngineTable, before: R | null, next: R, createTasks = false): R {
     const store = this.store
     if (!store.engineEnabled || (store.processes.length === 0 && store.businessRules.length === 0)) return next
     const keys = new Set([...Object.keys(next), ...Object.keys(before ?? {})])
@@ -1370,7 +1380,7 @@ export class InMemorySalesGateway implements SalesGateway {
   }
 
   /** The related lists and parents a Gate or rule reads for a Lead or Opportunity as it is now. */
-  private engineScope(table: ProcessTable, row: LeadRow | OpportunityRow): { related: Related; parents?: Parents } {
+  private engineScope(table: EngineTable, row: LeadRow | OpportunityRow | AccountRow | ContactRow): { related: Related; parents?: Parents } {
     const store = this.store
     const activities = [...store.activities.values()]
       .filter((a) => a.regarding.type === table && a.regarding.id === row.id)
@@ -1388,6 +1398,20 @@ export class InMemorySalesGateway implements SalesGateway {
           originatingLead: lead && this.toLead(lead),
         }),
       }
+    }
+    if (table === "account") {
+      return {
+        related: {
+          ...activityRelated(activities),
+          contacts: [...store.contacts.values()].filter((c) => c.accountId === row.id).map((c) => toEngineRecord(this.toContact(c))),
+          opportunities: [...store.opportunities.values()].filter((o) => o.accountId === row.id).map((o) => toEngineRecord(this.toOpportunity(o))),
+        },
+      }
+    }
+    if (table === "contact") {
+      const accountId = (row as ContactRow).accountId
+      const account = accountId ? store.accounts.get(accountId) : undefined
+      return { related: activityRelated(activities), parents: { account: account ? toEngineRecord(this.toAccount(account)) : null } }
     }
     return { related: activityRelated(activities) }
   }

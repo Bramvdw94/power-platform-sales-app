@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom"
 import { useMutation } from "@tanstack/react-query"
 import { AccountPicker, ContactPicker, type AccountChoice, type ContactChoice } from "@/components/records/account-picker"
 import { FormAlert, FormField, TextFields, type TextFieldSpec } from "@/components/records/fields"
+import { ruleInputClass } from "@/lib/rule-classes"
+import { RuleBlockBox, RuleWarningBox } from "@/components/records/rule-effects"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { OpportunityUpdate } from "@/data/gateway"
 import { useGateway } from "@/hooks/use-gateway"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
+import { useRuleContext, useRulePreview, type RuleExtras } from "@/hooks/use-rules"
 import { fieldErrorsOf } from "@/lib/errors"
 import { FORECAST_CATEGORY_LABELS, LEAD_SOURCE_LABELS, STAGE_LABELS } from "@/lib/format"
 import { toNumber, toPatch, type FormValues } from "@/lib/form"
@@ -19,6 +22,7 @@ import {
   OPEN_STAGES,
   defaultForecastCategory,
   opportunityErrors,
+  type FieldRuleView,
   type ForecastCategory,
   type LeadSource,
   type OpenStage,
@@ -52,6 +56,7 @@ export function ChoiceField<T extends string>({
   required,
   error,
   blankLabel,
+  rule,
 }: {
   id: string
   label: string
@@ -62,13 +67,16 @@ export function ChoiceField<T extends string>({
   error?: string
   /** Offers an empty choice with this label. */
   blankLabel?: string
+  /** What the Business rules say about this field. */
+  rule?: FieldRuleView
 }) {
   return (
-    <FormField id={id} label={label} required={required} error={error}>
+    <FormField id={id} label={label} required={required} error={error} rule={rule}>
       <select
         id={id}
         value={value}
         required={required}
+        disabled={rule?.readOnly ? true : undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(e) => onChange(e.target.value as T | "")}
@@ -76,6 +84,7 @@ export function ChoiceField<T extends string>({
           "h-9 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-xs outline-none md:text-sm dark:bg-input/30",
           "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
           "aria-invalid:border-destructive",
+          ruleInputClass(rule),
         )}
       >
         {blankLabel !== undefined && <option value="">{blankLabel}</option>}
@@ -208,11 +217,14 @@ export function EditOpportunityForm({
   opportunity,
   onDone,
   hasProductLines = false,
+  ruleExtras,
 }: {
   opportunity: Opportunity
   onDone: () => void
   /** While there are Product lines the Estimated value is their total and can't be typed. */
   hasProductLines?: boolean
+  /** The parents and related lists the Business rules may read. */
+  ruleExtras?: RuleExtras
 }) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
@@ -231,6 +243,23 @@ export function EditOpportunityForm({
   const [leadSource, setLeadSource] = useState<LeadSource | "">(opportunity.leadSource ?? "")
   const [forecast, setForecast] = useState<ForecastCategory | "">(opportunity.forecastCategory ?? "")
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<ReadonlySet<string>>(new Set())
+  const touch = (name: string) => setTouched((t) => new Set(t).add(name))
+  const context = useRuleContext("opportunity", opportunity.id, ruleExtras)
+  const preview = useRulePreview(context, opportunity, {
+    ...toPatch(values, ["name", "expectedCloseDate", "nextStep", "description"] as const),
+    accountId: company?.id ?? "",
+    primaryContactId: contact?.id ?? "",
+    ...(hasProductLines ? {} : { estimatedValue: toNumber(values.estimatedValue) }),
+    probability: toNumber(values.probability),
+    leadSource,
+    forecastCategory: forecast,
+  })
+  // A value a rule fills in shows until the user types their own.
+  const shown = (name: string, current: string) => (!touched.has(name) && name in preview.filled ? String(preview.filled[name]) : current)
+  const shownValues = Object.fromEntries(Object.entries(values).map(([name, value]) => [name, shown(name, value ?? "")])) as FormValues<EditTextField>
+  const shownSource = shown("leadSource", leadSource) as LeadSource | ""
+  const shownForecast = shown("forecastCategory", forecast) as ForecastCategory | ""
 
   const save = useMutation({
     mutationFn: (patch: OpportunityUpdate) => gateway.updateOpportunity(opportunity.id, patch),
@@ -243,26 +272,30 @@ export function EditOpportunityForm({
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    const text = toPatch(values, ["name", "expectedCloseDate", "nextStep", "description"] as const)
+    const text = toPatch(shownValues, ["name", "expectedCloseDate", "nextStep", "description"] as const)
     // An empty primaryContactId or leadSource clears it.
     const patch: OpportunityUpdate = {
       ...text,
       accountId: company?.id ?? "",
       primaryContactId: contact?.id ?? "",
-      ...(hasProductLines ? {} : { estimatedValue: toNumber(values.estimatedValue) }),
-      probability: toNumber(values.probability),
-      leadSource,
-      ...(forecast && forecast !== opportunity.forecastCategory ? { forecastCategory: forecast } : {}),
+      ...(hasProductLines ? {} : { estimatedValue: toNumber(shownValues.estimatedValue) }),
+      probability: toNumber(shownValues.probability),
+      leadSource: shownSource,
+      ...(shownForecast && shownForecast !== opportunity.forecastCategory ? { forecastCategory: shownForecast } : {}),
     }
     const found = opportunityErrors({ estimatedValue: opportunity.estimatedValue, ...patch, stage: "qualification", leadSource: undefined })
     setErrors(found)
     if (Object.keys(found).length === 0) save.mutate(patch)
   }
 
-  const onChange = (name: EditTextField, value: string) => setValues((v) => ({ ...v, [name]: value }))
+  const onChange = (name: EditTextField, value: string) => {
+    touch(name)
+    setValues((v) => ({ ...v, [name]: value }))
+  }
   return (
     <form onSubmit={submit} noValidate aria-label="Edit Opportunity" className="grid gap-4 sm:grid-cols-2">
-      <TextFields idPrefix="edit-opportunity" specs={EDIT_SPECS.slice(0, 1)} values={values} errors={errors} onChange={onChange} />
+      <RuleWarningBox warnings={preview.generalWarnings} />
+      <TextFields idPrefix="edit-opportunity" specs={EDIT_SPECS.slice(0, 1)} values={shownValues} errors={errors} onChange={onChange} ruleViews={preview.viewOf} />
       <FormField id="edit-opportunity-account" label="Account" required error={errors.accountId}>
         <AccountPicker id="edit-opportunity-account" value={company} onChange={setCompany} invalid={!!errors.accountId} />
       </FormField>
@@ -272,9 +305,10 @@ export function EditOpportunityForm({
       <TextFields
         idPrefix="edit-opportunity"
         specs={hasProductLines ? EDIT_SPECS.slice(2, 4) : EDIT_SPECS.slice(1, 4)}
-        values={values}
+        values={shownValues}
         errors={errors}
         onChange={onChange}
+        ruleViews={preview.viewOf}
       />
       {hasProductLines && (
         <FormField id="edit-opportunity-estimated-value" label="Estimated value (€)">
@@ -287,25 +321,34 @@ export function EditOpportunityForm({
       <ChoiceField
         id="edit-opportunity-forecast"
         label="Forecast category"
-        value={forecast}
+        value={shownForecast}
         options={FORECAST_CATEGORY_OPTIONS}
-        onChange={setForecast}
+        onChange={(value) => {
+          touch("forecastCategory")
+          setForecast(value)
+        }}
+        rule={preview.viewOf("forecastCategory")}
       />
       <ChoiceField
         id="edit-opportunity-lead-source"
         label="Lead source"
-        value={leadSource}
+        value={shownSource}
         options={LEAD_SOURCE_OPTIONS}
-        onChange={setLeadSource}
+        onChange={(value) => {
+          touch("leadSource")
+          setLeadSource(value)
+        }}
         blankLabel="—"
+        rule={preview.viewOf("leadSource")}
       />
-      <TextFields idPrefix="edit-opportunity" specs={EDIT_SPECS.slice(4)} values={values} errors={errors} onChange={onChange} />
+      <TextFields idPrefix="edit-opportunity" specs={EDIT_SPECS.slice(4)} values={shownValues} errors={errors} onChange={onChange} ruleViews={preview.viewOf} />
+      <RuleBlockBox blocks={preview.blocks} className="sm:col-span-2" />
       {save.isError && <FormAlert error={save.error} className="sm:col-span-2" />}
       <div className="flex justify-end gap-2 sm:col-span-2">
         <Button type="button" variant="outline" onClick={onDone}>
           Cancel
         </Button>
-        <Button type="submit" disabled={save.isPending}>
+        <Button type="submit" disabled={save.isPending || preview.problems.length > 0}>
           Save
         </Button>
       </div>

@@ -48,6 +48,11 @@ export type SaveInput = {
   /** The table's published Business rules (enabled or not). */
   rules?: BusinessRuleRow[]
   fields?: FieldCatalogue
+  /**
+   * A preview for the app's forms: required, read-only and block save problems are all
+   * collected in `outcome.problems` instead of the first group being thrown as a rejection.
+   */
+  dryRun?: boolean
 }
 
 /**
@@ -91,6 +96,19 @@ export type TaskToCreate = {
   ownerId: string
 }
 
+/** One rule that would stop a save, for showing at the field or in the "Can't save" box. */
+export type RuleProblem = {
+  code: "required" | "readOnly" | "blockSave"
+  ruleId: string
+  ruleName: string
+  /** The field a required or read-only rule is about. */
+  field?: string
+  /** The message as shown to the user. */
+  message: string
+  /** A block save rule's own message, without "Blocked by the rule …". */
+  detail?: string
+}
+
 export type SaveOutcome = {
   kind: SaveKind
   allowed: boolean
@@ -101,6 +119,8 @@ export type SaveOutcome = {
   tasks: TaskToCreate[]
   warnings: { ruleId: string; message: string; field?: string }[]
   engineErrors: EngineErrorReport[]
+  /** Only on a dry run: everything that would stop the save. */
+  problems?: RuleProblem[]
 }
 
 const STATUS_FIELD: Partial<Record<EngineTable, string>> = { opportunity: "stage", lead: "status" }
@@ -232,7 +252,7 @@ function runSave(input: SaveInput, outcome: SaveOutcome): SaveOutcome {
   const statusMoved = handleProcess(input, outcome, state, scopeOf, addError)
   runSetValues()
 
-  if (!exempt) checkRules(input, rules, state, statusMoved, scopeOf)
+  if (!exempt) checkRules(input, outcome, rules, state, statusMoved, scopeOf)
 
   outcome.warnings = ruleEffects(scopeOf(state), rules).warnings.map(({ ruleId, message, field }) =>
     field ? { ruleId, message, field } : { ruleId, message },
@@ -466,6 +486,7 @@ function runActions(
 /** Required, read-only and block save, with the #88 rules for when each one fires. */
 function checkRules(
   input: SaveInput,
+  outcome: SaveOutcome,
   rules: BusinessRuleRow[],
   state: EngineRecord,
   statusMoved: boolean,
@@ -473,34 +494,32 @@ function checkRules(
 ) {
   const { before, change } = input
   const isCreate = before === null
-  const reject = (code: RejectionCode, failures: { ruleId: string; message: string }[]) => {
-    if (failures.length === 0) return
-    throw new Rejected({ code, message: failures.map((f) => f.message).join(" "), ruleIds: failures.map((f) => f.ruleId) })
-  }
+  const groups: [RejectionCode, RuleProblem[]][] = []
+  const group = (code: RuleProblem["code"], problems: RuleProblem[]) => groups.push([code, problems])
 
   // Read-only holds while the condition holds on the stored record; it never applies on create.
   if (before) {
     const stored = ruleEffects(scopeOf(before), rules)
-    reject(
+    group(
       "readOnly",
       stored.readOnly
         .filter((e) => e.field in change && !same(before[e.field], change[e.field]))
-        .map((e) => ({ ruleId: e.ruleId, message: readOnlyMessage(e.ruleName, e.field) })),
+        .map((e) => ({ code: "readOnly", ruleId: e.ruleId, ruleName: e.ruleName, field: e.field, message: readOnlyMessage(e.ruleName, e.field) })),
     )
   }
 
   const now = ruleEffects(scopeOf(state), rules)
   const cleared = (field: string) =>
     field in change && isEmptyValue(change[field]) && !isEmptyValue(before?.[field])
-  reject(
+  group(
     "required",
     now.required
       .filter((e) => isEmptyValue(state[e.field]) && (isCreate || statusMoved || cleared(e.field)))
-      .map((e) => ({ ruleId: e.ruleId, message: requiredMessage(e.ruleName, e.field) })),
+      .map((e) => ({ code: "required", ruleId: e.ruleId, ruleName: e.ruleName, field: e.field, message: requiredMessage(e.ruleName, e.field) })),
   )
 
   const changedFields = new Set(Object.keys(state).filter((f) => !before || !same(before[f], state[f])))
-  reject(
+  group(
     "blockSave",
     now.blocks
       .filter((e) => {
@@ -508,6 +527,15 @@ function checkRules(
         const rule = rules.find((r) => r.id === e.ruleId)!
         return [...fieldsRead(input.table, rule.definition.when)].some((f) => changedFields.has(f))
       })
-      .map((e) => ({ ruleId: e.ruleId, message: blockMessage(e.ruleName, e.message) })),
+      .map((e) => ({ code: "blockSave", ruleId: e.ruleId, ruleName: e.ruleName, message: blockMessage(e.ruleName, e.message), detail: e.message })),
   )
+
+  if (input.dryRun) {
+    outcome.problems = groups.flatMap(([, problems]) => problems)
+    return
+  }
+  for (const [code, problems] of groups) {
+    if (problems.length === 0) continue
+    throw new Rejected({ code, message: problems.map((f) => f.message).join(" "), ruleIds: problems.map((f) => f.ruleId) })
+  }
 }

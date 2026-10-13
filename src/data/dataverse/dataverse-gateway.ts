@@ -19,6 +19,7 @@ import {
   type NoteInput,
   type Page,
   type PhoneCallInput,
+  type BusinessRules,
   type ProcessDefinitions,
   type ProcessDraftUpdate,
   type PublishPreview,
@@ -36,7 +37,7 @@ import {
   type SearchResults,
   type TaskInput,
 } from "@/data/gateway"
-import type { BusinessRuleRow as EngineRuleRow, ProcessDefinition, ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
+import type { BusinessRuleDefinition, BusinessRuleRow as EngineRuleRow, EngineTable, ProcessDefinition, ProcessRow, ProcessTable, ProcessVersionRow } from "@/sales/engine"
 import {
   PublishRefused,
   activityRelated,
@@ -424,6 +425,17 @@ export function toQuota(row: QuotaRow): Quota {
 }
 
 const PROCESS_TABLE_CHOICE: Record<ProcessTable, number> = { lead: CHOICE_BASE, opportunity: CHOICE_BASE + 1 }
+
+const ENGINE_TABLE_CHOICE: Record<EngineTable, number> = { lead: CHOICE_BASE, opportunity: CHOICE_BASE + 1, account: CHOICE_BASE + 2, contact: CHOICE_BASE + 3 }
+
+function parseRuleDefinition(json: string | null | undefined): BusinessRuleDefinition | undefined {
+  try {
+    const parsed = json ? (JSON.parse(json) as BusinessRuleDefinition) : undefined
+    return parsed && Array.isArray(parsed.effects) && parsed.when && Array.isArray(parsed.when.conditions) ? parsed : undefined
+  } catch {
+    return undefined
+  }
+}
 
 function parseProcessDefinition(json: string | null | undefined): ProcessDefinition | undefined {
   try {
@@ -1021,6 +1033,20 @@ export class DataverseSalesGateway implements SalesGateway {
       }
     }
     return { engineEnabled, processes, versions }
+  }
+
+  async getBusinessRules(table: EngineTable): Promise<BusinessRules> {
+    const [engineEnabled, rows] = await Promise.all([
+      this.engineEnabled(),
+      this.all(this.client.businessRules, `${ACTIVE} and vibe_tablechoice eq ${ENGINE_TABLE_CHOICE[table]}`, ["createdon asc"]),
+    ])
+    const rules: EngineRuleRow[] = []
+    for (const row of rows) {
+      // A definition that can't be read is skipped: a broken rule never stops anyone's work.
+      const definition = parseRuleDefinition(row.vibe_definition)
+      if (definition) rules.push({ id: row.vibe_businessruleid, name: row.vibe_name ?? "", enabled: row.vibe_enabled !== false, definition })
+    }
+    return { engineEnabled, rules }
   }
 
   /** The kill switch environment variable; missing or unreadable means on, as in the plug-in. */

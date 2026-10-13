@@ -1,6 +1,6 @@
 import type { SalesGateway } from "./gateway"
 import { DataverseSalesGateway, createGeneratedClient } from "./dataverse"
-import { SEED_USERS, addStarterProcesses, createInMemoryGateway, createSeededStore } from "./in-memory"
+import { SEED_USERS, addStarterProcesses, addStarterRules, createInMemoryGateway, createSeededStore } from "./in-memory"
 
 type SeedUser = keyof typeof SEED_USERS
 
@@ -13,7 +13,7 @@ export function createGateway(env: ImportMetaEnv = import.meta.env): SalesGatewa
   if (env.VITE_SALES_GATEWAY === "memory") {
     const name = (env.VITE_SALES_USER ?? "adele") as SeedUser
     const user = SEED_USERS[name] ?? SEED_USERS.adele
-    return createInMemoryGateway(user.id, { store: addStarterProcesses(createSeededStore()) })
+    return createInMemoryGateway(user.id, { store: addStarterRules(addStarterProcesses(createSeededStore())) })
   }
   return new DataverseSalesGateway(createGeneratedClient())
 }

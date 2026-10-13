@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Check, Pencil, RotateCcw, Trophy } from "lucide-react"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList, FormAlert } from "@/components/records/fields"
+import { RuleNoticeList } from "@/components/records/rule-effects"
 import { ReassignButton } from "@/components/records/reassign-dialog"
 import { ProcessBar } from "@/components/records/process/process-bar"
 import { SwitchProcessButton } from "@/components/records/process/switch-process"
@@ -13,6 +14,7 @@ import { useGateway } from "@/hooks/use-gateway"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
 import { useRecordProcess } from "@/hooks/use-process"
+import { useRuleContext, useRuleNotices, useRulePreview, type RuleExtras } from "@/hooks/use-rules"
 import { FORECAST_CATEGORY_LABELS, LEAD_SOURCE_LABELS, LOST_REASON_LABELS, STAGE_LABELS, formatDate, formatEuro } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import {
@@ -20,6 +22,7 @@ import {
   canSwitchProcess,
   fullName,
   opportunityParents,
+  toEngineRecord,
   isOpenStage,
   type OpenStage,
   type Opportunity,
@@ -67,6 +70,13 @@ function OpportunityRecord({
 }) {
   const { opportunity, account, canEdit } = data
   const process = useRecordProcess("opportunity", opportunity)
+  const ruleExtras = useMemo<RuleExtras>(
+    () => ({
+      parents: opportunityParents({ account, primaryContact: data.primaryContact, originatingLead: data.originatingLead }),
+      related: { productLines: data.productLines.map(toEngineRecord), quotes: data.quotes.map(toEngineRecord) },
+    }),
+    [account, data.primaryContact, data.originatingLead, data.productLines, data.quotes],
+  )
   const isOpen = isOpenStage(opportunity.stage)
   const accountLink = (
     <Link to={`/accounts/${account.id}`} className="text-primary hover:underline">
@@ -149,9 +159,9 @@ function OpportunityRecord({
 
       <RecordSection title="Details">
         {editing ? (
-          <EditOpportunityForm opportunity={opportunity} onDone={() => setEditing(false)} hasProductLines={data.productLines.length > 0} />
+          <EditOpportunityForm opportunity={opportunity} onDone={() => setEditing(false)} hasProductLines={data.productLines.length > 0} ruleExtras={ruleExtras} />
         ) : (
-          <OpportunityDetailList details={data} accountLink={accountLink} />
+          <OpportunityDetailList details={data} accountLink={accountLink} ruleExtras={ruleExtras} />
         )}
       </RecordSection>
 
@@ -252,16 +262,23 @@ function CloseDetails({ opportunity }: { opportunity: Opportunity }) {
   )
 }
 
-function OpportunityDetailList({ details, accountLink }: { details: OpportunityDetails; accountLink: ReactNode }) {
+function OpportunityDetailList({ details, accountLink, ruleExtras }: { details: OpportunityDetails; accountLink: ReactNode; ruleExtras: RuleExtras }) {
   const { opportunity, primaryContact, originatingLead } = details
   const leadId = originatingLead?.id ?? opportunity.originatingLeadId
+  const context = useRuleContext("opportunity", opportunity.id, ruleExtras)
+  const notices = useRuleNotices(context, opportunity)
+  const preview = useRulePreview(context, opportunity)
   return (
+    <>
+    <RuleNoticeList notices={notices} />
     <DetailList
+      ruleViews={preview.viewOf}
       items={[
-        { label: "Name", value: opportunity.name, wide: true },
-        { label: "Account", value: accountLink },
+        { label: "Name", field: "name", value: opportunity.name, wide: true },
+        { label: "Account", field: "accountId", value: accountLink },
         {
           label: "Primary Contact",
+          field: "primaryContactId",
           value: primaryContact && (
             <Link to={`/contacts/${primaryContact.id}`} className="text-primary hover:underline">
               {fullName(primaryContact)}
@@ -270,6 +287,7 @@ function OpportunityDetailList({ details, accountLink }: { details: OpportunityD
         },
         {
           label: "Estimated value",
+          field: "estimatedValue",
           value: (
             <>
               {formatEuro(opportunity.estimatedValue)}
@@ -279,11 +297,11 @@ function OpportunityDetailList({ details, accountLink }: { details: OpportunityD
             </>
           ),
         },
-        { label: "Expected close date", value: formatDate(opportunity.expectedCloseDate) },
-        { label: "Probability", value: `${opportunity.probability}%` },
-        ...(opportunity.forecastCategory ? [{ label: "Forecast category", value: FORECAST_CATEGORY_LABELS[opportunity.forecastCategory] }] : []),
-        { label: "Lead source", value: opportunity.leadSource && LEAD_SOURCE_LABELS[opportunity.leadSource] },
-        { label: "Next step", value: opportunity.nextStep, wide: true },
+        { label: "Expected close date", field: "expectedCloseDate", value: formatDate(opportunity.expectedCloseDate) },
+        { label: "Probability", field: "probability", value: `${opportunity.probability}%` },
+        ...(opportunity.forecastCategory ? [{ label: "Forecast category", field: "forecastCategory", value: FORECAST_CATEGORY_LABELS[opportunity.forecastCategory] }] : []),
+        { label: "Lead source", field: "leadSource", value: opportunity.leadSource && LEAD_SOURCE_LABELS[opportunity.leadSource] },
+        { label: "Next step", field: "nextStep", value: opportunity.nextStep, wide: true },
         {
           label: "Originating Lead",
           value: leadId && (
@@ -293,8 +311,9 @@ function OpportunityDetailList({ details, accountLink }: { details: OpportunityD
           ),
         },
         { label: "Owner", value: opportunity.ownerName },
-        { label: "Description", value: opportunity.description, wide: true },
+        { label: "Description", field: "description", value: opportunity.description, wide: true },
       ]}
     />
+    </>
   )
 }

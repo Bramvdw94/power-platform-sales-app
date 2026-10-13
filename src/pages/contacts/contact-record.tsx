@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Pencil } from "lucide-react"
 import { ReassignButton } from "@/components/records/reassign-dialog"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
 import { DetailList } from "@/components/records/fields"
+import { RuleNoticeList } from "@/components/records/rule-effects"
 import {
   RecordError,
   RecordLoading,
@@ -14,8 +15,9 @@ import {
 } from "@/components/records/record-page"
 import { Button } from "@/components/ui/button"
 import { useGateway } from "@/hooks/use-gateway"
+import { useRuleContext, useRuleNotices, useRulePreview, type RuleExtras } from "@/hooks/use-rules"
 import { opportunitySummary } from "@/lib/format"
-import { fullName, type Contact } from "@/sales"
+import { fullName, toEngineRecord, type Contact } from "@/sales"
 import { EditContactForm } from "./contact-form"
 
 export default function ContactRecordPage() {
@@ -23,6 +25,7 @@ export default function ContactRecordPage() {
   const gateway = useGateway()
   const [editing, setEditing] = useState(false)
   const { data, error, isPending } = useQuery({ queryKey: ["Contact", id], queryFn: () => gateway.getContact(id) })
+  const ruleExtras = useMemo<RuleExtras>(() => ({ parents: { account: data?.account ? toEngineRecord(data.account) : null } }), [data?.account])
 
   if (isPending) return <RecordLoading />
   if (error) return <RecordError error={error} />
@@ -60,9 +63,9 @@ export default function ContactRecordPage() {
     >
       <RecordSection title="Details">
         {editing ? (
-          <EditContactForm contact={contact} onDone={() => setEditing(false)} />
+          <EditContactForm contact={contact} onDone={() => setEditing(false)} ruleExtras={ruleExtras} />
         ) : (
-          <ContactDetails contact={contact} accountLink={accountLink} />
+          <ContactDetails contact={contact} accountLink={accountLink} ruleExtras={ruleExtras} />
         )}
       </RecordSection>
 
@@ -81,20 +84,27 @@ export default function ContactRecordPage() {
   )
 }
 
-function ContactDetails({ contact, accountLink }: { contact: Contact; accountLink: ReactNode }) {
+function ContactDetails({ contact, accountLink, ruleExtras }: { contact: Contact; accountLink: ReactNode; ruleExtras: RuleExtras }) {
+  const context = useRuleContext("contact", contact.id, ruleExtras)
+  const notices = useRuleNotices(context, contact)
+  const preview = useRulePreview(context, contact)
   return (
-    <DetailList
-      items={[
-        { label: "First name", value: contact.firstName },
-        { label: "Last name", value: contact.lastName },
-        { label: "Account", value: accountLink },
-        { label: "Job title", value: contact.jobTitle },
-        { label: "Email", value: contact.email && <MailLink email={contact.email} /> },
-        { label: "Phone", value: contact.phone },
-        { label: "Mobile", value: contact.mobile },
-        { label: "Owner", value: contact.ownerName },
-      ]}
-    />
+    <>
+      <RuleNoticeList notices={notices} />
+      <DetailList
+        ruleViews={preview.viewOf}
+        items={[
+          { label: "First name", field: "firstName", value: contact.firstName },
+          { label: "Last name", field: "lastName", value: contact.lastName },
+          { label: "Account", field: "accountId", value: accountLink },
+          { label: "Job title", field: "jobTitle", value: contact.jobTitle },
+          { label: "Email", field: "email", value: contact.email && <MailLink email={contact.email} /> },
+          { label: "Phone", field: "phone", value: contact.phone },
+          { label: "Mobile", field: "mobile", value: contact.mobile },
+          { label: "Owner", value: contact.ownerName },
+        ]}
+      />
+    </>
   )
 }
 

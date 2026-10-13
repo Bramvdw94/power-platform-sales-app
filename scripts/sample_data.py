@@ -79,6 +79,8 @@ TABLES = [
     # A Process points at its latest version, so that lookup is written last (Record.after).
     Table("processes", "proc-", "vibe_process", "vibe_processes", "vibe_processid", (0, 1), owned=False),
     Table("processVersions", "procver-", "vibe_processversion", "vibe_processversions", "vibe_processversionid", (0, 1), owned=False),
+    # A few starter Business rules, at least one per effect, from data/business-rules.json (#96).
+    Table("businessRules", "rule-", "vibe_businessrule", "vibe_businessrules", "vibe_businessruleid", (0, 1), owned=False),
     Table("accounts", "acc-", "account", "accounts", "accountid", (0, 1)),
     Table("contacts", "con-", "contact", "contacts", "contactid", (0, 1)),
     Table("leads", "lead-", "vibe_lead", "vibe_leads", "vibe_leadid", (0, 1)),
@@ -163,11 +165,25 @@ def load_processes(path=PROCESSES_PATH):
     return {"processes": processes, "processVersions": versions}
 
 
+BUSINESS_RULES_PATH = Path(__file__).resolve().parent.parent / "data" / "business-rules.json"
+
+
+def load_business_rules(path=BUSINESS_RULES_PATH):
+    """The starter Business rules, as a sample-data section with fixed keys."""
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))["rules"]
+    return {"businessRules": [{
+        "key": r["id"], "createdDaysAgo": 0, "name": r["name"], "table": r["table"],
+        "enabled": r["enabled"], "definition": r["definition"],
+    } for r in raw]}
+
+
 def load_data(path=DATA_PATH):
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     for section, rows in load_quote_templates().items():
         data.setdefault(section, rows)
     for section, rows in load_processes().items():
+        data.setdefault(section, rows)
+    for section, rows in load_business_rules().items():
         data.setdefault(section, rows)
     return data
 
@@ -433,6 +449,11 @@ def validate(data):
     for v in versions.values():
         if v.get("process") not in {p["key"] for p in data.get("processes", [])}:
             err(f"{v['key']}: unknown process {v.get('process')!r}")
+    for rule in data.get("businessRules", []):
+        if rule.get("table") not in PROCESS_TABLES:
+            err(f"{rule['key']}: unknown table {rule.get('table')!r}")
+        elif rule.get("definition", {}).get("table") != rule["table"]:
+            err(f"{rule['key']}: the definition is for another table than {rule['table']!r}")
     for proc in data.get("processes", []):
         if proc.get("table") not in ("lead", "opportunity"):
             err(f"{proc['key']}: a Process is for Leads or Opportunities, not {proc.get('table')!r}")
@@ -592,6 +613,14 @@ def build_records(data, users, nav, clock):
             "vibe_definition": json.dumps(version["definition"], separators=(",", ":")),
             "vibe_publishedon": clock.moment(-version["createdDaysAgo"], 9),
             **bind(nav["processversion.process"], "vibe_processes", version["process"]),
+        })
+
+    for rule in data.get("businessRules", []):
+        add("businessRules", rule, {
+            "vibe_name": rule["name"],
+            "vibe_tablechoice": choice(PROCESS_TABLES, rule["table"]),
+            "vibe_enabled": bool(rule["enabled"]),
+            "vibe_definition": json.dumps(rule["definition"], separators=(",", ":")),
         })
 
     def on_process(rec, table):

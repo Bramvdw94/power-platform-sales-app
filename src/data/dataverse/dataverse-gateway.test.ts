@@ -317,7 +317,7 @@ describe("DataverseSalesGateway, Process administration", () => {
   })
 })
 
-function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = [], processRows: ProcessRow[] = [], processVersionRows: ProcessVersionRow[] = [], envDefinitionRows: EnvironmentVariableDefinitionRow[] = [], envValueRows: EnvironmentVariableValueRow[] = []) {
+function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = [], processRows: ProcessRow[] = [], processVersionRows: ProcessVersionRow[] = [], envDefinitionRows: EnvironmentVariableDefinitionRow[] = [], envValueRows: EnvironmentVariableValueRow[] = [], businessRuleRows: BusinessRuleRow[] = []) {
   return {
     accounts: fakeTable("accountid", accountRows),
     contacts: fakeTable("contactid", contactRows),
@@ -332,7 +332,7 @@ function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRow
     quoteSettings: fakeTable("vibe_quotesettingsid", [] as QuoteSettingsRow[]),
     processes: fakeTable("vibe_processid", processRows),
     processVersions: fakeTable("vibe_processversionid", processVersionRows),
-    businessRules: fakeTable("vibe_businessruleid", [] as BusinessRuleRow[]),
+    businessRules: fakeTable("vibe_businessruleid", businessRuleRows),
     engineErrors: fakeTable("vibe_engineerrorid", [] as EngineErrorRow[]),
     environmentVariableDefinitions: fakeTable("environmentvariabledefinitionid", envDefinitionRows),
     environmentVariableValues: fakeTable("environmentvariablevalueid", envValueRows),
@@ -1727,6 +1727,20 @@ describe("DataverseSalesGateway, Processes", () => {
     expect(result.processes).toEqual([{ id: PROCESS, name: "Starter", table: "opportunity", priority: 1, isFallback: true, retired: false, latestVersionId: VERSION }])
     expect(result.versions).toEqual([{ id: VERSION, processId: PROCESS, definition }])
     expect(client.processes.list.mock.calls[0][0].filter).toContain("vibe_tablechoice eq 841200001")
+  })
+
+  it("reads the Business rules of a table and skips one whose definition can't be read", async () => {
+    const good = { schemaVersion: 1, table: "contact", when: { match: "all", conditions: [{ field: "email", op: "isEmpty" }] }, effects: [{ type: "blockSave", message: "Add an email." }] }
+    const rows: BusinessRuleRow[] = [
+      { vibe_businessruleid: "44444444-0000-0000-0000-000000000001", vibe_name: "Reachable", vibe_tablechoice: 841200003, vibe_enabled: true, vibe_definition: JSON.stringify(good) },
+      { vibe_businessruleid: "44444444-0000-0000-0000-000000000002", vibe_name: "Off", vibe_tablechoice: 841200003, vibe_enabled: false, vibe_definition: JSON.stringify(good) },
+      { vibe_businessruleid: "44444444-0000-0000-0000-000000000003", vibe_name: "Broken", vibe_tablechoice: 841200003, vibe_enabled: true, vibe_definition: "not json" },
+    ]
+    const client = fakeClient(ADELE, [], [], [], [], [], [], [], [], rows)
+    const result = await new DataverseSalesGateway(client).getBusinessRules("contact")
+    expect(result.engineEnabled).toBe(true)
+    expect(result.rules.map((r) => [r.name, r.enabled])).toEqual([["Reachable", true], ["Off", false]])
+    expect(client.businessRules.list.mock.calls[0][0].filter).toContain("vibe_tablechoice eq 841200003")
   })
 
   it("is off when the kill switch environment variable says off", async () => {
