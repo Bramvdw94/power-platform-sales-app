@@ -178,7 +178,7 @@ describe("The Quote template builder", () => {
     await blockNames()
     await user.click(screen.getByRole("button", { name: "Preview PDF" }))
     const dialog = await screen.findByRole("dialog", { name: /Preview Business letter/ })
-    expect(await within(dialog).findByTitle("PDF preview")).toBeInTheDocument()
+    expect(await within(dialog).findByLabelText("Quote PDF preview")).toBeInTheDocument()
   })
 })
 

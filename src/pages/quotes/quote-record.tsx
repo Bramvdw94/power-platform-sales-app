@@ -18,7 +18,7 @@ import type { QuoteDetails } from "@/data/gateway"
 import { CloseOpportunityDialog } from "@/pages/opportunities/close-dialogs"
 import { LineDialog } from "@/pages/opportunities/product-lines"
 import { PreviewPdfDialog } from "./preview-pdf-dialog"
-import { downloadPdf, renderQuote, templateFor, useQuotePdfSources } from "./quote-pdf-support"
+import { documentOf, downloadPdf, templateFor, useQuotePdfSources } from "./quote-pdf-support"
 import { QuoteStatusBadges } from "./quote-status"
 import { SendQuoteDialog } from "./send-quote-dialog"
 
@@ -176,7 +176,7 @@ export default function QuoteRecordPage() {
           title={`Preview ${quoteLabel(quote)}`}
           description={`Drawn with the "${template.name}" template. A Draft shows a watermark; nothing is sent.`}
           fileName={quotePdfFileName(quote)}
-          render={() => renderQuote(data, sources.settings!, template)}
+          document={documentOf(data, sources.settings, template)}
           onClose={() => setPreviewing(false)}
         />
       )}

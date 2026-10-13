@@ -12,7 +12,6 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { useGateway } from "@/hooks/use-gateway"
 import { useInvalidateRecords } from "@/hooks/use-invalidate-records"
 import { fieldErrorsOf } from "@/lib/errors"
-import { renderQuotePdf } from "@/lib/quote-pdf"
 import {
   BLOCK_LABELS,
   PDF_FONTS,
@@ -358,7 +357,7 @@ function Builder({ templates, settings, canEdit, user }: { templates: QuoteTempl
           title={`Preview ${draft.name}`}
           description="Drawn with example data. Nothing is saved or sent."
           fileName={`${draft.name}.pdf`}
-          render={() => renderQuotePdf(document)}
+          document={document}
           onClose={() => setPreviewing(false)}
         />
       )}
