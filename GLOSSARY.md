@@ -107,6 +107,38 @@ _Avoid_: Target, goal, budget
 How much of the Quota is not yet Closed won in a period.
 _Avoid_: Shortfall, remaining
 
+**Forecast snapshot**:
+A frozen copy, taken every Monday morning, of each open Opportunity and each one closed since the previous snapshot, with its Stage, Estimated value, Expected close date, Probability, Forecast category and Owner as they were then. Snapshots are never edited; comparing two of them shows how the Forecast moved.
+_Avoid_: History, baseline, submission
+
+**Forecast trend**:
+How a period's Forecast (Closed won, Commit, Best case, Pipeline) changed over the last Forecast snapshots, set against the Quota.
+_Avoid_: Deal flow, history chart
+
+**Push count**:
+How many times an Opportunity's Expected close date has moved into a later month.
+_Avoid_: Slip count, delay count
+
+**Adjustment**:
+A manager's own figure for a direct report's Commit or Best case in one month, or for their team's total, with a note saying why. It sits on top of the calculated Forecast and never changes Opportunities; the calculated figure always stays visible next to it, and earlier Adjustments stay as history. Nobody adjusts their own Forecast, and the people who may see the Quota may see the Adjustment. A Reset removes the Adjustment.
+_Avoid_: Override, correction, manager judgement
+
+**Stale**:
+Said of an open Opportunity that has had no activity for 14 days, whose Expected close date has passed, or that has been in the same Stage for 30 days. A Stale deal always shows which of these reasons apply.
+_Avoid_: Stuck, stalled, at risk
+
+**Last activity**:
+The date of the most recent done activity on a record (a completed Task, a logged Phone Call, a Note, a sent or received Email, or a held Meeting), counting Related activity for an Account. Planned activities, Decisions and system entries never count.
+_Avoid_: Last touched, last modified, last contact
+
+**First touch**:
+The first time anyone reached out to a Lead: its first done activity, or its move from Not Contacted to Working, whichever came first.
+_Avoid_: First contact, first response
+
+**Qualify rate**:
+Of the Leads Qualified or Disqualified in a period, the share that were Qualified.
+_Avoid_: Conversion rate, win rate
+
 ### Products
 
 **Product**:
