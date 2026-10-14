@@ -174,7 +174,7 @@ Something a salesperson recorded or planned against a Lead, Opportunity, Account
 _Avoid_: Interaction, touchpoint
 
 **Note**:
-Free text kept on a record for later reference.
+Free text kept on a record for later reference, optionally with one attached file added when it is written.
 _Avoid_: Comment, memo
 
 **Task**:
@@ -215,6 +215,10 @@ _Avoid_: Assignee, rep
 Making another salesperson the Owner of a record. Only the Owner or the Owner's manager may reassign, and also a Qualified Lead or a closed Opportunity. The record's open Tasks and Phone Calls move with it; reassigning an Account leaves its Contacts and Opportunities with their own Owners.
 _Avoid_: Transfer, hand over, assign
 
+**Delete**:
+Removing a record made by mistake, together with what belongs only to it. Only the Owner or the Owner's manager may delete, and also the author of a Note. Qualified Leads, closed Opportunities and Products are never deleted, and an Account is not deleted while it still has Contacts or Opportunities. A deleted record can be restored by an administrator for 14 days. Ending a real record is done with Disqualify, Close or Retire, not Delete.
+_Avoid_: Remove, archive, deactivate
+
 **Notification**:
 A short message telling one person that something happened that needs their attention, with a link to the record it is about. Only that person sees it. It shows on the bell in the app until it is deleted 30 days after it was sent, and is marked read when they open it. In v3 a Notification is sent when a record is Reassigned to someone else, when an engine notify Action names them, when an Approval is requested of them or their request is decided, when an Engine error happens (to Process builders), and when a Decision rule's answer needs review (to the record's Owner).
 _Avoid_: Alert, message, activity
@@ -222,6 +226,12 @@ _Avoid_: Alert, message, activity
 **Teams copy**:
 The same Notification also sent to the person as a Teams chat message. It is only a notice: reading it does not mark the Notification read, and nothing can be done from Teams. Each person can switch Teams copies off for themselves; the bell always stays on.
 _Avoid_: Teams notification, push
+
+### Lists
+
+**Saved view**:
+A named way of looking at the Leads, Opportunities, Accounts or Contacts list: which records (My, My team or All, narrowed by filters), in what order, and with which columns. It belongs to the person who saved it; they may share it with the team, who can then use it but not change it. Each person may make one view per list their default.
+_Avoid_: Filter, list, query, report
 
 ### Processes
 
