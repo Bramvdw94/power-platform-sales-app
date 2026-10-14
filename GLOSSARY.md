@@ -256,11 +256,11 @@ One stop in a Process. On an Opportunity each Step maps to one open Stage, and s
 _Avoid_: Stage, phase, milestone
 
 **Gate**:
-The checks a record must pass to leave a Step forward: a field has a value, a field meets a condition, or the record has enough related records (such as a completed Phone Call). Moving back is never gated. Closed Won must pass the last Step's Gate, from whichever Step it is closed.
+The checks a record must pass to leave a Step forward: a field has a value, a field meets a condition, or the record has enough related records (such as a completed Phone Call or a held Meeting). Moving back is never gated. Closed Won must pass the last Step's Gate, from whichever Step it is closed.
 _Avoid_: Validation, exit criteria, requirement
 
 **Action**:
-Something the app does by itself when a record enters a Step, such as creating a Task.
+Something the app does by itself when a record enters a Step or when a Decision rule gives its answer: create a Task, set a field, assign an Owner (a named salesperson or the Owner's manager, as with Reassign) or notify someone (the Owner, the Owner's manager or a named person, never the person whose save caused it). Actions never run when a record leaves a Step or because a Business rule holds.
 _Avoid_: Trigger, automation, Next step
 
 **Key fields**:
@@ -272,8 +272,16 @@ Tips text a Step shows the user on how to work the record at that point.
 _Avoid_: Help, instructions
 
 **Business rule**:
-An if/then rule a Process builder builds that applies to every record of one table (Lead, Opportunity, Account or Contact) whenever its condition holds, whichever Step the record is on, or whether it follows a Process at all. A required or block save rule only stops a save that creates the record, changes a field the rule depends on, or moves its Step, Stage or status; Reassign, Close as lost, Disqualify, Switch Process and Move to latest version are never stopped by a Business rule.
+An if/then rule a Process builder builds that applies to every record of one table (Lead, Opportunity, Account, Contact or Quote) whenever its condition holds, whichever Step the record is on, or whether it follows a Process at all. It makes a field required, read-only or Hidden, sets a value, warns, or blocks the save; it never runs Actions. A required or block save rule only stops a save that creates the record, changes a field the rule depends on, or moves its Step, Stage or status; Reassign, Close as lost, Disqualify, Switch Process and Move to latest version are never stopped by a Business rule. On a Quote a rule applies only while it is a Draft, and Send counts as the move; Accept, Reject and Revise are never stopped.
 _Avoid_: Validation rule, policy, automation
+
+**Hidden**:
+A Business rule effect that takes a field off the record and its Key fields while the rule's condition holds. The field keeps its value and still shows in lists and exports: Hidden tidies the record, it does not keep anything secret. A hidden field that is empty while it is required, or while the current Gate needs it, shows anyway.
+_Avoid_: Invisible, secret, show/hide
+
+**Condition group**:
+A set of conditions that must all hold, or of which any one must hold, placed inside the conditions of a Business rule, Gate, Entry criteria or Decision rule, such as "Stage is Proposal and (value over €50,000 or Account type is Key)". Groups go one level deep.
+_Avoid_: Clause, nested filter, bracket
 
 **Entry criteria**:
 The conditions that decide which Process a new Lead or Opportunity gets. Each table's Processes are in a priority order and the first one whose Entry criteria match wins; one Process may be the fallback, with no criteria. A record that matches none follows no Process. The Process is picked once, when the record is created, and never changes by itself afterwards.
