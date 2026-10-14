@@ -65,6 +65,14 @@ _Avoid_: Finish, complete
 Where a Lead came from: Website, Referral, Event, Cold outreach, Partner, or Other. It carries over to the Opportunity on Qualify.
 _Avoid_: Origin, channel, campaign
 
+**Web Lead**:
+A Lead a visitor creates by filling in the public form on the company website. Its Lead source is always Website and it starts as Not Contacted. It is created even when its email is already known, and then shows as a Possible duplicate. An Assignment rule picks its Owner.
+_Avoid_: Web enquiry, inbound lead, form submission
+
+**Rating**:
+How promising a Lead looks: Hot, Warm or Cold. A Decision rule can set it from a score, and the Owner can always change it by hand. It never decides who owns the Lead.
+_Avoid_: Score, Lead score, grade
+
 **Estimated value**:
 What an open Opportunity is expected to be worth, in euros excluding VAT. While the Opportunity has Product lines it is their total and can't be typed over; without lines the Owner enters it. It is replaced by the actual value when the Opportunity is Closed Won.
 _Avoid_: Amount, revenue, deal size
@@ -247,12 +255,28 @@ _Avoid_: Assignee, rep
 Making another salesperson the Owner of a record. Only the Owner or the Owner's manager may reassign, and also a Qualified Lead or a closed Opportunity. The record's open Tasks and Phone Calls move with it; reassigning an Account leaves its Contacts and Opportunities with their own Owners.
 _Avoid_: Transfer, hand over, assign
 
+**Assignment rule**:
+The ordered list of entries a Process builder builds that picks the Owner of each new Web Lead. Each entry has a condition and sends a matching Lead to one named salesperson or round robin over a group; the first entry that matches and has someone available wins, and the Fallback Owner gets any Lead no entry places. It never changes the Owner of a Lead created by hand or by Import, and never looks at Rating.
+_Avoid_: Routing rule, Entry criteria, assign Action
+
+**Round robin**:
+Taking turns: each new Web Lead an Assignment rule entry places goes to the next person in that entry's group who is not Away, in a fixed order, however much work they already have.
+_Avoid_: Load balancing, rotation
+
+**Fallback Owner**:
+The one salesperson who gets a Web Lead when no Assignment rule entry places it, because none matches or everyone it names is Away. A Process builder sets it.
+_Avoid_: Default owner, queue
+
+**Away**:
+A salesperson being unavailable for new Web Leads, switched on by them or their manager, optionally until a return date. Round robin skips them and an entry naming only them is passed over. Being Away changes nothing else: they keep their records and still get Approvals.
+_Avoid_: Out of office, absent, inactive
+
 **Delete**:
 Removing a record made by mistake, together with what belongs only to it. Only the Owner or the Owner's manager may delete, and also the author of a Note. Qualified Leads, closed Opportunities and Products are never deleted, and an Account is not deleted while it still has Contacts or Opportunities. A deleted record can be restored by an administrator for 14 days. Ending a real record is done with Disqualify, Close or Retire, not Delete.
 _Avoid_: Remove, archive, deactivate
 
 **Notification**:
-A short message telling one person that something happened that needs their attention, with a link to the record it is about. Only that person sees it. It shows on the bell in the app until it is deleted 30 days after it was sent, and is marked read when they open it. In v3 a Notification is sent when a record is Reassigned to someone else, when an engine notify Action names them, when an Approval is requested of them or their request is decided, when an Engine error happens (to Process builders), and when a Decision needs review (to the record's Owner, or the Decision rule's Reviewer).
+A short message telling one person that something happened that needs their attention, with a link to the record it is about. Only that person sees it. It shows on the bell in the app until it is deleted 30 days after it was sent, and is marked read when they open it. In v3 a Notification is sent when a record is Reassigned to someone else, when an Assignment rule makes them Owner of a Web Lead, when an engine notify Action names them, when an Approval is requested of them or their request is decided, when an Engine error happens (to Process builders), and when a Decision needs review (to the record's Owner, or the Decision rule's Reviewer).
 _Avoid_: Alert, message, activity
 
 **Teams copy**:
