@@ -121,6 +121,8 @@ export function createSeedData(today: DateOnly): InMemoryData {
       { id: "quota-adele-2", salespersonId: adele.id, month: nextMonth, amount: 45000 },
       { id: "quota-alex-1", salespersonId: alex.id, month: thisMonth, amount: 30000 },
       { id: "quota-megan-1", salespersonId: megan.id, month: thisMonth, amount: 20000 },
+      { id: "quota-alex-2", salespersonId: alex.id, month: nextMonth, amount: 35000 },
+      { id: "quota-megan-2", salespersonId: megan.id, month: nextMonth, amount: 25000 },
     ],
     accounts: [
       { id: A.tailwind, name: "Tailwind Traders", website: "https://tailwind.example", city: "Utrecht", country: "Netherlands", ownerId: adele.id, createdOn: daysAgo(120) },
@@ -146,6 +148,16 @@ export function createSeedData(today: DateOnly): InMemoryData {
       { id: O.diegosProposal, name: "Northwind BV - Backup service", accountId: A.northwind, stage: "proposal", probability: 50, estimatedValue: 15000, expectedCloseDate: inDays(20), ownerId: diego.id, createdOn: daysAgo(20) },
       { id: O.won, name: "Fabrikam NV - Laptops", accountId: A.fabrikam, stage: "closedWon", probability: 100, estimatedValue: 30000, actualValue: 27500, expectedCloseDate: inDays(-20), closeDate: inDays(-15), closedById: alex.id, ownerId: alex.id, createdOn: daysAgo(80) },
       { id: O.lost, name: "Tailwind Traders - Network refresh", accountId: A.tailwind, stage: "closedLost", probability: 0, estimatedValue: 60000, expectedCloseDate: inDays(-30), closeDate: inDays(-25), lostReason: "choseCompetitor", closedById: adele.id, ownerId: adele.id, createdOn: daysAgo(100) },
+      // PROTOTYPE #161 (throwaway): more deals so the forecast trend, Stale list and Pipeline badges have something to show.
+      { id: "opp-proto-teams", name: "Tailwind Traders - Teams rollout", accountId: A.tailwind, stage: "proposal", probability: 50, forecastCategory: "commit", estimatedValue: 35000, expectedCloseDate: inDays(18), ownerId: adele.id, createdOn: daysAgo(44) },
+      { id: "opp-proto-helpdesk", name: "Tailwind Traders - Helpdesk", accountId: A.tailwind, stage: "needsAnalysis", probability: 25, estimatedValue: 22000, expectedCloseDate: inDays(60), ownerId: adele.id, createdOn: daysAgo(12) },
+      { id: "opp-proto-renewal", name: "Tailwind Traders - Licence renewal", accountId: A.tailwind, stage: "negotiation", probability: 75, estimatedValue: 18000, expectedCloseDate: inDays(-6), ownerId: adele.id, createdOn: daysAgo(64) },
+      { id: "opp-proto-print", name: "Fabrikam NV - Managed print", accountId: A.fabrikam, stage: "needsAnalysis", probability: 25, forecastCategory: "bestCase", estimatedValue: 15000, expectedCloseDate: inDays(12), ownerId: alex.id, createdOn: daysAgo(41) },
+      { id: "opp-proto-wifi", name: "Fabrikam NV - Wifi upgrade", accountId: A.fabrikam, stage: "qualification", probability: 10, estimatedValue: 9000, expectedCloseDate: inDays(80), ownerId: alex.id, createdOn: daysAgo(6) },
+      { id: "opp-proto-data", name: "Northwind BV - Data platform", accountId: A.northwind, stage: "proposal", probability: 50, estimatedValue: 64000, expectedCloseDate: inDays(35), ownerId: alex.id, createdOn: daysAgo(55) },
+      { id: "opp-proto-training", name: "Northwind BV - Security training", accountId: A.northwind, stage: "proposal", probability: 50, forecastCategory: "commit", estimatedValue: 12000, expectedCloseDate: inDays(14), ownerId: megan.id, createdOn: daysAgo(25) },
+      { id: "opp-proto-workshops", name: "Fabrikam NV - Workshops", accountId: A.fabrikam, stage: "closedWon", probability: 100, estimatedValue: 15000, actualValue: 14000, expectedCloseDate: inDays(-4), closeDate: inDays(-5), closedById: alex.id, ownerId: alex.id, createdOn: daysAgo(48) },
+      { id: "opp-proto-pilot", name: "Tailwind Traders - Pilot", accountId: A.tailwind, stage: "closedWon", probability: 100, estimatedValue: 9500, actualValue: 9500, expectedCloseDate: inDays(-8), closeDate: inDays(-8), closedById: adele.id, ownerId: adele.id, createdOn: daysAgo(33) },
     ],
     products: [
       { id: PR.consultingHour, name: "Consulting", code: "CONS-HR", description: "Senior consultant, billed per hour.", unit: "hour", listPrice: 125, vatRate: 21, retired: false, createdOn: daysAgo(200) },

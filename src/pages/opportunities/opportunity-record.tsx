@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Check, Pencil, RotateCcw, Trophy } from "lucide-react"
 import { ActivityTimeline } from "@/components/records/activity-timeline"
+import { useProtoOpportunity } from "@/prototype/forecast"
 import { DetailList, FormAlert } from "@/components/records/fields"
 import { RuleNoticeList } from "@/components/records/rule-effects"
 import { ReassignButton } from "@/components/records/reassign-dialog"
@@ -70,6 +71,7 @@ function OpportunityRecord({
 }) {
   const { opportunity, account, canEdit } = data
   const process = useRecordProcess("opportunity", opportunity)
+  const proto = useProtoOpportunity()
   const ruleExtras = useMemo<RuleExtras>(
     () => ({
       parents: opportunityParents({ account, primaryContact: data.primaryContact, originatingLead: data.originatingLead }),
@@ -124,6 +126,7 @@ function OpportunityRecord({
           ? { label: "Expected close date", value: <ExpectedCloseDate opportunity={opportunity} /> }
           : { label: "Close date", value: opportunity.closeDate && formatDate(opportunity.closeDate) },
         { label: "Owner", value: opportunity.ownerName },
+        ...proto.highlights(opportunity),
       ]}
       actions={actions || undefined}
       activity={<ActivityTimeline record={{ type: "opportunity", id: opportunity.id }} canAdd={canEdit} />}
@@ -164,6 +167,8 @@ function OpportunityRecord({
           <OpportunityDetailList details={data} accountLink={accountLink} ruleExtras={ruleExtras} />
         )}
       </RecordSection>
+
+      {proto.history(opportunity)}
 
       <ProductLinesPanel opportunityId={opportunity.id} lines={data.productLines} canEdit={canEdit && isOpen} />
 

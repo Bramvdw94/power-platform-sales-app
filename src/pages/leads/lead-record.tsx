@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { lastActivityHighlight } from "@/prototype/forecast"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Ban, BadgeCheck, Pencil, PhoneCall, RotateCcw, Undo2 } from "lucide-react"
@@ -73,6 +74,7 @@ function LeadRecord({
         { label: "Lead status", value: <LeadStatusBadge status={lead.status} /> },
         { label: "Email", value: lead.email },
         { label: "Owner", value: lead.ownerName },
+        lastActivityHighlight(lead.id),
       ]}
       actions={canEdit && !editing && <LeadActions lead={lead} followsProcess={followsProcess} onEdit={() => setEditing(true)} />}
       activity={<ActivityTimeline record={{ type: "lead", id: lead.id }} canAdd={canEdit} />}

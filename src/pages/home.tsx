@@ -11,6 +11,8 @@ import { describeError } from "@/lib/errors"
 import { formatDate, formatEuro, LEAD_SOURCE_LABELS, recordHref, STAGE_LABELS } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { MyNumbersRow } from "./my-numbers-tiles"
+import { useForecastData } from "./forecast/use-forecast-data"
+import { useProtoHome } from "@/prototype/forecast"
 import { fullName, isTaskOverdue, toDateOnly } from "@/sales"
 
 /** "My work": my open Tasks (overdue first), my Opportunities closing this month, my Leads still Not Contacted. */
@@ -20,6 +22,7 @@ export default function HomePage() {
   const { data, error, isPending } = useQuery({ queryKey: ["home"], queryFn: () => gateway.getHome() })
   const firstName = me?.user.fullName.split(" ")[0]
   const today = toDateOnly(new Date())
+  const proto = useProtoHome(useForecastData().opportunities)
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 p-4 md:p-6">
@@ -28,6 +31,7 @@ export default function HomePage() {
         {firstName && <p className="text-sm text-muted-foreground">Welcome, {firstName}. Here is what needs your attention.</p>}
       </div>
       <MyNumbersRow />
+      {proto.kpis}
       {isPending ? (
         <div className="grid gap-4 lg:grid-cols-3" aria-busy="true">
           <Skeleton className="h-48" />
@@ -78,6 +82,7 @@ export default function HomePage() {
               ))}
             </HomeList>
           </RecordSection>
+          {proto.staleCard}
           <RecordSection title="Leads to contact">
             <HomeList empty="All your Leads have been contacted.">
               {data.leadsNotContacted.map((lead) => (

@@ -2,6 +2,7 @@ import { useState, type DragEvent } from "react"
 import { FORECAST_CATEGORY_LABELS, formatEuro, STAGE_LABELS } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { OPEN_STAGES, isOpenStage, pipelineValue, type Opportunity, type Stage } from "@/sales"
+import { useProtoPipelineCard } from "@/prototype/forecast"
 import { ExpectedCloseDate } from "../opportunities/expected-close-date"
 import { OpportunityLink, OwnerInitials, StagePicker, StageTotals, type MoveTo, type PipelineViewProps } from "./pipeline-parts"
 
@@ -119,6 +120,7 @@ function PipelineCard({
   onDragEnd: () => void
   moveTo: MoveTo
 }) {
+  const proto = useProtoPipelineCard()
   return (
     <article
       aria-label={opportunity.name}
@@ -134,6 +136,7 @@ function PipelineCard({
         "flex flex-col gap-1 rounded-md border bg-card p-2.5 text-sm shadow-xs",
         editable && "cursor-grab active:cursor-grabbing",
         dragging && "opacity-40",
+        proto.className(opportunity),
       )}
     >
       <OpportunityLink opportunity={opportunity} />
@@ -147,6 +150,7 @@ function PipelineCard({
           {FORECAST_CATEGORY_LABELS[opportunity.forecastCategory]}
         </div>
       )}
+      {proto.extra(opportunity)}
       <div className="flex items-center justify-between gap-2 text-xs">
         <ExpectedCloseDate opportunity={opportunity} />
         <OwnerInitials name={opportunity.ownerName} />

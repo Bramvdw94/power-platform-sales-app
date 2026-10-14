@@ -1,4 +1,5 @@
 import { RecordList, type Column } from "@/components/records/record-list"
+import { lastActivityCell } from "@/prototype/forecast"
 import { ACCOUNT_TYPE_LABELS, INDUSTRY_LABELS, formatDate } from "@/lib/format"
 import type { Account } from "@/sales"
 import { NewAccountDialog } from "./account-form"
@@ -11,6 +12,7 @@ const COLUMNS: Column<Account>[] = [
   { field: "country", label: "Country" },
   { field: "phone", label: "Phone" },
   { field: "ownerName", label: "Owner" },
+  { field: "id", label: "Last activity", render: (a) => lastActivityCell(a.id) },
   { field: "createdOn", label: "Created on", render: (a) => formatDate(a.createdOn) },
 ]
 

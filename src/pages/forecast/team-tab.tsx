@@ -1,5 +1,6 @@
 import { formatEuro, STAGE_LABELS } from "@/lib/format"
 import { OPEN_STAGES, myNumbers, salesStats, stageTotals, wonLostByOwner, type MyNumbers, type User } from "@/sales"
+import { ProtoTeamExtras } from "@/prototype/forecast"
 import { FunnelChart, WonLostChart } from "./forecast-chart"
 import { euroOrNone, formatCoverage, formatPercent } from "./forecast-format"
 import type { ForecastData } from "./use-forecast-data"
@@ -85,6 +86,8 @@ export function TeamTab({ data, me, directReports }: { data: ForecastData; me: U
           ))}
         </div>
       </section>
+
+      <ProtoTeamExtras data={data} />
 
       <section aria-label="Last 90 days" className="space-y-2">
         <h2 className="text-lg font-semibold">Last 90 days</h2>

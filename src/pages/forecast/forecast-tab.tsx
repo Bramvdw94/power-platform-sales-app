@@ -13,6 +13,7 @@ import {
   type ForecastPeriod,
   type User,
 } from "@/sales"
+import { ProtoForecastGrid } from "@/prototype/forecast"
 import { ForecastChart } from "./forecast-chart"
 import { euroOrNone, formatCoverage, periodLabel } from "./forecast-format"
 import type { ForecastData } from "./use-forecast-data"
@@ -88,10 +89,17 @@ export function ForecastTab({ data, me, directReports }: { data: ForecastData; m
       {isDesktop ? (
         <>
           <ForecastChart periods={periods} figures={figures} />
-          <ForecastGrid periods={periods} figures={figures} />
+          <ProtoForecastGrid data={data} scope={scope} periods={periods} figures={figures} isDesktop defaultGrid={<ForecastGrid periods={periods} figures={figures} />} />
         </>
       ) : (
-        <ForecastPager periods={periods} figures={figures} index={Math.min(index, periods.length - 1)} onIndex={setIndex} />
+        <ProtoForecastGrid
+          data={data}
+          scope={scope}
+          periods={periods}
+          figures={figures}
+          isDesktop={false}
+          defaultGrid={<ForecastPager periods={periods} figures={figures} index={Math.min(index, periods.length - 1)} onIndex={setIndex} />}
+        />
       )}
     </div>
   )

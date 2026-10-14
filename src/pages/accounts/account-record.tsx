@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { lastActivityHighlight } from "@/prototype/forecast"
 import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Pencil, Plus } from "lucide-react"
@@ -48,6 +49,7 @@ export default function AccountRecordPage() {
         { label: "Phone", value: account.phone },
         { label: "Website", value: account.website && <ExternalLink href={account.website} /> },
         { label: "Owner", value: account.ownerName },
+        lastActivityHighlight(account.id),
       ]}
       actions={
         canEdit &&

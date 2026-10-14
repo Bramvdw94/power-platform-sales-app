@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react"
+import { lastActivityHighlight } from "@/prototype/forecast"
 import { Link, useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Pencil } from "lucide-react"
@@ -46,6 +47,7 @@ export default function ContactRecordPage() {
         { label: "Email", value: contact.email && <MailLink email={contact.email} /> },
         { label: "Phone", value: contact.phone ?? contact.mobile },
         { label: "Owner", value: contact.ownerName },
+        lastActivityHighlight(contact.id),
       ]}
       actions={
         canEdit &&

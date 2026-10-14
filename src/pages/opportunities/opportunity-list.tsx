@@ -3,6 +3,7 @@ import { STAGE_LABELS, formatEuro } from "@/lib/format"
 import { STAGES, type Opportunity, type Stage } from "@/sales"
 import { NewOpportunityDialog } from "./opportunity-form"
 import { ExpectedCloseDate } from "./expected-close-date"
+import { lastActivityCell } from "@/prototype/forecast"
 
 const COLUMNS: Column<Opportunity>[] = [
   { field: "name", label: "Name", essential: true },
@@ -12,6 +13,7 @@ const COLUMNS: Column<Opportunity>[] = [
   { field: "probability", label: "Probability", render: (o) => `${o.probability}%` },
   { field: "expectedCloseDate", label: "Expected close date", render: (o) => <ExpectedCloseDate opportunity={o} /> },
   { field: "ownerName", label: "Owner" },
+  { field: "createdOn", label: "Last activity", render: (o) => lastActivityCell(o.id) },
 ]
 
 const STAGE_FILTER: ListFilter = {

@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { describeError } from "@/lib/errors"
+import { ProtoTrendTab } from "@/prototype/forecast"
 import { ForecastTab } from "./forecast-tab"
 import { QuotasTab } from "./quotas-tab"
 import { TeamTab } from "./team-tab"
@@ -50,11 +51,15 @@ function Loaded({
     <Tabs defaultValue="forecast" className="gap-4">
       <TabsList>
         <TabsTrigger value="forecast">Forecast</TabsTrigger>
+        <TabsTrigger value="trend">Trend</TabsTrigger>
         <TabsTrigger value="team">Team</TabsTrigger>
         <TabsTrigger value="quotas">Quotas</TabsTrigger>
       </TabsList>
       <TabsContent value="forecast">
         <ForecastTab data={data} me={me} directReports={directReports} />
+      </TabsContent>
+      <TabsContent value="trend">
+        <ProtoTrendTab data={data} />
       </TabsContent>
       <TabsContent value="team">
         <TeamTab data={data} me={me} directReports={directReports} />
