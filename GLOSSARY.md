@@ -164,7 +164,7 @@ The one record of company details (name, logo, address, phone, email, website, K
 _Avoid_: Company settings, PDF settings
 
 **Send**:
-Delivering a Draft Quote to the customer in one of two ways, by email from the user's own Outlook or by downloading the PDF to send by hand. Either way the exact PDF is stored on the Quote and the Quote becomes Sent, with when, by whom, how and to which address recorded. Download PDF on a Sent Quote returns that stored copy.
+Delivering a Draft Quote to the customer in one of two ways, by email from the user's own Outlook or by downloading the PDF to send by hand. Either way the exact PDF is stored on the Quote and the Quote becomes Sent, with when, by whom, how and to which address recorded. Download PDF on a Sent Quote returns that stored copy. A Draft whose discount needs an Approval can only be Sent once it is Approved.
 _Avoid_: Issue, Publish, Mail merge
 
 ### Activities
@@ -256,7 +256,7 @@ One stop in a Process. On an Opportunity each Step maps to one open Stage, and s
 _Avoid_: Stage, phase, milestone
 
 **Gate**:
-The checks a record must pass to leave a Step forward: a field has a value, a field meets a condition, or the record has enough related records (such as a completed Phone Call or a held Meeting). Moving back is never gated. Closed Won must pass the last Step's Gate, from whichever Step it is closed.
+The checks a record must pass to leave a Step forward: a field has a value, a field meets a condition, the record has enough related records (such as a completed Phone Call or a held Meeting), or it was Approved since entering the Step. Moving back is never gated. Closed Won must pass the last Step's Gate, from whichever Step it is closed.
 _Avoid_: Validation, exit criteria, requirement
 
 **Action**:
@@ -338,3 +338,25 @@ _Avoid_: Rerun, rescore, refresh
 **Try**:
 Running a Decision rule, published or not, on chosen records or on pasted sample text to see its answer, confidence and the Actions it would run, without running them or changing anything.
 _Avoid_: Test run, simulate, preview
+
+### Approvals
+
+**Approval**:
+A request, made by a user when the record is ready, for one or two people in turn to agree to a Draft Quote before it is Sent or to a Lead or Opportunity before it leaves a Step whose Gate asks for one. While it is Pending the record and its lines are read-only, though Notes and Activities can still be added; Reassign or Switch Process recalls it. It is Approved when the last Approver approves and Rejected as soon as one rejects, with a comment; a rejected record can be changed and asked again. An Approved approval lapses when what it covered changes (on a Quote its lines, prices or discounts; on an Opportunity its Estimated value or Product lines). It has no expiry date, and Decision rules never request or decide one.
+_Avoid_: Sign-off, review, approve (for Accept)
+
+**Approver**:
+A person an Approval waits on: the Owner's manager, the Owner's manager and then their manager, or a named person, as the Gate or the Quote discount sets. The requester never approves their own request, so it goes one level up, and with nobody left to the Fallback approver. The Approver's own manager or a System Administrator may decide in their place.
+_Avoid_: Reviewer, signer
+
+**Fallback approver**:
+The one person an Approval goes to when there is no one else to ask: the Owner has no manager, or the chain would come back to the requester. A Process builder sets it.
+_Avoid_: Default approver, admin
+
+**Recall**:
+Withdrawing a Pending Approval, by the requester, the Owner or the Owner's manager. The record is unlocked as if nothing was asked.
+_Avoid_: Cancel, withdraw
+
+**Approval status**:
+Where a Draft Quote's discount approval stands: None, Pending, Approved or Rejected. It sits beside Quote status and never changes it.
+_Avoid_: In review, Quote status
