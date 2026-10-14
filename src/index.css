@@ -139,3 +139,39 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* PROTOTYPE (throwaway): the artifact viewer's unlayered reset beats Tailwind's layered base, so keep these unlayered (#87). */
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background: var(--background);
+  color: var(--foreground);
+}
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+html.dark input,
+html.dark textarea,
+html.dark select {
+  color: var(--foreground);
+  background-color: color-mix(in oklab, var(--input) 30%, transparent);
+  border-color: var(--input);
+}
+
+/* PROTOTYPE: the tinted box of AI results; muted text inside is darkened to stay readable on the tint. */
+.ai-tint {
+  border-color: #ddd6fe;
+  background-color: #f5f3ff;
+}
+.ai-tint .text-muted-foreground {
+  color: #525252;
+}
+html.dark .ai-tint {
+  border-color: #4c2a8c;
+  background-color: #1e1538;
+}
+html.dark .ai-tint .text-muted-foreground {
+  color: #d4d4d8;
+}

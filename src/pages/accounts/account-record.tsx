@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Pencil, Plus } from "lucide-react"
 import { ReassignButton } from "@/components/records/reassign-dialog"
-import { ActivityTimeline } from "@/components/records/activity-timeline"
+import { ProtoTimeline, ProtoRecordTop, ProtoHeaderAction } from "@/prototype/ai"
 import { DetailList } from "@/components/records/fields"
 import { RuleNoticeList } from "@/components/records/rule-effects"
 import {
@@ -50,8 +50,9 @@ export default function AccountRecordPage() {
         { label: "Owner", value: account.ownerName },
       ]}
       actions={
-        canEdit &&
-        !editing && (
+        <>
+          <ProtoHeaderAction record={{ type: "account", id: account.id }} />
+          {canEdit && !editing && (
           <>
             <Button variant="outline" onClick={() => setEditing(true)}>
               <Pencil aria-hidden />
@@ -59,10 +60,12 @@ export default function AccountRecordPage() {
             </Button>
             <ReassignButton record={{ type: "account", id: account.id }} ownerId={account.ownerId} name={account.name} />
           </>
-        )
+          )}
+        </>
       }
-      activity={<ActivityTimeline record={{ type: "account", id: account.id }} canAdd={canEdit} />}
+      activity={<ProtoTimeline record={{ type: "account", id: account.id }} canAdd={canEdit} />}
     >
+      <ProtoRecordTop record={{ type: "account", id: account.id }} />
       <RecordSection title="Details">
         {editing ? (
           <EditAccountForm account={account} onDone={() => setEditing(false)} ruleExtras={ruleExtras} />

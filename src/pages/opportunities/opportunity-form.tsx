@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { ProtoNextStep } from "@/prototype/ai"
 import { useNavigate } from "react-router-dom"
 import { useMutation } from "@tanstack/react-query"
 import { AccountPicker, ContactPicker, type AccountChoice, type ContactChoice } from "@/components/records/account-picker"
@@ -341,7 +342,14 @@ export function EditOpportunityForm({
         blankLabel="—"
         rule={preview.viewOf("leadSource")}
       />
-      <TextFields idPrefix="edit-opportunity" specs={EDIT_SPECS.slice(4)} values={shownValues} errors={errors} onChange={onChange} ruleViews={preview.viewOf} />
+      <ProtoNextStep
+        id="edit-opportunity-nextStep"
+        opportunityId={opportunity.id}
+        value={shownValues.nextStep ?? ""}
+        error={errors.nextStep}
+        onChange={(value) => onChange("nextStep", value)}
+      />
+      <TextFields idPrefix="edit-opportunity" specs={EDIT_SPECS.slice(5)} values={shownValues} errors={errors} onChange={onChange} ruleViews={preview.viewOf} />
       <RuleBlockBox blocks={preview.blocks} className="sm:col-span-2" />
       {save.isError && <FormAlert error={save.error} className="sm:col-span-2" />}
       <div className="flex justify-end gap-2 sm:col-span-2">

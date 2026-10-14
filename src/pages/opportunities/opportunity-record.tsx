@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Check, Pencil, RotateCcw, Trophy } from "lucide-react"
-import { ActivityTimeline } from "@/components/records/activity-timeline"
+import { ProtoTimeline, ProtoRecordTop, ProtoHeaderAction } from "@/prototype/ai"
 import { DetailList, FormAlert } from "@/components/records/fields"
 import { RuleNoticeList } from "@/components/records/rule-effects"
 import { ReassignButton } from "@/components/records/reassign-dialog"
@@ -85,7 +85,10 @@ function OpportunityRecord({
   )
 
   // Closed Opportunities are read-only: no Edit, only Reopen and Reassign.
-  const actions = canEdit && !editing && (
+  const actions = (
+    <>
+      <ProtoHeaderAction record={{ type: "opportunity", id: opportunity.id }} />
+      {canEdit && !editing && (
     <>
       {isOpen ? (
         <>
@@ -106,6 +109,8 @@ function OpportunityRecord({
       )}
       <ReassignButton record={{ type: "opportunity", id: opportunity.id }} ownerId={opportunity.ownerId} name={opportunity.name} />
     </>
+      )}
+    </>
   )
 
   return (
@@ -125,9 +130,11 @@ function OpportunityRecord({
           : { label: "Close date", value: opportunity.closeDate && formatDate(opportunity.closeDate) },
         { label: "Owner", value: opportunity.ownerName },
       ]}
-      actions={actions || undefined}
-      activity={<ActivityTimeline record={{ type: "opportunity", id: opportunity.id }} canAdd={canEdit} />}
+      actions={actions}
+      activity={<ProtoTimeline record={{ type: "opportunity", id: opportunity.id }} canAdd={canEdit} />}
     >
+      <ProtoRecordTop record={{ type: "opportunity", id: opportunity.id }} />
+
       {process.status === "following" ? (
         <ProcessBar
           table="opportunity"

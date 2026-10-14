@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { ChevronRight } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
-import { AUTOMATION, FORECAST, RECORD_LISTS } from "@/components/shell/nav-items"
+import { AI_ASSIST, AUTOMATION, FORECAST, RECORD_LISTS } from "@/components/shell/nav-items"
 import { UserAvatar } from "@/components/shell/user-badge"
 import { useCurrentUser } from "@/hooks/use-current-user"
 
@@ -12,7 +12,7 @@ export default function MenuPage() {
     <div className="space-y-4 p-4">
       <h1 className="text-2xl font-semibold tracking-tight">Menu</h1>
       <nav aria-label="Pages" className="divide-y rounded-md border">
-        {[FORECAST, ...RECORD_LISTS, AUTOMATION].map(({ to, label, icon: Icon }) => (
+        {[FORECAST, ...RECORD_LISTS, AUTOMATION, AI_ASSIST].map(({ to, label, icon: Icon }) => (
           <Link key={to} to={to} className="flex h-12 items-center gap-3 px-4">
             <Icon className="size-5 text-muted-foreground" aria-hidden />
             <span className="flex-1">{label}</span>

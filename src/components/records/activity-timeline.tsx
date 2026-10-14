@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useState, type FormEvent, type ReactElement, type ReactNode } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { CheckCircle2, CircleCheck, ListTodo, Phone, PhoneIncoming, PhoneOutgoing, StickyNote } from "lucide-react"
@@ -44,7 +44,16 @@ const ADD_LABELS: Record<ActivityKind, string> = { note: "New Note", task: "New 
  * originating Leads, labelled by source and filterable. The Owner and the
  * Owner's manager get quick-add buttons, which always create on this record.
  */
-export function ActivityTimeline({ record, canAdd }: { record: RecordRef; canAdd: boolean }) {
+export type TimelineProto = {
+  /** PROTOTYPE slot: above the list, also when the timeline is empty. */
+  top?: ReactNode
+  badge?: (activity: Activity) => ReactNode
+  rowExtras?: (activity: Activity) => ReactNode
+  trailing?: (activity: Activity) => ReactNode
+  inject?: (rows: ReactElement[], activities: Activity[]) => ReactElement[]
+}
+
+export function ActivityTimeline({ record, canAdd, proto }: { record: RecordRef; canAdd: boolean; proto?: TimelineProto }) {
   const gateway = useGateway()
   const [adding, setAdding] = useState<ActivityKind | undefined>()
   const [filter, setFilter] = useState<{ kinds: ActivityKind[]; sources: TimelineSource[] }>({ kinds: [], sources: [] })
@@ -79,6 +88,7 @@ export function ActivityTimeline({ record, canAdd }: { record: RecordRef; canAdd
         )
       }
     >
+      {proto?.top}
       {isPending ? (
         <Skeleton className="h-24 w-full" />
       ) : error ? (
@@ -115,9 +125,20 @@ export function ActivityTimeline({ record, canAdd }: { record: RecordRef; canAdd
             <p className="text-sm text-muted-foreground">No activities match these filters.</p>
           ) : (
             <ol aria-label="Activity timeline" className="divide-y">
-              {data!.slice(0, shown).map((activity) => (
-                <TimelineItem key={activity.id} activity={activity} showSource={related && !isOwnActivity(activity, record)} />
-              ))}
+              {(() => {
+                const visible = data!.slice(0, shown)
+                const rows = visible.map((activity) => (
+                  <TimelineItem
+                    key={activity.id}
+                    activity={activity}
+                    showSource={related && !isOwnActivity(activity, record)}
+                    badge={proto?.badge?.(activity)}
+                    rowExtras={proto?.rowExtras?.(activity)}
+                    trailing={proto?.trailing?.(activity)}
+                  />
+                ))
+                return proto?.inject ? proto.inject(rows, visible) : rows
+              })()}
             </ol>
           )}
           {data!.length > shown && (
@@ -181,7 +202,19 @@ function FilterChips<T extends string>({
   )
 }
 
-function TimelineItem({ activity, showSource = false }: { activity: Activity; showSource?: boolean }) {
+function TimelineItem({
+  activity,
+  showSource = false,
+  badge,
+  rowExtras,
+  trailing,
+}: {
+  activity: Activity
+  showSource?: boolean
+  badge?: ReactNode
+  rowExtras?: ReactNode
+  trailing?: ReactNode
+}) {
   const today = toDateOnly(new Date())
   const title = activity.kind === "note" ? activity.title || "Note" : activity.subject
   return (
@@ -199,6 +232,7 @@ function TimelineItem({ activity, showSource = false }: { activity: Activity; sh
           )}
           {activity.kind === "task" && isTaskOverdue(activity, today) && <Badge variant="destructive">Overdue</Badge>}
           {activity.kind === "phoneCall" && !activity.completed && <Badge variant="outline">Planned</Badge>}
+          {badge}
         </div>
         <p className="text-xs text-muted-foreground">{describeMeta(activity)}</p>
         {showSource && (
@@ -212,7 +246,9 @@ function TimelineItem({ activity, showSource = false }: { activity: Activity; sh
           </p>
         )}
         {activityText(activity) && <p className="text-sm break-words whitespace-pre-line">{activityText(activity)}</p>}
+        {rowExtras}
       </div>
+      {trailing}
       {activity.kind === "task" && !activity.completed && <CompleteTaskButton task={activity} />}
     </li>
   )

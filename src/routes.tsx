@@ -20,6 +20,7 @@ import ProductRecordPage from "@/pages/products/product-record"
 import QuoteSettingsPage from "@/pages/products/quote-settings-page"
 import QuoteTemplatesPage from "@/pages/products/quote-templates-page"
 import QuoteRecordPage from "@/pages/quotes/quote-record"
+import { AiSettingsPage } from "@/prototype/ai"
 import SearchPage from "@/pages/search"
 
 /** Every page in the spec (#23). Placeholders are replaced by the ticket they name. */
@@ -47,6 +48,7 @@ export const routes: RouteObject[] = [
       { path: "products/:id", element: <ProductRecordPage /> },
       { path: "quotes/:id", element: <QuoteRecordPage /> },
       { path: "search", element: <SearchPage /> },
+      { path: "ai-assist", element: <AiSettingsPage /> },
       { path: "menu", element: <MenuPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
