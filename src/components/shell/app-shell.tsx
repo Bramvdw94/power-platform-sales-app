@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
+import { ProtoSwitcher } from "@/prototype/email"
 import { Menu, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react"
 import powerAppsLogo from "/power-apps.svg"
 import { Button } from "@/components/ui/button"
@@ -233,5 +234,10 @@ function ShellContent() {
       </div>
     )
   }
-  return <Outlet />
+  return (
+    <>
+      <Outlet />
+      <ProtoSwitcher />
+    </>
+  )
 }

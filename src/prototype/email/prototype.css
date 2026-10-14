@@ -1,0 +1,12 @@
+/* PROTOTYPE (throwaway): the artifact viewer's unlayered reset beats Tailwind's layered base, so keep these unlayered (#87). */
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background: var(--background);
+  color: var(--foreground);
+}
+body {
+  background: var(--background);
+  color: var(--foreground);
+}

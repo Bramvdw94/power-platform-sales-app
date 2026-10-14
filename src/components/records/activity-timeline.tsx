@@ -152,7 +152,7 @@ function isOwnActivity(activity: Activity, record: RecordRef) {
   return activity.regarding.type === record.type && activity.regarding.id === record.id
 }
 
-function FilterChips<T extends string>({
+export function FilterChips<T extends string>({
   label,
   options,
   selected,
@@ -181,7 +181,7 @@ function FilterChips<T extends string>({
   )
 }
 
-function TimelineItem({ activity, showSource = false }: { activity: Activity; showSource?: boolean }) {
+export function TimelineItem({ activity, showSource = false }: { activity: Activity; showSource?: boolean }) {
   const today = toDateOnly(new Date())
   const title = activity.kind === "note" ? activity.title || "Note" : activity.subject
   return (
@@ -307,7 +307,7 @@ function emptyValues(): DialogValues {
 }
 
 /** Quick-add: a Note (title, text), a Task (subject, description, due date) or a Phone Call (subject, direction, date, notes). */
-function AddActivityDialog({ record, kind, onClose }: { record: RecordRef; kind: ActivityKind; onClose: () => void }) {
+export function AddActivityDialog({ record, kind, onClose }: { record: RecordRef; kind: ActivityKind; onClose: () => void }) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
   const [values, setValues] = useState(emptyValues)

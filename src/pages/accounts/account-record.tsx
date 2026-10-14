@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Pencil, Plus } from "lucide-react"
 import { ReassignButton } from "@/components/records/reassign-dialog"
-import { ActivityTimeline } from "@/components/records/activity-timeline"
+import { ProtoTimeline as ActivityTimeline } from "@/prototype/email"
 import { DetailList } from "@/components/records/fields"
 import { RuleNoticeList } from "@/components/records/rule-effects"
 import {
