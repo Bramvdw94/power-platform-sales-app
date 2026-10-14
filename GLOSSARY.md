@@ -158,7 +158,7 @@ The standard price in euros, excluding VAT, of one Unit of a Product. The team h
 _Avoid_: Catalogue price, base price
 
 **Product line**:
-One Product on an Opportunity, with a quantity, a unit price and a discount percentage. The unit price starts at the List price when the line is added and the Owner may change it; later changes to the List price don't touch existing lines.
+One Product on an Opportunity, with a quantity, a unit price and a discount percentage. The unit price starts at the List price when the line is added and the Owner may change it. The line also keeps that List price, so later changes to the List price don't touch existing lines.
 _Avoid_: Line item, opportunity product
 
 **Catalogue manager**:
@@ -172,7 +172,7 @@ A priced offer sent to the customer for one Opportunity. Its Quote lines are cop
 _Avoid_: Offer, proposal, estimate
 
 **Quote line**:
-One Product on a Quote, with a quantity, a unit price, a discount percentage and the Product's VAT rate. Amounts on a line exclude VAT; VAT is worked out per rate on the Quote's total.
+One Product on a Quote, with a quantity, a unit price, a discount percentage, the Product's VAT rate and the List price it was added at. Amounts on a line exclude VAT; VAT is worked out per rate on the Quote's total, after any Quote discount.
 _Avoid_: Line item, quote product
 
 **Quote status**:
@@ -188,7 +188,7 @@ Replacing a Sent Quote with a new Draft that keeps its Quote number with the nex
 _Avoid_: Copy, new version, amend
 
 **Accept**:
-Recording that the customer agreed to a Quote. The Opportunity's other Sent Quotes become Rejected and the user is offered to Close the Opportunity as won at the Quote's net total.
+Recording that the customer agreed to a Quote. The Opportunity's other Sent Quotes become Rejected and the user is offered to Close the Opportunity as won at the Quote's net total (after any Quote discount) and to Create an Order.
 _Avoid_: Win, sign, approve
 
 **Quote template**:
@@ -200,12 +200,34 @@ One part of a Quote template's page: Header, Customer address, Reference strip, 
 _Avoid_: Section, widget, component
 
 **Quote settings**:
-The one record of company details (name, logo, address, phone, email, website, KvK, btw-id, IBAN), default validity, terms link and text, and the email subject and message templates behind every Quote PDF and Quote email. A Catalogue manager edits it; everyone in sales reads it.
+The one record of company details (name, logo, address, phone, email, website, KvK, btw-id, IBAN), default validity, terms link and text, the two Discount thresholds, and the email subject and message templates behind every Quote PDF and Quote email. A Catalogue manager edits it; everyone in sales reads it.
 _Avoid_: Company settings, PDF settings
 
 **Send**:
 Delivering a Draft Quote to the customer in one of two ways, by email from the user's own Outlook or by downloading the PDF to send by hand. Either way the exact PDF is stored on the Quote and the Quote becomes Sent, with when, by whom, how and to which address recorded. Download PDF on a Sent Quote returns that stored copy. A Draft whose discount needs an Approval can only be Sent once it is Approved.
 _Avoid_: Issue, Publish, Mail merge
+
+**Quote discount**:
+One optional percentage off a whole Quote, taken after the line discounts and before VAT, and shared over the VAT rates so VAT per rate stays right. On the PDF it shows between the Subtotal and the Net total. There is no discount as an amount, and Opportunities have no such discount.
+_Avoid_: Header discount, total discount, Effective discount
+
+**Effective discount**:
+How far below List price a Quote is in total: one minus its net total divided by the sum of quantity times List price over its lines. It counts lowered unit prices as well as line and Quote discounts, and is what the Discount thresholds are measured against.
+_Avoid_: Quote discount, average discount
+
+**Discount threshold**:
+One of two percentages in Quote settings that decide which Approval a Draft Quote needs before it can be Sent: up to the first (10 % by default) none, up to the second (25 % by default) the Owner's manager, above it the Owner's manager and then their manager. A revision is measured again from scratch.
+_Avoid_: Discount limit, approval level
+
+### Orders
+
+**Order**:
+The customer's confirmed purchase, made with Create Order from an Accepted Quote once its Opportunity is Closed Won. It has its own Order number and keeps a frozen copy of the Quote's lines, Quote discount, totals and VAT per rate; only the requested delivery date, the customer's PO number and a note can change. One Quote gives at most one Order. It starts with the Quote's Owner, everyone reads it, the Owner or the Owner's manager changes it, and it is never deleted. An Order never changes its Opportunity.
+_Avoid_: Sales order, purchase, deal
+
+**Order status**:
+Where an Order stands: Open, then Fulfilled (delivered) or Cancelled (with a comment). Fulfilled and Cancelled are final.
+_Avoid_: Order stage, Invoiced, Closed
 
 ### Activities
 
