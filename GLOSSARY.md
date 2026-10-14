@@ -170,7 +170,7 @@ _Avoid_: Issue, Publish, Mail merge
 ### Activities
 
 **Activity**:
-Something a salesperson recorded or planned against a Lead, Opportunity, Account or Contact: a Note, a Task or a Phone Call.
+Something a salesperson recorded or planned against a Lead, Opportunity, Account or Contact: a Note, a Task, a Phone Call, an Email or a Meeting.
 _Avoid_: Interaction, touchpoint
 
 **Note**:
@@ -184,6 +184,22 @@ _Avoid_: Reminder, follow-up
 **Phone Call**:
 A call made or received, logged after it happened, or planned for later.
 _Avoid_: Call log
+
+**Email**:
+An email between a salesperson and a Contact, Account or Lead. It is logged by itself when it passes through the salesperson's mailbox to or from someone the app knows, or when it is sent from a record in the app; a salesperson can also log one by hand from Outlook. Removing an Email from the app leaves the mail in Outlook.
+_Avoid_: Mail, message, correspondence
+
+**Meeting**:
+An appointment with Contacts, Accounts or Leads, planned from a record in the app or tracked by the salesperson from their Outlook calendar. It is Planned until its end time has passed and then counts as held, with no step to complete it; a cancelled Meeting stays on record as Cancelled.
+_Avoid_: Appointment, event, call
+
+**Regarding**:
+The one Lead, Opportunity, Account or Contact an Activity is about. A logged Email or Meeting gets it by itself when its people point to exactly one open Opportunity (as its Primary Contact) or else exactly one open Lead, or when it replies to an Email that already has one; otherwise it is Unlinked. The Activity's Owner or their manager may change or clear it.
+_Avoid_: Related to, linked record, parent
+
+**Unlinked**:
+A logged Email or Meeting with no Regarding yet. It still shows on the timelines of the Contacts, Accounts and Leads it was with, and waits in its Owner's "To link" list with suggested records.
+_Avoid_: Untracked, orphan, unresolved
 
 **Related activity**:
 An Activity shown on an Account although it belongs to another record: one of the Account's current Contacts, one of its Opportunities, or the Lead such an Opportunity was qualified from.
