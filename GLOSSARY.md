@@ -233,6 +233,18 @@ _Avoid_: Teams notification, push
 A named way of looking at the Leads, Opportunities, Accounts or Contacts list: which records (My, My team or All, narrowed by filters), in what order, and with which columns. It belongs to the person who saved it; they may share it with the team, who can then use it but not change it. Each person may make one view per list their default.
 _Avoid_: Filter, list, query, report
 
+**Import**:
+One upload of a CSV file of up to 5,000 rows that creates new Leads, Accounts or Contacts; it never changes records that already exist. Anyone in sales may import. The importer owns the new records unless a row names another Owner they are allowed to Reassign to. Only the rows the importer ticks are created; rows with errors are left out and can be downloaded to fix and import again. Each Import is kept with who ran it, when, the file name and how many rows were created or failed.
+_Avoid_: Upload, migration, data load
+
+**Undo import**:
+Deleting the records an Import created, within 14 days of it, by the importer or their manager. It follows the Delete rules, so records that may no longer be deleted (a Qualified Lead, an Account that now has Contacts or Opportunities) stay and are listed.
+_Avoid_: Rollback, revert
+
+**Possible duplicate**:
+An existing Lead, Contact or Account that looks like the record being saved or imported: the same email, the same name (a Lead's company and last name, a Contact's first and last name at the same Account), or for an Account the same website domain. A new Lead is also checked against Contacts by email. The person is warned and may open the match or save anyway; nothing is ever blocked or merged.
+_Avoid_: Duplicate rule, conflict, match
+
 ### Processes
 
 **Process**:
