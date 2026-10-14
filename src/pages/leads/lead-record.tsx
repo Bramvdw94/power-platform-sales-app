@@ -18,6 +18,8 @@ import { useRecordProcess } from "@/hooks/use-process"
 import { useRuleContext, useRuleNotices, useRulePreview } from "@/hooks/use-rules"
 import { DISQUALIFY_REASON_LABELS, LEAD_SOURCE_LABELS, formatDate, opportunitySummary } from "@/lib/format"
 import { allowedLeadActions, canSwitchProcess, fullName, isLeadReadOnly, type Lead } from "@/sales"
+import { useVariantImpl } from "@/prototype/leadcapture"
+import { ratingOf, useProto } from "@/prototype/leadcapture/model"
 import { DisqualifyDialog } from "./disqualify-dialog"
 import { EditLeadForm } from "./lead-form"
 import { QualifyDialog } from "./qualify-dialog"
@@ -63,6 +65,8 @@ function LeadRecord({
 }) {
   const { lead, opportunity, canEdit } = data
   const process = useRecordProcess("lead", lead)
+  const V = useVariantImpl()
+  const proto = useProto()
   const followsProcess = process.status === "following"
   return (
     <RecordPage
@@ -71,6 +75,7 @@ function LeadRecord({
       highlights={[
         { label: "Company", value: lead.company },
         { label: "Lead status", value: <LeadStatusBadge status={lead.status} /> },
+        { label: "Rating", value: <V.RatingColumn info={ratingOf(proto, lead)} /> },
         { label: "Email", value: lead.email },
         { label: "Owner", value: lead.ownerName },
       ]}
@@ -98,6 +103,8 @@ function LeadRecord({
       {followsProcess && qualifying && <QualifyDialog lead={lead} open={qualifying} onOpenChange={setQualifying} />}
 
       {lead.status === "disqualified" && <DisqualifiedNotice lead={lead} />}
+
+      <V.RatingPanel lead={lead} canEdit={canEdit && !isLeadReadOnly(lead)} />
 
       <RecordSection title="Details">
         {editing ? <EditLeadForm lead={lead} onDone={() => setEditing(false)} /> : <LeadDetailList lead={lead} />}

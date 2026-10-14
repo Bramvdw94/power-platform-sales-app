@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { ProtoSwitcher, useVariantImpl } from "@/prototype/leadcapture"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { Menu, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react"
 import powerAppsLogo from "/power-apps.svg"
@@ -15,7 +16,6 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { useIsDesktop } from "@/hooks/use-is-desktop"
 import { cn } from "@/lib/utils"
 import { AUTOMATION, FORECAST, HOME, NEW_RECORD_ITEMS, PIPELINE, RECORD_LISTS, type NavItem } from "./nav-items"
-import { UserAvatar } from "./user-badge"
 
 const COLLAPSED_KEY = "salesapp.sidebarCollapsed"
 
@@ -44,6 +44,8 @@ export function AppShell() {
 }
 
 function DesktopShell() {
+  const V = useVariantImpl()
+  const { data } = useCurrentUser()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const toggle = () => {
     setCollapsed(!collapsed)
@@ -85,6 +87,7 @@ function DesktopShell() {
           <NewMenu />
           <CurrentUserChip />
         </header>
+        {data && <V.AwayBanner user={data.user} />}
         <main className="min-h-0 flex-1 overflow-auto">
           <ShellContent />
         </main>
@@ -161,26 +164,22 @@ function NewMenu() {
 
 function CurrentUserChip() {
   const { data } = useCurrentUser()
+  const V = useVariantImpl()
   if (!data) return <Skeleton className="h-8 w-32" />
-  return (
-    <div className="flex items-center gap-2">
-      <UserAvatar user={data.user} />
-      <span className="text-sm font-medium" aria-hidden>
-        {data.user.fullName}
-      </span>
-    </div>
-  )
+  return <V.UserAway user={data.user} />
 }
 
 function PhoneShell() {
   const { data } = useCurrentUser()
+  const V = useVariantImpl()
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b bg-background px-4">
         <img src={powerAppsLogo} alt="" className="size-5" />
         <span className="font-semibold">Sales</span>
-        <span className="ml-auto">{data ? <UserAvatar user={data.user} /> : <Skeleton className="size-8 rounded-full" />}</span>
+        <span className="ml-auto">{data ? <V.UserAway user={data.user} /> : <Skeleton className="size-8 rounded-full" />}</span>
       </header>
+      {data && <V.AwayBanner user={data.user} />}
       <main className="flex-1 pb-16">
         <ShellContent />
       </main>
@@ -233,5 +232,10 @@ function ShellContent() {
       </div>
     )
   }
-  return <Outlet />
+  return (
+    <>
+      <Outlet />
+      <ProtoSwitcher />
+    </>
+  )
 }

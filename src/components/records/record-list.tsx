@@ -63,6 +63,8 @@ type RecordListProps<T extends { id: string }> = {
   hideViews?: boolean
   /** Whether the user may create records; the New button is left out when not. Defaults to true. */
   canCreate?: boolean
+  /** PROTOTYPE: a slot between the title and the filters (Saved views). */
+  belowTitle?: ReactNode
 }
 
 function parseView(value: string | null): ListView {
@@ -75,7 +77,7 @@ function parseView(value: string | null): ListView {
  * shared links keep it.
  */
 export function RecordList<T extends { id: string }>(props: RecordListProps<T>) {
-  const { title, noun, singular, load, columns, defaultSort, href, searchLabel, renderNewDialog, filter, hideViews, canCreate = true } = props
+  const { title, noun, singular, load, columns, defaultSort, href, searchLabel, renderNewDialog, filter, hideViews, canCreate = true, belowTitle } = props
   const gateway = useGateway()
   const [params, setParams] = useSearchParams()
 
@@ -135,6 +137,7 @@ export function RecordList<T extends { id: string }>(props: RecordListProps<T>) 
         )}
       </div>
 
+      {belowTitle}
       <div className="flex flex-wrap items-center gap-3">
         {!hideViews && (
           <Select value={view} onValueChange={(value) => update({ view: value === "my" ? null : value })}>

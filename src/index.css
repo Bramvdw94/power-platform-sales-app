@@ -139,3 +139,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* PROTOTYPE: the Artifact viewer's unlayered reset beats Tailwind's layered base (see prototype-artifact-build). */
+html.dark { color-scheme: dark; }
+html.light { color-scheme: light; }
+html body { background-color: var(--background); color: var(--foreground); }
