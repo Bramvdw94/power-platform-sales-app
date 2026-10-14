@@ -1,0 +1,79 @@
+# Products, price lists and quotes in a plain Dataverse environment (research for issue #61)
+
+Researched 2026-10-10. Sources are Microsoft Learn (cited inline) plus this repo (`.power/schemas`, `solutions/SalesApp`). I could not query `dev-salesapp` live: this sandbox has no `.env` or token cache and the Dataverse MCP server didn't connect. The "do the tables exist" answer comes from the docs. A read-only check is listed under [Open points](#open-points).
+
+## Answer
+
+- **The standard tables aren't an option.** `product`, `pricelevel`, `productpricelevel`, `uom`, `uomschedule`, `quote`, `quotedetail`, `opportunity` and `opportunityproduct` are documented in the *Dynamics 365 enabled apps* table reference. That reference "contains tables added or modified when you enable Dynamics 365 apps while adding Dataverse to an environment you create" ([D365 table reference](https://learn.microsoft.com/en-us/dynamics365/developer/reference/about-entity-reference), [pricelevel](https://learn.microsoft.com/en-us/dynamics365/developer/reference/entities/pricelevel), [quote](https://learn.microsoft.com/en-us/dynamics365/developer/reference/entities/quote)). The setting **can't be turned on later**: "if you don't select **Enable Dynamics 365 apps** at the time of database provisioning, you can't make this change later or install Dynamics 365 apps on this environment". Selecting it also needs a Dynamics 365 licence ([Create an environment](https://learn.microsoft.com/en-us/power-platform/admin/create-environment)).
+- **Licensing:** none of these tables is on the restricted-tables list ([restricted tables](https://learn.microsoft.com/en-us/power-apps/maker/data-platform/data-platform-restricted-entities), updated 2026-04-27). The licence barrier is getting them into an environment at all, which needs a new environment with D365 apps enabled and a D365 licence. Even then, `quote.opportunityid` and `opportunityproduct` point to the **standard** `opportunity` table, not `vibe_opportunity`.
+- **So build custom `vibe_` tables:** product, price list, price list item, opportunity line, quote and quote line. Custom tables only need a Power Apps licence ([table licensing](https://github.com/MicrosoftDocs/powerapps-docs/blob/main/powerapps-docs/maker/data-platform/data-platform-entity-licenses.md)), and the team already has Premium. Use the D365 model as the reference design but leave out units, discount lists, bundles and properties.
+- **Quote PDF:** I recommend **generating it client-side in the code app** (for example `@react-pdf/renderer`) and sending it with the Office 365 Outlook connector. The fallback is a **Power Automate instant flow** (Word Online "Populate a Microsoft Word template" then "Convert Word Document to PDF"), which is the better choice if business users must edit the layout in Word themselves. Dataverse Word templates (DOCX only, model-driven UI) and plug-ins don't fit.
+
+## 1. Standard tables: exist? can be enabled? licence?
+
+| Table | Where documented | In dev-salesapp? | Restricted? |
+|---|---|---|---|
+| product, pricelevel, productpricelevel, uom, uomschedule, discounttype, discount | D365 enabled-apps reference ([product catalog](https://learn.microsoft.com/en-us/dynamics365/sales/developer/product-catalog-entities)) | Expected **no**, because the environment was created without D365 apps | Not listed |
+| opportunity, opportunityproduct, quote, quotedetail | D365 enabled-apps / Sales reference ([quote, order, invoice](https://learn.microsoft.com/en-us/dynamics365/sales/developer/quote-order-invoice-entities)) | No (the repo uses `vibe_opportunity`, `vibe_lead`) | Not listed |
+| transactioncurrency | Core Dataverse | **Yes**: `vibe_opportunity` already has `transactioncurrencyid` and money columns (`solutions/SalesApp/src/Entities/vibe_Opportunity/Entity.xml`) | No |
+
+- "Restricted" means users need a D365 licence to create, update or delete rows. "If an app or flow only reads information from a table, a Dynamics 365 app license isn't required" ([restricted tables](https://learn.microsoft.com/en-us/power-apps/maker/data-platform/data-platform-restricted-entities)). The catalogue and quote tables aren't on the list, but that doesn't help, because the tables can't be installed here.
+- The only way to get them is a **new** production or sandbox environment with *Enable Dynamics 365 apps = Yes*. That needs a D365 licence, isn't available for trial environments, and can't be reversed ([Create an environment](https://learn.microsoft.com/en-us/power-platform/admin/create-environment)). It would also bring the standard `opportunity` table, which competes with `vibe_opportunity`. Not recommended.
+- The D365 Sales "Export to PDF" feature (Word template to PDF, including custom tables since 2020 wave 2) is a **Sales Hub / Sales Professional** feature, so it isn't available here either ([enable PDF generation](https://learn.microsoft.com/en-us/dynamics365/sales/enable-pdf-generation-quote)).
+
+## 2. Reference: how D365 models catalogue, pricing, discount and tax
+
+- **Catalogue:** a product belongs to a unit group (`uomschedule`) of units (`uom`) worked out from a base unit. A price list (`pricelevel`) groups prices. A price list item (`productpricelevel`) holds the price per product and unit, plus the pricing method and rounding. A discount list (`discounttype`) holds quantity-based discount breakpoints (`discount`) ([product catalog](https://learn.microsoft.com/en-us/dynamics365/sales/developer/product-catalog-entities)).
+- **Quote header:** `pricelevelid` (required), `customerid` (**polymorphic** account/contact, which is awkward for code apps), `opportunityid`, `discountpercentage` and `discountamount` (quote-level discounts applied to the detail amount), `freightamount`, plus calculated totals: `totallineitemamount`, `totallineitemdiscountamount`, `totaldiscountamount`, `totalamountlessfreight`, `totaltax` and `totalamount` ("sum of the products, discounts, freight, and taxes"). `revisionnumber` tracks revisions. States: Draft(0), Active(1), Won(2), Closed(3), and "only draft quotes can be edited" ([quote](https://learn.microsoft.com/en-us/dynamics365/developer/reference/entities/quote)).
+- **Quote line (`quotedetail`):** `productid` or a write-in product (`isproductoverridden` + `productdescription`), `quantity` (required), `uomid`, `priceperunit` (defaults from the price list and can be overridden through `ispriceoverridden`), `baseamount` (price × quantity), `manualdiscountamount`, `volumediscountamount`, `tax` and `extendedamount` ([quotedetail](https://learn.microsoft.com/en-us/dynamics365/developer/reference/entities/quotedetail)).
+- **VAT:** D365 has **no VAT engine**. Line `tax` is a typed amount ("Type the tax amount for the quote product"), and header `totaltax` is the sum of the lines. Custom tax logic means turning off the out-of-box calculation (`OOBPriceCalculationEnabled = 0`) and writing a `CalculatePrice` plug-in. Microsoft's sample applies tax **after discount** ([Calculate Price plug-in sample](https://learn.microsoft.com/en-us/dynamics365/sales/developer/sample-calculate-price-plugin)).
+- **Discounts:** a line discount is either a line-item amount or a per-unit amount (`Organization.DiscountCalculationMethod`: 0 = line, 1 = per unit). With price 100, quantity 200 and discount 10, that gives 19,990 or 18,000 ([discounting methods](https://learn.microsoft.com/en-us/dynamics365/sales/developer/product-discounting-methods)). Volume discounts come from discount lists. A header discount (% or amount) applies on top.
+- **Opportunity link:** "If you create a quote from an opportunity, Dynamics 365 Sales uses the products associated with the opportunity as the basis for the draft" ([quote, order, invoice](https://learn.microsoft.com/en-us/dynamics365/sales/developer/quote-order-invoice-entities)). In other words, the quote **copies** the opportunity lines; it doesn't share them.
+
+## 3. Proposed custom tables (euro only, one price list)
+
+All money columns use the existing euro `transactioncurrency`. Use non-polymorphic lookups only.
+
+| Table | Key columns | Notes |
+|---|---|---|
+| `vibe_product` | name, product code (unique; alternate keys aren't usable from code apps, so enforce in the app or with a duplicate rule), description, unit (**choice**: piece, hour, day, month…), default VAT rate (choice: 21 / 9 / 0 %), active/inactive state | Replaces product + uom + uomschedule. Unit conversions aren't needed. |
+| `vibe_pricelist` | name, valid from / to, currency | One row today. Keeping the table means a second list or a yearly price change needs no schema change. |
+| `vibe_pricelistitem` | price list → `vibe_pricelist`, product → `vibe_product`, unit price (money) | One price per product per list. |
+| `vibe_opportunityline` | opportunity → `vibe_opportunity`, product → `vibe_product` (optional for write-ins), description (snapshot), quantity, unit price (copied from price list, editable), discount % or amount, net amount, VAT rate, VAT amount, sort order | Mirrors `opportunityproduct`. |
+| `vibe_quote` | quote number (**autonumber** column), revision number, opportunity → `vibe_opportunity`, account → `account`, contact → `contact` (two lookups instead of a polymorphic customer), price list, status (Draft / Sent / Accepted / Rejected / Expired / Revised), valid until, header discount %, totals (net, discount, VAT, gross), PDF file column (optional) | Edit only in Draft. "Revise" = copy to a new revision and close the old one, as in D365. |
+| `vibe_quoteline` | quote → `vibe_quote`, the same columns as the opportunity line | Copied from the opportunity lines when the quote is created. |
+
+**Opportunity estimated value from lines:**
+- Add a choice column on `vibe_opportunity` ("Estimated value: manual / from lines"). When it's "from lines", the app recomputes Σ line net amount and writes it to the estimated value on every line save.
+- A Dataverse **rollup** column could sum the lines, but rollups run as asynchronous system jobs: the incremental job's default minimum recurrence is one hour, and the mass job runs 12 hours after a column change ([rollup columns](https://learn.microsoft.com/en-us/power-apps/maker/data-platform/define-rollup-fields)). The value would look stale right after editing, so it isn't recommended as the source of truth.
+- If server-side enforcement is wanted later, a plug-in or low-code plug-in can recalculate. Note that synchronous server logic counts as "complex business logic" for licensing, which Premium already covers ([table licensing](https://github.com/MicrosoftDocs/powerapps-docs/blob/main/powerapps-docs/maker/data-platform/data-platform-entity-licenses.md)).
+
+**Calculation rule (state in an ADR):**
+- line net = qty × unit price − line discount
+- line VAT = line net × VAT rate
+- header discount applies to the net subtotal before VAT, then VAT is recomputed pro rata (or header discounts are disallowed; simpler)
+- round to 2 decimals per line, then sum
+
+This follows the D365 order: discount, then tax.
+
+## 4. Producing the Quote PDF from a code app
+
+| Option | How | Pros | Cons |
+|---|---|---|---|
+| **A. Client-side PDF library** (e.g. [`@react-pdf/renderer`](https://react-pdf.org/), which renders "to a file, a stream, or a blob … directly in the client") | Build the PDF in the browser from the quote data the app already loaded. Download it, save it to a `vibe_quote` file column, or attach it to an email via the Office 365 Outlook connector, which takes base64 file attachments and allows up to 49 MB per mail ([Office 365 Outlook connector](https://learn.microsoft.com/en-us/connectors/office365/)) | No extra connector, flow or licence. Instant. Layout in React/TS under version control and testable. Works with euro formatting and VAT tables. | Template changes need a developer and a redeploy. Fonts and logo must be bundled. Dataverse file upload from code apps is still **preview** ([code-apps research](../code-apps-dataverse.md)). Attaching as a note runs into the polymorphic `annotation.objectid`. |
+| **B. Power Automate + Word Online (Business)** | Code app calls a solution-aware instant flow with the Power Apps trigger (`pa app add flow`) ([add flows](https://learn.microsoft.com/en-us/power-apps/developer/code-apps/how-to/add-flows)). The flow runs "Populate a Microsoft Word template" (repeating section for lines), saves the DOCX, runs "Convert Word Document to PDF" ([Word Online connector](https://learn.microsoft.com/en-us/connectors/wordonlinebusiness/)) or OneDrive "Convert file" ([OneDrive connector](https://learn.microsoft.com/en-us/connectors/onedriveforbusiness/)), then emails the PDF or returns it | Business users edit the layout in Word. Server-side, so the same result for everyone. | Word Online is **Premium** in Power Automate. Power Apps licences cover flows "within the context of the app" ([licensing FAQ](https://learn.microsoft.com/en-us/power-platform/admin/powerapps-flow-licensing-faq)), but whether Word/OneDrive count as the app's data sources should be checked with the client. Needs a SharePoint/OneDrive library for template and temp files. 10 MB input limit, 100 calls/min per connection, plain-text/image/repeating-section controls only, unique control names. Slower (seconds) and more moving parts in ALM (connection references). The docs don't say whether a flow can return a binary or base64 file to a code app. |
+| C. Dataverse Word templates | Document template on `vibe_quote` with 1:N lines (up to 100 related rows) ([Word templates](https://learn.microsoft.com/en-us/power-platform/admin/using-word-templates-dynamics-365)) | No code | Output is **DOCX only**, generated from model-driven UI. PDF export is the D365 Sales feature, which isn't available here. Templates don't migrate between environments. Not usable from a code app without a flow, and then option B is better. |
+| D. Plug-in | Custom API in .NET Framework that renders a PDF | Server-side, transactional | Plug-ins run under an execution time limit and resource constraints ([write a plug-in](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/write-plug-in)). Most PDF libraries need native or graphics dependencies that the sandbox doesn't allow (not verified against a specific library). Highest build and ALM cost. Rejected. |
+
+## Recommendation
+
+1. **Custom tables:** build `vibe_product`, `vibe_pricelist`, `vibe_pricelistitem`, `vibe_opportunityline`, `vibe_quote` and `vibe_quoteline` (section 3) in the SalesApp solution. Don't pursue the standard tables: that would need a new environment with D365 apps enabled and a D365 licence, and the tables would hang off the wrong opportunity table.
+2. **Pricing:** price, discount and VAT logic lives in one pure TS module in the app, copying the D365 order (discount then tax, per-line VAT rate). Opportunity estimated value is written by the app when "from lines" is selected. Record the formula in an ADR.
+3. **PDF:** use option A (client-side `@react-pdf/renderer` or pdfmake) and send it with the Office 365 Outlook connector, storing a copy in a file column on `vibe_quote` once that is out of preview, or download it until then. Switch to option B only if the client requires Word-editable templates.
+
+## Open points
+
+- Run a read-only metadata check against dev-salesapp to confirm the tables are absent: `GET /api/data/v9.2/EntityDefinitions(LogicalName='product')` (and likewise for `pricelevel`, `uom`, `quote`). I expect 404.
+- Confirm Dutch VAT rates and whether quotes ever mix rates (that drives the per-line VAT column).
+- Confirm with the client whether premium Word Online in an app-triggered flow is acceptable under their licensing, if option B is chosen.
+- Check whether Dataverse file upload in code apps has reached GA before relying on it to store PDFs.
