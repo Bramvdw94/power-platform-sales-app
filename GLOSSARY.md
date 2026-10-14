@@ -220,7 +220,7 @@ Removing a record made by mistake, together with what belongs only to it. Only t
 _Avoid_: Remove, archive, deactivate
 
 **Notification**:
-A short message telling one person that something happened that needs their attention, with a link to the record it is about. Only that person sees it. It shows on the bell in the app until it is deleted 30 days after it was sent, and is marked read when they open it. In v3 a Notification is sent when a record is Reassigned to someone else, when an engine notify Action names them, when an Approval is requested of them or their request is decided, when an Engine error happens (to Process builders), and when a Decision rule's answer needs review (to the record's Owner).
+A short message telling one person that something happened that needs their attention, with a link to the record it is about. Only that person sees it. It shows on the bell in the app until it is deleted 30 days after it was sent, and is marked read when they open it. In v3 a Notification is sent when a record is Reassigned to someone else, when an engine notify Action names them, when an Approval is requested of them or their request is decided, when an Engine error happens (to Process builders), and when a Decision needs review (to the record's Owner, or the Decision rule's Reviewer).
 _Avoid_: Alert, message, activity
 
 **Teams copy**:
@@ -284,7 +284,7 @@ Moving a record to another Process, or to none. Only the Owner's manager or a Pr
 _Avoid_: Change process, reassign
 
 **Publish**:
-Making a draft Process or Business rule take effect. Until then edits change nothing for users. Publishing a Process makes a new Process version; a Business rule has no versions, so a published change or turning it off applies to every record at once.
+Making a draft Process, Business rule or Decision rule take effect. Until then edits change nothing for users. Publishing a Process makes a new Process version; Business rules and Decision rules have no versions, so a published change or turning one off applies to every record at once.
 _Avoid_: Activate, deploy, save
 
 **Process version**:
@@ -300,9 +300,33 @@ Stopping a published Process from being picked for new records. Records already 
 _Avoid_: Delete, deactivate, turn off
 
 **Process builder**:
-A person allowed to build and Publish Processes and Business rules. It is a right given separately from being a manager; everyone in sales can read the definitions.
+A person allowed to build and Publish Processes, Business rules and Decision rules. It is a right given separately from being a manager; everyone in sales can read the definitions.
 _Avoid_: Admin, designer, customizer
 
 **Engine error**:
-A Business rule or Action that could not run on a record, for example because a field it uses was removed. The save goes through without it, and the Process builder sees the error on the rule or Process to fix it.
+A Business rule, Action or Decision rule that could not run on a record, for example because a field it uses was removed. The save goes through without it, and the Process builder sees the error on the rule or Process to fix it.
 _Avoid_: Rule failure, crash, bug
+
+**Decision rule**:
+A rule a Process builder builds that asks Jev one question about a record when it is created (a Lead, Opportunity, Account or Contact) or when an incoming Email is logged, and then runs the Actions for the answer. The question is a yes or no, a pick from a list, or a score; a score is answered in bands such as "strong fit or better". It reads only the fields the rule names, and its Actions are limited to ones that can be undone: set a field, assign an Owner, create a Task or notify. It never deletes, closes, qualifies, disqualifies, moves a Step, sends email or approves. Its answer arrives a moment after the save.
+_Avoid_: AI rule, scoring rule, Business rule, automation
+
+**Jev**:
+The outside decision model a Decision rule asks. It only picks among the answers the rule defines, each with a confidence; it writes no text.
+_Avoid_: AI, the model, Copilot
+
+**Decision**:
+One answer to a Decision rule about one record: the answer, how confident it was, and whether Jev or a person gave it. Each Decision shows on the record's timeline. A Decision keeps nothing on the record by itself; an answer stays on the record only when the rule sets a field with it.
+_Avoid_: Prediction, score, result
+
+**Needs review**:
+A Decision that Jev could not settle: its confidence was below the rule's threshold, the input looked like it was trying to steer the answer, Jev could not be reached, or a spending cap was reached. The record's Owner, or the rule's Reviewer while the Owner is not a salesperson, picks the answer, which then runs that answer's Actions, or dismisses it.
+_Avoid_: Pending, low confidence, manual check
+
+**Ask again**:
+The Owner or their manager asking a record's Decision rule once more, for example after correcting the record.
+_Avoid_: Rerun, rescore, refresh
+
+**Try**:
+Running a Decision rule, published or not, on chosen records or on pasted sample text to see its answer, confidence and the Actions it would run, without running them or changing anything.
+_Avoid_: Test run, simulate, preview
