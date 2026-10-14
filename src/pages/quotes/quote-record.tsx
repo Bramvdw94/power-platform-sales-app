@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { Check, Download, Eye, Pencil, Plus, RotateCcw, Send, Trash2, Trophy, X } from "lucide-react"
+import { Check, Download, Eye, Pencil, Plus, RotateCcw, Trash2, Trophy, X } from "lucide-react"
 import { ContactPicker, type ContactChoice } from "@/components/records/account-picker"
 import { DetailList, FormAlert, FormField } from "@/components/records/fields"
 import { RecordError, RecordLoading, RecordPage, RecordSection } from "@/components/records/record-page"
@@ -15,7 +15,7 @@ import { fieldErrorsOf } from "@/lib/errors"
 import { formatDate, formatPrice, formatVatRate } from "@/lib/format"
 import { fullName, isOpenStage, isQuoteEditable, quoteLabel, quotePdfFileName, quoteTotals, sentDescription, type Quote, type QuoteLine } from "@/sales"
 import type { QuoteDetails } from "@/data/gateway"
-import { CloseOpportunityDialog } from "@/pages/opportunities/close-dialogs"
+import { ProtoCloseDialog, ProtoOrderAction, ProtoQuoteActions, ProtoQuoteBody, QuoteFigure } from "@/prototype/orders"
 import { LineDialog } from "@/pages/opportunities/product-lines"
 import { PreviewPdfDialog } from "./preview-pdf-dialog"
 import { documentOf, downloadPdf, templateFor, useQuotePdfSources } from "./quote-pdf-support"
@@ -90,10 +90,7 @@ export default function QuoteRecordPage() {
             <Eye aria-hidden />
             Preview PDF
           </Button>
-          <Button disabled={busy} onClick={() => setSending(true)}>
-            <Send aria-hidden />
-            Send
-          </Button>
+          <ProtoQuoteActions details={data} busy={busy} onSend={() => setSending(true)} />
           <Button variant="outline" onClick={() => setDeleting(true)}>
             <Trash2 aria-hidden />
             Delete
@@ -116,7 +113,7 @@ export default function QuoteRecordPage() {
           </Button>
         </>
       )}
-      {quote.status === "accepted" && (
+      {quote.status === "accepted" && open && (
         <Button onClick={() => setClosing(true)}>
           <Trophy aria-hidden />
           Close Opportunity as won
@@ -141,11 +138,13 @@ export default function QuoteRecordPage() {
         { label: "Opportunity", value: opportunityLink },
         { label: "Account", value: quote.accountName },
         { label: "Valid until", value: quote.validUntil && formatDate(quote.validUntil) },
-        { label: "Net total", value: formatPrice(quote.netTotal) },
-        { label: "Gross total", value: formatPrice(quote.grossTotal) },
+        { label: "Net total", value: <QuoteFigure details={data} what="net" /> },
+        { label: "Gross total", value: <QuoteFigure details={data} what="gross" /> },
+        { label: "Effective discount", value: <QuoteFigure details={data} what="effective" /> },
+        { label: "Approval", value: <QuoteFigure details={data} what="approval" /> },
         { label: "Owner", value: quote.ownerName },
       ]}
-      actions={actions || downloadAction ? <>{actions}{downloadAction}</> : undefined}
+      actions={<>{actions}{downloadAction}<ProtoOrderAction details={data} /></>}
     >
       {move.isError && <FormAlert error={move.error} />}
       {download.isError && <FormAlert error={download.error} />}
@@ -160,15 +159,16 @@ export default function QuoteRecordPage() {
       )}
       {quote.status === "accepted" && open && canEdit && (
         <p className="rounded-md border p-3 text-sm">
-          This Quote is accepted. Close the Opportunity as won at {formatPrice(quote.netTotal)} to finish the deal.
+          This Quote is accepted. Close the Opportunity as won at <QuoteFigure details={data} what="net" /> to finish the deal.
         </p>
       )}
+
+      <ProtoQuoteBody details={data} />
 
       <RecordSection title="Details">
         {editing ? <EditQuoteForm details={data} onDone={() => setEditing(false)} /> : <QuoteDetailList details={data} opportunityLink={opportunityLink} />}
       </RecordSection>
 
-      <QuoteLinesPanel quote={quote} lines={data.lines} canEdit={mayAct && draft} />
 
       {sending && <SendQuoteDialog details={data} onClose={() => setSending(false)} />}
       {previewing && sources.settings && template && (
@@ -181,15 +181,7 @@ export default function QuoteRecordPage() {
         />
       )}
       {deleting && <DeleteQuoteDialog quote={quote} opportunityId={opportunity.id} onClose={() => setDeleting(false)} />}
-      {closing && open && (
-        <CloseOpportunityDialog
-          opportunity={opportunity}
-          open
-          onOpenChange={(next) => setClosing(next)}
-          initialOutcome="won"
-          initialActualValue={quote.netTotal}
-        />
-      )}
+      {closing && open && <ProtoCloseDialog details={data} open onOpenChange={(next) => setClosing(next)} />}
     </RecordPage>
   )
 }
@@ -288,7 +280,7 @@ function EditQuoteForm({ details, onDone }: { details: QuoteDetails; onDone: () 
 }
 
 /** The Quote's own lines. A Draft's are edited here and nowhere else: the Opportunity's lines and Estimated value stay as they are. */
-function QuoteLinesPanel({ quote, lines, canEdit }: { quote: Quote; lines: QuoteLine[]; canEdit: boolean }) {
+export function QuoteLinesPanel({ quote, lines, canEdit }: { quote: Quote; lines: QuoteLine[]; canEdit: boolean }) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
   const [dialog, setDialog] = useState<{ line?: QuoteLine } | null>(null)

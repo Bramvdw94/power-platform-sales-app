@@ -33,6 +33,7 @@ import { CloseOpportunityDialog, ReopenOpportunityDialog } from "./close-dialogs
 import { EditOpportunityForm } from "./opportunity-form"
 import { QuotesPanel } from "@/pages/quotes/quotes-panel"
 import { ProductLinesPanel } from "./product-lines"
+import { ProtoOpportunityApproval, ProtoOrdersTab } from "@/prototype/orders"
 
 export default function OpportunityRecordPage() {
   const { id = "" } = useParams()
@@ -151,6 +152,8 @@ function OpportunityRecord({
         </>
       ) : null}
 
+      <ProtoOpportunityApproval opportunityId={opportunity.id} />
+
       {!isOpen && (
         <RecordSection title="Close">
           <CloseDetails opportunity={opportunity} />
@@ -168,6 +171,8 @@ function OpportunityRecord({
       <ProductLinesPanel opportunityId={opportunity.id} lines={data.productLines} canEdit={canEdit && isOpen} />
 
       <QuotesPanel opportunityId={opportunity.id} quotes={data.quotes} canCreate={canEdit && isOpen} />
+
+      <ProtoOrdersTab scope={{ type: "opportunity", id: opportunity.id }} />
 
       {isOpen ? (
         <CloseOpportunityDialog opportunity={opportunity} open={closing} onOpenChange={setClosing} />

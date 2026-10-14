@@ -1,4 +1,4 @@
-import { Briefcase, Building2, Columns3, Home, type LucideIcon, Package, TrendingUp, UserPlus, Users, Workflow } from "lucide-react"
+import { Briefcase, Building2, Columns3, Home, type LucideIcon, Package, ShoppingCart, TrendingUp, UserPlus, Users, Workflow } from "lucide-react"
 
 export type NavItem = { to: string; label: string; icon: LucideIcon }
 
@@ -11,6 +11,7 @@ export const AUTOMATION: NavItem = { to: "/automation", label: "Automation", ico
 export const RECORD_LISTS: NavItem[] = [
   { to: "/leads", label: "Leads", icon: UserPlus },
   { to: "/opportunities", label: "Opportunities", icon: Briefcase },
+  { to: "/orders", label: "Orders", icon: ShoppingCart },
   { to: "/accounts", label: "Accounts", icon: Building2 },
   { to: "/contacts", label: "Contacts", icon: Users },
   { to: "/products", label: "Products", icon: Package },

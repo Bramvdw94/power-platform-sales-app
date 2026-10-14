@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { ProtoSwitcher, useProtoName } from "@/prototype/orders"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { Menu, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react"
 import powerAppsLogo from "/power-apps.svg"
@@ -161,12 +162,13 @@ function NewMenu() {
 
 function CurrentUserChip() {
   const { data } = useCurrentUser()
+  const protoName = useProtoName()
   if (!data) return <Skeleton className="h-8 w-32" />
   return (
     <div className="flex items-center gap-2">
-      <UserAvatar user={data.user} />
+      <UserAvatar user={{ ...data.user, fullName: protoName }} />
       <span className="text-sm font-medium" aria-hidden>
-        {data.user.fullName}
+        {protoName}
       </span>
     </div>
   )
@@ -233,5 +235,10 @@ function ShellContent() {
       </div>
     )
   }
-  return <Outlet />
+  return (
+    <>
+      <Outlet />
+      <ProtoSwitcher />
+    </>
+  )
 }

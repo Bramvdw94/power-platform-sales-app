@@ -11,6 +11,7 @@ import { describeError } from "@/lib/errors"
 import { formatDate, formatEuro, LEAD_SOURCE_LABELS, recordHref, STAGE_LABELS } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { MyNumbersRow } from "./my-numbers-tiles"
+import { ProtoHome, useProtoName } from "@/prototype/orders"
 import { fullName, isTaskOverdue, toDateOnly } from "@/sales"
 
 /** "My work": my open Tasks (overdue first), my Opportunities closing this month, my Leads still Not Contacted. */
@@ -18,7 +19,8 @@ export default function HomePage() {
   const gateway = useGateway()
   const { data: me } = useCurrentUser()
   const { data, error, isPending } = useQuery({ queryKey: ["home"], queryFn: () => gateway.getHome() })
-  const firstName = me?.user.fullName.split(" ")[0]
+  const protoName = useProtoName()
+  const firstName = me && protoName.split(" ")[0]
   const today = toDateOnly(new Date())
 
   return (
@@ -28,6 +30,7 @@ export default function HomePage() {
         {firstName && <p className="text-sm text-muted-foreground">Welcome, {firstName}. Here is what needs your attention.</p>}
       </div>
       <MyNumbersRow />
+      <ProtoHome slot="top" />
       {isPending ? (
         <div className="grid gap-4 lg:grid-cols-3" aria-busy="true">
           <Skeleton className="h-48" />
@@ -40,6 +43,7 @@ export default function HomePage() {
         </p>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-3">
+          <ProtoHome slot="card" />
           <RecordSection title="My open Tasks">
             <HomeList empty="No open Tasks. Nice work.">
               {data.openTasks.map((task) => {
@@ -96,6 +100,7 @@ export default function HomePage() {
           </RecordSection>
         </div>
       )}
+      <ProtoHome slot="bottom" />
     </div>
   )
 }

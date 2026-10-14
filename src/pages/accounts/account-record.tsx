@@ -21,6 +21,7 @@ import { fullName, toEngineRecord, type Account } from "@/sales"
 import { NewContactDialog } from "@/pages/contacts/contact-form"
 import { NewOpportunityDialog } from "@/pages/opportunities/opportunity-form"
 import { EditAccountForm } from "./account-form"
+import { ProtoOrdersTab } from "@/prototype/orders"
 
 export default function AccountRecordPage() {
   const { id = "" } = useParams()
@@ -110,6 +111,8 @@ export default function AccountRecordPage() {
           }))}
         />
       </RecordSection>
+
+      <ProtoOrdersTab scope={{ type: "account", id: account.id }} />
 
       <NewContactDialog
         open={addingContact}

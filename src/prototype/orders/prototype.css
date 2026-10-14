@@ -1,0 +1,24 @@
+/* PROTOTYPE (throwaway): the artifact viewer's unlayered reset beats Tailwind's layered base, so keep these unlayered (#87). */
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background: var(--background);
+  color: var(--foreground);
+}
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+/* The inputs of the prototype state their own colours in dark mode, too (consistent problem, 2026-10-12). */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  color: var(--foreground);
+  background-color: color-mix(in oklab, var(--input) 30%, transparent);
+  border-color: var(--input);
+}
+html.dark select option {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}

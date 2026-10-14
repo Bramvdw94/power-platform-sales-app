@@ -32,6 +32,8 @@ export function CloseOpportunityDialog({
   onOpenChange,
   initialOutcome = "won",
   initialActualValue,
+  extra,
+  onWon,
 }: {
   opportunity: Opportunity
   open: boolean
@@ -39,6 +41,9 @@ export function CloseOpportunityDialog({
   initialOutcome?: Outcome
   /** What the Actual value starts as: the Estimated value unless a Quote was just accepted. */
   initialActualValue?: number
+  /** PROTOTYPE (#165): shown under the Won fields, and run after the Opportunity is closed as won. */
+  extra?: React.ReactNode
+  onWon?: () => void
 }) {
   const gateway = useGateway()
   const invalidate = useInvalidateRecords()
@@ -50,7 +55,8 @@ export function CloseOpportunityDialog({
 
   const save = useMutation({
     mutationFn: (input: CloseInput) => gateway.closeOpportunity(opportunity.id, input),
-    onSuccess: async () => {
+    onSuccess: async (_data, input) => {
+      if (input.outcome === "won") onWon?.()
       await invalidate()
       close(false)
     },
@@ -118,7 +124,10 @@ export function CloseOpportunityDialog({
             </div>
           </fieldset>
           {outcome === "won" ? (
-            <TextFields idPrefix="close" specs={WON_SPECS} values={values} errors={errors} onChange={onChange} />
+            <>
+              <TextFields idPrefix="close" specs={WON_SPECS} values={values} errors={errors} onChange={onChange} />
+              {extra}
+            </>
           ) : (
             <>
               <ChoiceField

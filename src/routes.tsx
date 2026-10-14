@@ -21,6 +21,7 @@ import QuoteSettingsPage from "@/pages/products/quote-settings-page"
 import QuoteTemplatesPage from "@/pages/products/quote-templates-page"
 import QuoteRecordPage from "@/pages/quotes/quote-record"
 import SearchPage from "@/pages/search"
+import { OrderPage, OrdersPage } from "@/prototype/orders"
 
 /** Every page in the spec (#23). Placeholders are replaced by the ticket they name. */
 export const routes: RouteObject[] = [
@@ -46,6 +47,8 @@ export const routes: RouteObject[] = [
       { path: "products/quote-settings", element: <QuoteSettingsPage /> },
       { path: "products/:id", element: <ProductRecordPage /> },
       { path: "quotes/:id", element: <QuoteRecordPage /> },
+      { path: "orders", element: <OrdersPage /> },
+      { path: "orders/:id", element: <OrderPage /> },
       { path: "search", element: <SearchPage /> },
       { path: "menu", element: <MenuPage /> },
       { path: "*", element: <NotFoundPage /> },
