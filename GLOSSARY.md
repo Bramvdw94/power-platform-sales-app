@@ -438,3 +438,21 @@ _Avoid_: Cancel, withdraw
 **Approval status**:
 Where a Draft Quote's discount approval stands: None, Pending, Approved or Rejected. It sits beside Quote status and never changes it.
 _Avoid_: In review, Quote status
+
+### AI assist
+
+**AI assist**:
+Text the app writes for a person when they ask for it: a Timeline summary, a Follow-up draft or a Suggested Next step. It only ever appears as a draft for that person to read, change, keep or throw away; it never changes a record or sends anything by itself. Jev decides, AI assist writes.
+_Avoid_: Copilot, Jev, AI (for Decision rules)
+
+**Timeline summary**:
+A short written account of where an Account or Opportunity stands, made from its key fields and its recent Activities (for an Account, its Related activity too). It is shown once to the person who asked and is gone when they leave, unless they save it as a Note, which is then marked as written with AI.
+_Avoid_: Recap, digest, overview
+
+**Follow-up draft**:
+An email written for the person who logged a Phone Call or held a Meeting, addressed to the Contacts who were in it, ready for them to change and send. It is sent only when they press Send.
+_Avoid_: Auto-reply, template, follow-up (for a Task)
+
+**Suggested Next step**:
+A Next step proposed for an open Opportunity from its fields, recent Activities and the current Step's Guidance. It becomes the Next step only when the Owner or their manager accepts it and saves.
+_Avoid_: Recommendation, Action
