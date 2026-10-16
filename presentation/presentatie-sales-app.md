@@ -11,8 +11,8 @@
 | # | Onderdeel | Minuten |
 |---|---|---|
 | 1-2 | Opening en de app in één blik | 2 |
-| 3-4 | Werkwijze en skills | 4 |
-| 5-9 | Het proces (wayfinder, grilling, prototype, spec, issues, cirkel) | 6 |
+| 3-4 | Werkwijze en skills (incl. 4b Matt Pocock) | 5 |
+| 5-9 | Het proces (wayfinder, grilling, prototype, spec, issues, cirkel, voorbeeld) | 7 |
 | 10 | Kwaliteit en tests | 2 |
 | 11-13 | De app: techniek, v1, v2, v3 | 4 |
 | 14-15 | Functioneel consultant + grenzen/kosten | 2 |
@@ -87,6 +87,28 @@
 
 ---
 
+## 4b. Matt Pocock: echte engineering, geen vibe coding
+
+**Op de dia**
+- *"De basis van goed software bouwen telt meer dan ooit."*
+- Kleine, aanpasbare skills die met elk model werken; jij houdt de regie (anders dan Spec-Kit of BMAD)
+- Vier problemen met AI-agents, elk met een fix uit een klassiek boek:
+
+| Probleem | Fix | Bij ons |
+|---|---|---|
+| De agent doet niet wat ik wil (*Pragmatic Programmer*) | Grilling: de agent vraagt jou eerst uit | Wayfinder-kaart en grilling (issue #3) |
+| De agent praat te veel (Evans, *Domain-Driven Design*) | Eén woordenlijst en vastgelegde keuzes | GLOSSARY.md, ADR 0001-0003 |
+| De code werkt niet (*"The rate of feedback is your speed limit"*) | Types, tests eerst (TDD), kleine stappen | Ruim 40 testbestanden, CI bij elke PR |
+| Een grote modderbal (Beck; Ousterhout, *A Philosophy of Software Design*) | Elke dag aan het ontwerp werken, diepe modules | SalesGateway tussen app en data |
+
+**Visual:** tabel met lijnen (native in de PowerPoint). Bron: github.com/mattpocock/skills
+
+**Spreektekst:** Matt Pocock is bekend als TypeScript-docent (Total TypeScript) en schrijft nu over werken met AI-agents (AI Hero). Zijn repo heet "Skills for real engineers": echte engineering, geen vibe coding. Hij zet zich af tegen frameworks die het hele proces overnemen. Hij gaat uit van vier dingen die steeds misgaan, en elk antwoord komt uit een klassiek boek. Voor consultants is de eerste het herkenbaarst: een klant weet ook nooit precies wat hij wil. Dat is gewoon uitvraag.
+
+**Tijd:** 1 min
+
+---
+
 ## 5. Stap 1: Wayfinder, een kaart van beslissingen
 
 **Op de dia**
@@ -97,7 +119,7 @@
 
 **Visual:** screenshot van GitHub issue #2 "Map: v1 sales app spec" (maak live of vooraf; de link: github.com/Bramvdw94/power-platform-sales-app/issues/2).
 
-**Spreektekst:** Ik begon niet met bouwen maar met een kaart. Wayfinder zet het doel neer en splitst het op in beslispunten: wat is een Lead-status, wat gebeurt er bij Qualify, wie mag wat? Elk punt is een GitHub-ticket. Dat dwingt me om eerst te bedenken wat ik wil, in plaats van Claude maar iets te laten verzinnen. Voor v1 waren dat ruim 15 beslispunten. Let op: Claude doet voorstellen, ik besluit.
+**Spreektekst:** Ik begon niet met bouwen maar met een kaart. Wayfinder zet het doel neer en splitst het op in beslispunten: wat is een Lead-status, wat gebeurt er bij Qualify, wie mag wat? Elk punt is een GitHub-ticket. Dat dwingt me om eerst te bedenken wat ik wil, in plaats van Claude maar iets te laten verzinnen. Voor v1 waren dat 14 beslispunten. Let op: Claude doet voorstellen, ik besluit.
 
 **Tijd:** 1,5 min
 
@@ -171,6 +193,25 @@ Daarnaast: reden bij disqualify uit een vaste lijst (No budget, No need, Can't r
 **Spreektekst:** Als alle beslispunten dicht zijn, schrijft Claude een spec: een issue met het probleem, de oplossing en user stories. Daaruit komen bouwtickets. Voor v1 waren dat 12 tickets, voor v2 ongeveer 16, en voor v3 staan er 32 klaar. Elk ticket krijgt zijn eigen thread, wordt gebouwd, getest en gedeployed. Daarna begint de cirkel opnieuw met een nieuwe kaart voor de volgende versie. De volgorde van tickets staat vast door "blocked by"-regels, dus ik hoef geen planning bij te houden.
 
 **Tijd:** 1,5 min
+
+---
+
+## 8b. Voorbeeld: van kaart tot code, één spoor door GitHub
+
+**Op de dia** (echte issues uit v1)
+1. **Kaart** `/wayfinder`: #2 "Map: v1 sales app spec", met 14 beslispunten als sub-issues
+2. **Beslispunten** `/grill-with-docs`, `/prototype`, `/research`: #3 grilling (status van een Lead), #7 prototype (pipelinebord), #8 research (Dataverse-security), #12 task (check in de omgeving)
+3. **Spec** `/to-spec`: #23 "Spec: v1 sales app", geschreven uit de 14 gesloten beslispunten
+4. **Bouwtickets** `/to-tickets`: #24 t/m #35 als sub-issues van #23, waaronder #31 "Build: Qualify"
+5. **Code**: PR #49 bouwt Qualify en sluit #31
+
+**Hoe het vastzit:** sub-issue van de kaart → besluit als comment in #3 en woordenlijst bijgewerkt → spec verwijst terug ("from the Lead lifecycle decision #3") → "Part of #23" → PR sluit het ticket.
+
+**Visual:** vijf kolommen met pijlen (native in de PowerPoint).
+
+**Spreektekst:** Laat ik één spoor volgen. Wayfinder maakt kaart #2 met alle open vragen. Bij #3 vroeg Claude hoe een Lead van nieuw naar gekwalificeerd gaat; mijn besluit staat als comment in het issue. Als alle 14 dicht zijn, schrijft /to-spec issue #23, en daarin staat letterlijk "from the Lead lifecycle decision #3". /to-tickets knipt de spec in bouwtickets; #31 is Qualify. Pull request #49 bouwt het en sluit het ticket. Vraagt een klant "waarom werkt Qualify zo?", dan klik ik van de code terug naar mijn besluit.
+
+**Tijd:** 1 min
 
 ---
 
@@ -256,7 +297,7 @@ Daarnaast: reden bij disqualify uit een vaste lijst (No budget, No need, Can't r
 
 **Visual:** `afbeeldingen/C-versies.png` (rechterkolom) of tekst-dia.
 
-**Spreektekst:** v3 staat als spec klaar (issue #168), met 32 bouwtickets. Twee dingen wil ik uitlichten. Jev is een goedkoop model dat alleen beslissingen neemt: "hoe heet is deze webshop-lead?", met een vast antwoord. Het draait na het opslaan en kan acties starten, en een mens kijkt mee als het onzeker is. Mistral schrijft: samenvatting van een account, concept-opvolgmail, voorstel voor de volgende stap. Beide alleen op verzoek. Waarom deze twee? De dev-tenant heeft geen Azure-krediet en ik koppel geen creditcard, dus het moet gratis of zeer goedkoop zijn: ongeveer 5 dollar voor Jev en ongeveer 10 euro voor Mistral. Een Test/Prod-pipeline staat bewust niet in v3.
+**Spreektekst:** v3 staat als spec klaar (issue #168), met 32 bouwtickets. Twee dingen wil ik uitlichten. Jev is een goedkoop model dat alleen beslissingen neemt: "hoe heet is deze webshop-lead?", met een vast antwoord. Het draait na het opslaan en kan acties starten, en een mens kijkt mee als het onzeker is. Mistral schrijft: samenvatting van een account, concept-opvolgmail, voorstel voor de volgende stap. Beide alleen op verzoek. Waarom deze twee? De dev-tenant heeft geen Azure-krediet en ik koppel geen creditcard, dus het moet gratis of zeer goedkoop zijn. Jev kost ongeveer 0,006 cent per call ($0,042 per miljoen input-tokens, ca. 1.500 tokens per beslissing): 1.000 beslissingen per maand is zo'n 6 cent. Voor Mistral is er een gratis API-key, zonder creditcard. Let op: gratis verzoeken mag Mistral gebruiken om te trainen, dus alleen testdata. Een Test/Prod-pipeline staat bewust niet in v3.
 
 **Tijd:** 1,5 min
 
@@ -290,7 +331,7 @@ Daarnaast: reden bij disqualify uit een vaste lijst (No budget, No need, Can't r
 - Claude kan fout zitten: tests en review blijven nodig
 - Alleen dev-tenant, geen Test/Prod of pipeline
 - Licenties: gebruikers hebben Power Apps Premium nodig
-- AI-kosten: klein, maar met limieten en maandcap
+- AI-kosten: Jev een fractie van een cent per call, Mistral gratis met limieten
 - Geen echte klantdata in dit project
 
 **Visual:** geen of een simpele tabel.
@@ -305,7 +346,7 @@ Daarnaast: reden bij disqualify uit een vaste lijst (No budget, No need, Can't r
 
 **Op de dia**
 - Demo ongeveer 10 minuten
-- Ingelogd als Megan Bowen (manager)
+- Ingelogd als systeembeheerder in de live app (dev-salesapp)
 - Voorbeelddata is fictief
 - Plan B: dezelfde app in geheugenmodus, of de opgenomen video
 
@@ -358,7 +399,7 @@ Daarnaast: reden bij disqualify uit een vaste lijst (No budget, No need, Can't r
 
 ## Q&A: verwachte vragen
 
-- **Wat kost dit?** Claude-abonnement plus kleine AI-kosten (ongeveer 5 dollar Jev, ongeveer 10 euro Mistral) en Power Apps-licenties voor gebruikers. Geen Azure-abonnement.
+- **Wat kost dit?** Claude-abonnement, Power Apps-licenties voor gebruikers en bijna niets aan AI: Jev ongeveer $0,00006 per call, Mistral via een gratis API-key. Geen Azure-abonnement.
 - **Is dit veilig voor klantdata?** Nu alleen fictieve data. Voor echte data: rechten in Dataverse, secrets in plug-in-configuratie, verwerkersovereenkomst voor AI.
 - **Waarom geen D365 Sales?** Dit is een experiment; D365 Sales heeft veel meer.
 - **Kan een klant dit gebruiken?** Mogelijk, maar met Test/Prod, ALM en support nog niet.

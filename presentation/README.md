@@ -5,7 +5,10 @@ Materiaal voor een kennissessie (ca. 20 minuten talk plus 10 minuten demo). Alle
 | Bestand | Inhoud |
 |---|---|
 | `presentatie-sales-app.md` | Het deck als Markdown: 17 dia's met spreektekst, demoscript, Q&A en planning. Bedoeld als input voor een PowerPoint-skill. |
-| `afbeeldingen/A` t/m `F` | Zes diagrammen: werkwijze, proces als cirkel, versies, kwaliteit, skills, architectuur. |
+| `presentatie-sales-app.pptx` | Het deck in Fellowmind-huisstijl: 24 dia's met spreektekst in de notities, diagrammen opnieuw getekend en de demovideo ingebouwd (dia 22). |
+| `maak-pptx.py` | Bouwt de .pptx opnieuw: `pip install python-pptx`, daarna `python maak-pptx.py`. |
+| `huisstijl/` | Fellowmind-logo (SVG) dat het script gebruikt. |
+| `afbeeldingen/A` t/m `F` | Zes oude diagrammen. Niet gebruikt in de .pptx: daar zijn ze in huisstijl nagetekend. |
 | `afbeeldingen/01` t/m `12` | Schermafbeeldingen van de app (desktop, telefoon, donkere modus). |
 | `video/demo-sales-app.mp4` | Demovideo met bijschriften, ca. 1:50, opgenomen op de app in geheugenmodus. |
 | `video/maak-demovideo.mjs` | Playwright-script waarmee de video is opgenomen. |
