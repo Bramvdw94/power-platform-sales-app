@@ -9,6 +9,7 @@ Materiaal voor een kennissessie (ca. 20 minuten talk plus 10 minuten demo). Alle
 | `afbeeldingen/01` t/m `12` | Schermafbeeldingen van de app (desktop, telefoon, donkere modus). |
 | `video/demo-sales-app.mp4` | Demovideo met bijschriften, ca. 1:50, opgenomen op de app in geheugenmodus. |
 | `video/maak-demovideo.mjs` | Playwright-script waarmee de video is opgenomen. |
+| `project-history.pdf` | Leesbaar verslag van het hele project (38 pagina's): proces, alle threads, de issue-boom. Goede achtergrond voor de talk. |
 | `supporting/` | Onderzoeksnotities, CI-concept en een lijst met alle prototypes (Artifact-links en branches). |
 
 Alleen documentatie: dit raakt de app zelf niet en wordt niet gedeployed.
