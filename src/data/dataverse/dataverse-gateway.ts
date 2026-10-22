@@ -102,6 +102,8 @@ import {
   defaultOpportunityName,
   effectiveForecastCategory,
   overrideForecastCategory,
+  NOTIFICATION_KINDS,
+  NOTIFICATION_LIMIT,
   quotaErrors,
   quotaMonths,
   requireCanSetQuota,
@@ -157,6 +159,7 @@ import {
   type LeadInput,
   type ListView,
   type Note,
+  type Notification,
   type OpenStage,
   type Opportunity,
   type OpportunityInput,
@@ -207,6 +210,7 @@ import {
   type PhoneCallRow,
   type ProductLineRow,
   type ProductRow,
+  type NotificationRow,
   type QuotaRow,
   type QuoteLineRow,
   type QuoteRow,
@@ -423,6 +427,26 @@ export function toContact(row: ContactRow): Contact {
 function forecastCategoryOf(row: OpportunityRow): ForecastCategory | undefined {
   const stage = fromChoice(STAGES, row.vibe_stage) ?? "qualification"
   return effectiveForecastCategory({ stage, forecastCategory: fromChoice(FORECAST_CATEGORIES, row.vibe_forecastcategory) })
+}
+
+const NOTIFICATION_TABLES: Record<string, RecordType> = {
+  vibe_lead: "lead",
+  vibe_opportunity: "opportunity",
+  account: "account",
+  contact: "contact",
+}
+
+export function toNotification(row: NotificationRow): Notification {
+  const type = NOTIFICATION_TABLES[row.vibe_regardingtable ?? ""]
+  return {
+    id: row.vibe_notificationid,
+    recipientId: row._vibe_recipientid_value ?? "",
+    kind: fromChoice(NOTIFICATION_KINDS, row.vibe_kind) ?? "notifyAction",
+    text: row.vibe_name ?? "",
+    regarding: type && row.vibe_regardingid ? { type, id: row.vibe_regardingid } : undefined,
+    read: row.vibe_isread === true,
+    createdOn: row.createdon ?? "",
+  }
 }
 
 export function toQuota(row: QuotaRow): Quota {
@@ -2275,7 +2299,39 @@ export class DataverseSalesGateway implements SalesGateway {
         ownerId: "Pick a salesperson.",
       })
     }
+    // Nothing changes hands, nothing to announce.
+    if (row._ownerid_value?.toLowerCase() === newOwnerId.toLowerCase()) return
+    // The "assigned to you" Notification is posted by the plug-in on the Owner column, as the system.
     await this.call(() => table.update(guid(record.id), bind("ownerid", "systemusers", newOwnerId)))
+  }
+
+  // ---- Notifications -------------------------------------------------------------
+  // Created as the system by plug-ins; the Salesperson role reads and marks read only the
+  // rows they are the recipient of, so the filter below is a belt over the role's braces.
+
+  async listNotifications(): Promise<Notification[]> {
+    const rows = await this.all(this.client.notifications, await this.mineFilter(), ["createdon desc"], NOTIFICATION_LIMIT)
+    return rows.slice(0, NOTIFICATION_LIMIT).map(toNotification)
+  }
+
+  async countUnreadNotifications(): Promise<number> {
+    const page = await this.call(async () =>
+      this.client.notifications.list({ filter: `${await this.mineFilter()} and vibe_isread eq false`, pageSize: 100 }),
+    )
+    return page.count ?? page.rows.length
+  }
+
+  async markNotificationRead(id: Id): Promise<void> {
+    await this.call(() => this.client.notifications.update(guid(id), { vibe_isread: true }))
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    const unread = await this.all(this.client.notifications, `${await this.mineFilter()} and vibe_isread eq false`, ["createdon desc"])
+    for (const row of unread) await this.call(() => this.client.notifications.update(row.vibe_notificationid, { vibe_isread: true }))
+  }
+
+  private async mineFilter(): Promise<string> {
+    return `_vibe_recipientid_value eq ${guid((await this.getCurrentUser()).user.id)}`
   }
 
   // ---- Activities -----------------------------------------------------------

@@ -1,6 +1,6 @@
 import type { BusinessRuleRow, ProcessDefinition, ProcessRow, ProcessVersionRow } from "@/sales/engine"
 import type { EngineErrorEntry } from "@/sales/process-admin"
-import type { Account, Activity, Contact, Id, Lead, Opportunity, Product, ProductLine, Quota, Quote, QuoteLine, QuoteSettings, QuoteTemplate, User } from "@/sales"
+import type { Account, Activity, Contact, Id, Lead, Notification, Opportunity, Product, ProductLine, Quota, Quote, QuoteLine, QuoteSettings, QuoteTemplate, User } from "@/sales"
 
 // What the in-memory store keeps: records without the display names that
 // Dataverse returns as formatted values. The gateway adds those on read.
@@ -32,6 +32,7 @@ export type InMemoryData = {
   processes?: ProcessRow[]
   processVersions?: ProcessVersionRow[]
   businessRules?: BusinessRuleRow[]
+  notifications?: Notification[]
 }
 
 /** An email the in-memory gateway "sent": tests read these instead of a mailbox. */
@@ -47,6 +48,8 @@ export class InMemorySalesStore {
   readonly activities = new Map<Id, ActivityRow>()
   readonly products = new Map<Id, Product>()
   readonly quotas = new Map<Id, QuotaRow>()
+  /** Everyone's Notifications; a gateway only ever shows its own user's. */
+  readonly notifications = new Map<Id, Notification>()
   readonly productLines = new Map<Id, ProductLine>()
   readonly quotes = new Map<Id, QuoteRow>()
   readonly quoteLines = new Map<Id, QuoteLine>()
@@ -79,6 +82,7 @@ export class InMemorySalesStore {
     for (const row of copy.activities) this.activities.set(row.id, row)
     for (const row of copy.products) this.products.set(row.id, row)
     for (const row of copy.quotas ?? []) this.quotas.set(row.id, row)
+    for (const row of copy.notifications ?? []) this.notifications.set(row.id, row)
     for (const row of copy.productLines ?? []) this.productLines.set(row.id, row)
     for (const row of copy.quotes ?? []) this.quotes.set(row.id, row)
     for (const row of copy.quoteLines ?? []) this.quoteLines.set(row.id, row)
@@ -93,6 +97,13 @@ export class InMemorySalesStore {
   nextQuoteNumber(): string {
     const highest = Math.max(0, ...[...this.quotes.values()].map((q) => Number(q.number.replace(/\D/g, "")) || 0))
     return `Q-${String(highest + 1).padStart(5, "0")}`
+  }
+
+  /** What a plug-in or the gateway's server-side paths do: post a Notification as the system. */
+  addNotification(notification: Omit<Notification, "id" | "read" | "createdOn"> & { createdOn?: string }): Notification {
+    const row: Notification = { id: this.newId("notification"), read: false, createdOn: new Date().toISOString(), ...notification }
+    this.notifications.set(row.id, row)
+    return row
   }
 
   newId(prefix: string): Id {
