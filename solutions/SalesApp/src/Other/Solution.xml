@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<ImportExportXml version="9.2.26094.142" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26094.142" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26094.00142">
+<ImportExportXml version="9.2.26101.157" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26101.157" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26102.00120">
   <SolutionManifest>
     <UniqueName>SalesApp</UniqueName>
     <LocalizedNames>
@@ -94,6 +94,7 @@
       <RootComponent type="1" schemaName="vibe_businessrule" behavior="0" />
       <RootComponent type="1" schemaName="vibe_engineerror" behavior="0" />
       <RootComponent type="1" schemaName="vibe_lead" behavior="0" />
+      <RootComponent type="1" schemaName="vibe_notification" behavior="0" />
       <RootComponent type="1" schemaName="vibe_opportunity" behavior="0" />
       <RootComponent type="1" schemaName="vibe_process" behavior="0" />
       <RootComponent type="1" schemaName="vibe_processversion" behavior="0" />
@@ -104,18 +105,24 @@
       <RootComponent type="1" schemaName="vibe_quoteline" behavior="0" />
       <RootComponent type="1" schemaName="vibe_quotesettings" behavior="0" />
       <RootComponent type="1" schemaName="vibe_quotetemplate" behavior="0" />
+      <RootComponent type="1" schemaName="vibe_usersettings" behavior="0" />
       <RootComponent type="20" id="{10079eb6-b2c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="20" id="{366b2f26-93c6-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="20" id="{468142e9-dac3-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="20" id="{8a492620-dac3-f111-b377-7c1e5253a39d}" behavior="0" />
       <RootComponent type="300" schemaName="vibe_salesapp_65562" behavior="0" />
+      <RootComponent type="9" schemaName="vibe_ailanguage" behavior="0" />
       <RootComponent type="9" schemaName="vibe_disqualifyreason" behavior="0" />
       <RootComponent type="9" schemaName="vibe_enginetable" behavior="0" />
       <RootComponent type="9" schemaName="vibe_forecastcategory" behavior="0" />
+      <RootComponent type="9" schemaName="vibe_leadrating" behavior="0" />
       <RootComponent type="9" schemaName="vibe_leadsource" behavior="0" />
       <RootComponent type="9" schemaName="vibe_leadstatus" behavior="0" />
       <RootComponent type="9" schemaName="vibe_lostreason" behavior="0" />
+      <RootComponent type="9" schemaName="vibe_notificationkind" behavior="0" />
       <RootComponent type="9" schemaName="vibe_productunit" behavior="0" />
+      <RootComponent type="9" schemaName="vibe_quoteapprovalstatus" behavior="0" />
+      <RootComponent type="9" schemaName="vibe_ratingsource" behavior="0" />
       <RootComponent type="9" schemaName="vibe_stage" behavior="0" />
       <RootComponent type="9" schemaName="vibe_vatrate" behavior="0" />
       <RootComponent type="91" id="{a986065a-7fc6-f111-b377-7c1e5253a39d}" schemaName="SalesApp.Plugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" behavior="0" />

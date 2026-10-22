@@ -186,3 +186,31 @@ Cleanup
 
 40/40 checks passed
 ```
+
+## v3 foundation (#169)
+
+User settings and Notifications are personal. Both tables are User-owned; the Salesperson
+holds Create, Read and Write on User settings and only Read and Write (the read flag) on
+Notifications at User level. Notifications are created by the system (plug-ins and the
+gateway's server-side paths), so a Salesperson can't create or delete one; the bulk-delete
+job removes them after 30 days. Run `python scripts/setup_v3_foundation.py` first (it is
+idempotent), then `python scripts/setup_security_role.py --apply`.
+
+| Check | Expected |
+|---|---|
+| Adele reads her own Notification and marks it read | 200 / 204 |
+| Adele reads or marks read Alex's Notification | 403 |
+| Adele lists Notifications | only her own |
+| Adele creates or deletes a Notification | 403 |
+| Adele creates her own User settings, reads them, switches Teams copies off, sets Away until | 204 / 200 / 204 / 204 |
+| Adele reads Alex's User settings | 403 |
+| Adele changes Alex's User settings | refused (403, or 412 when the PATCH turns into an upsert), his value unchanged |
+| A new User settings row has Teams copies on | true |
+| Lead is email enabled | `IsActivityParty` is true |
+| Draft Quote lines that existed before the foundation carry a List price at add | none blank |
+
+Manager hierarchy applies as everywhere: Megan, as Adele's Manager, can read Adele's
+Notifications and User settings. Nobody outside the reporting line can.
+
+One User settings row per user is kept by the code that creates it (the gateway, in the
+ticket that adds the personal switch); Dataverse has no alternate key on the owner.

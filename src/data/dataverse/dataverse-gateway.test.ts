@@ -28,7 +28,7 @@ import type {
   BusinessRuleRow,
   EngineErrorRow,
 } from "./client"
-import { DataverseSalesGateway, toAccount, toMoment } from "./dataverse-gateway"
+import { DataverseSalesGateway, toAccount, toLead, toMoment, toQuote, toQuoteLine } from "./dataverse-gateway"
 
 const MEGAN = "aaaaaaaa-0000-0000-0000-000000000001"
 const ADELE = "aaaaaaaa-0000-0000-0000-000000000002"
@@ -1621,6 +1621,7 @@ describe("DataverseSalesGateway, Quotes", () => {
       vibe_description: "Per hour",
       vibe_quantity: 2,
       vibe_unitprice: 120,
+      vibe_listpriceatadd: 125,
       vibe_discountpercent: 10,
       vibe_vatrate: 841200000,
       "vibe_QuoteId@odata.bind": "/vibe_quotes(dddddddd-0000-0000-0000-000000000001)",
@@ -1858,3 +1859,31 @@ describe("DataverseSalesGateway, Processes", () => {
   })
 })
 
+
+describe("v3 foundation columns", () => {
+  const LAST = "2026-10-20T09:30:00Z"
+
+  it("reads Last activity on Accounts and Leads, blank when there is none", () => {
+    expect(toAccount({ ...accountRows[0], vibe_lastactivityon: LAST }).lastActivityOn).toBe(LAST)
+    expect(toAccount(accountRows[0]).lastActivityOn).toBeUndefined()
+  })
+
+  it("reads a Lead's Rating, Rating source, Score, Possible duplicate and First touch", () => {
+    const lead = toLead({
+      vibe_leadid: "lead-1", vibe_rating: 841200000, vibe_ratingsource: 841200001, vibe_score: 42,
+      vibe_possibleduplicate: true, vibe_firsttouchon: LAST, vibe_lastactivityon: LAST,
+    })
+    expect(lead).toMatchObject({ rating: "hot", ratingSource: "hand", score: 42, possibleDuplicate: true, firstTouchOn: LAST, lastActivityOn: LAST })
+    expect(toLead({ vibe_leadid: "lead-2" })).toMatchObject({ rating: undefined, ratingSource: undefined, score: undefined, possibleDuplicate: false })
+  })
+
+  it("reads a Quote's Approval status, None when blank", () => {
+    expect(toQuote({ vibe_quoteid: "q-1", vibe_approvalstatus: 841200001 }).approvalStatus).toBe("pending")
+    expect(toQuote({ vibe_quoteid: "q-2" }).approvalStatus).toBe("none")
+  })
+
+  it("reads a Quote line's List price at add, falling back to its unit price", () => {
+    expect(toQuoteLine({ vibe_quotelineid: "l-1", vibe_unitprice: 100, vibe_listpriceatadd: 125 }).listPriceAtAdd).toBe(125)
+    expect(toQuoteLine({ vibe_quotelineid: "l-2", vibe_unitprice: 100 }).listPriceAtAdd).toBe(100)
+  })
+})

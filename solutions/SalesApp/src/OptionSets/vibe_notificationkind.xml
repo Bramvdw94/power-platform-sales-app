@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="vibe_notificationkind" localizedName="Notification kind" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Notification kind" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="841200000" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Reassign" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200001" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Notify action" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200002" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Approval requested" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200003" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Approval decided" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200004" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Engine error" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200005" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Needs review" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200006" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="New web Lead assigned" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

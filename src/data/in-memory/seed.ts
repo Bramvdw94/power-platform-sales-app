@@ -85,7 +85,7 @@ export function createSeedData(today: DateOnly): InMemoryData {
   const [thisMonth, nextMonth] = quotaMonths(today, 2)
 
   const quoteLine = (id: string, quoteId: string, productId: string, productName: string, quantity: number, unitPrice: number, vatRate: QuoteLine["vatRate"], created: number): QuoteLine => ({
-    id, quoteId, productId, productName, quantity, unitPrice, discountPercent: 0, vatRate,
+    id, quoteId, productId, productName, quantity, unitPrice, listPriceAtAdd: unitPrice, discountPercent: 0, vatRate,
     lineAmount: lineAmount(quantity, unitPrice, 0), createdOn: daysAgo(created),
   })
   const quoteLines: QuoteLine[] = [

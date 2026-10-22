@@ -1,11 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <EntityRelationships xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <EntityRelationship Name="business_unit_vibe_lead" />
+  <EntityRelationship Name="business_unit_vibe_notification" />
   <EntityRelationship Name="business_unit_vibe_opportunity" />
   <EntityRelationship Name="business_unit_vibe_productline" />
   <EntityRelationship Name="business_unit_vibe_quota" />
   <EntityRelationship Name="business_unit_vibe_quote" />
   <EntityRelationship Name="business_unit_vibe_quoteline" />
+  <EntityRelationship Name="business_unit_vibe_usersettings" />
   <EntityRelationship Name="contact_customer_accounts" />
   <EntityRelationship Name="FileAttachment_vibe_Quote_vibe_StoredPdf" />
   <EntityRelationship Name="lk_vibe_businessrule_createdby" />
@@ -14,6 +16,8 @@
   <EntityRelationship Name="lk_vibe_engineerror_modifiedby" />
   <EntityRelationship Name="lk_vibe_lead_createdby" />
   <EntityRelationship Name="lk_vibe_lead_modifiedby" />
+  <EntityRelationship Name="lk_vibe_notification_createdby" />
+  <EntityRelationship Name="lk_vibe_notification_modifiedby" />
   <EntityRelationship Name="lk_vibe_opportunity_createdby" />
   <EntityRelationship Name="lk_vibe_opportunity_modifiedby" />
   <EntityRelationship Name="lk_vibe_process_createdby" />
@@ -34,6 +38,8 @@
   <EntityRelationship Name="lk_vibe_quotesettings_modifiedby" />
   <EntityRelationship Name="lk_vibe_quotetemplate_createdby" />
   <EntityRelationship Name="lk_vibe_quotetemplate_modifiedby" />
+  <EntityRelationship Name="lk_vibe_usersettings_createdby" />
+  <EntityRelationship Name="lk_vibe_usersettings_modifiedby" />
   <EntityRelationship Name="organization_vibe_businessrule" />
   <EntityRelationship Name="organization_vibe_engineerror" />
   <EntityRelationship Name="organization_vibe_process" />
@@ -42,17 +48,21 @@
   <EntityRelationship Name="organization_vibe_quotesettings" />
   <EntityRelationship Name="organization_vibe_quotetemplate" />
   <EntityRelationship Name="owner_vibe_lead" />
+  <EntityRelationship Name="owner_vibe_notification" />
   <EntityRelationship Name="owner_vibe_opportunity" />
   <EntityRelationship Name="owner_vibe_productline" />
   <EntityRelationship Name="owner_vibe_quota" />
   <EntityRelationship Name="owner_vibe_quote" />
   <EntityRelationship Name="owner_vibe_quoteline" />
+  <EntityRelationship Name="owner_vibe_usersettings" />
   <EntityRelationship Name="team_vibe_lead" />
+  <EntityRelationship Name="team_vibe_notification" />
   <EntityRelationship Name="team_vibe_opportunity" />
   <EntityRelationship Name="team_vibe_productline" />
   <EntityRelationship Name="team_vibe_quota" />
   <EntityRelationship Name="team_vibe_quote" />
   <EntityRelationship Name="team_vibe_quoteline" />
+  <EntityRelationship Name="team_vibe_usersettings" />
   <EntityRelationship Name="TransactionCurrency_vibe_Opportunity" />
   <EntityRelationship Name="TransactionCurrency_vibe_Product" />
   <EntityRelationship Name="TransactionCurrency_vibe_ProductLine" />
@@ -60,11 +70,13 @@
   <EntityRelationship Name="TransactionCurrency_vibe_Quote" />
   <EntityRelationship Name="TransactionCurrency_vibe_QuoteLine" />
   <EntityRelationship Name="user_vibe_lead" />
+  <EntityRelationship Name="user_vibe_notification" />
   <EntityRelationship Name="user_vibe_opportunity" />
   <EntityRelationship Name="user_vibe_productline" />
   <EntityRelationship Name="user_vibe_quota" />
   <EntityRelationship Name="user_vibe_quote" />
   <EntityRelationship Name="user_vibe_quoteline" />
+  <EntityRelationship Name="user_vibe_usersettings" />
   <EntityRelationship Name="vibe_account_quote" />
   <EntityRelationship Name="vibe_account_vibe_opportunity_accountid" />
   <EntityRelationship Name="vibe_businessrule_engineerror" />
@@ -81,6 +93,7 @@
   <EntityRelationship Name="vibe_lead_SocialActivities" unmodified="1" />
   <EntityRelationship Name="vibe_lead_Tasks" unmodified="1" />
   <EntityRelationship Name="vibe_lead_vibe_opportunity_originatingleadid" />
+  <EntityRelationship Name="vibe_notification_recipient" />
   <EntityRelationship Name="vibe_opportunity_ActivityPointers" unmodified="1" />
   <EntityRelationship Name="vibe_opportunity_Appointments" unmodified="1" />
   <EntityRelationship Name="vibe_opportunity_chats" unmodified="1" />

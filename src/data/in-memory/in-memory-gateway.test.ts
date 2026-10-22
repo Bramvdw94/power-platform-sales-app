@@ -763,6 +763,7 @@ describe("Quotes", () => {
     const gateway = as(alex.id)
     const line = await gateway.addQuoteLine(Q.draft, { productId: PR.consultingHour, quantity: 3, unitPrice: 100, discountPercent: 10 })
     expect(line).toMatchObject({ vatRate: 21, lineAmount: 270, description: "Senior consultant, billed per hour." })
+    expect(line.listPriceAtAdd).toBe(125) // the Product's list price, not the price typed on the line
     expect((await gateway.getQuote(Q.draft)).quote).toMatchObject({ netTotal: 7520, vat21: 56.7, vat9: 652.5, grossTotal: 8229.2 })
     await gateway.updateQuoteLine(line.id, { quantity: 1 })
     expect((await gateway.getQuote(Q.draft)).quote).toMatchObject({ netTotal: 7340, vat21: 18.9, grossTotal: 8011.4 })

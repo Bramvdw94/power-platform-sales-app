@@ -28,6 +28,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -36,6 +37,7 @@ from auth import get_plugin_headers, get_token, load_env  # noqa: E402
 ROLE_NAME = "SalesApp Salesperson"
 CATALOGUE_ROLE = "SalesApp Catalogue Manager"
 TAG = "[security-check]"
+RUN_STARTED = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 USERS = {
     "megan": "Megan Bowen",
     "adele": "Adele Vance",
@@ -179,7 +181,7 @@ def run(dv, report, created):
 
     contact_nav = nav_property(dv, "contact", "account", "parentcustomerid")
     result = dv.call("POST", "contacts", {
-        "firstname": "Check", "lastname": f"{TAG} Contact",
+        "firstname": "Check", "lastname": f"{TAG} Contact", "emailaddress1": "security-check@example.com",
         f"{contact_nav}@odata.bind": f"/accounts({account})",
     }, as_user=adele)
     report.expect_status(f"Contact under an Account ({contact_nav})", result, 204)
@@ -314,8 +316,67 @@ def run(dv, report, created):
     product_lines(dv, report, users, track, account)
     quotes(dv, report, users, track, account)
     run_quota(dv, report, track, users, admin_id)
+    v3_foundation(dv, report, users, track)
     import engine_check  # imported here: it imports this module
     engine_check.run(dv, report, users, track)
+
+
+def v3_foundation(dv, report, users, track):
+    """v3 foundation (#169): own User settings and Notifications only, plus the shared columns."""
+    print("v3 foundation: User settings and Notifications are personal", flush=True)
+    adele, alex = users["adele"], users["alex"]
+    recipient = nav_property(dv, "vibe_notification", "systemuser", "vibe_recipientid")
+    kind = dv.get("GlobalOptionSetDefinitions(Name='vibe_notificationkind')/Microsoft.Dynamics.CRM.OptionSetMetadata")["Options"][0]["Value"]
+
+    def denied(name, result):
+        status = result[0]
+        report.check(name, status in (403, 404), f"{status}" + (f" {result[2]}" if result[2] else ""))
+
+    def notification(owner, text):
+        return track("vibe_notifications", dv.create("vibe_notifications", {
+            "vibe_name": f"{TAG} {text}", "vibe_kind": kind, "vibe_regardingtable": "vibe_lead",
+            "vibe_regardingid": "00000000-0000-0000-0000-000000000000", "vibe_isread": False,
+            f"{recipient}@odata.bind": f"/systemusers({owner})", "ownerid@odata.bind": f"/systemusers({owner})"}))
+
+    # Created as the administrator: in production the system (plug-ins, the gateway's server paths) creates them.
+    mine, theirs = notification(adele, "for Adele"), notification(alex, "for Alex")
+    report.expect_status("Adele reads her own Notification", dv.call("GET", f"vibe_notifications({mine})?$select=vibe_isread", as_user=adele), 200)
+    report.expect_status("Adele marks it read", dv.call("PATCH", f"vibe_notifications({mine})", {"vibe_isread": True}, as_user=adele), 204)
+    denied("Adele can't read Alex's Notification", dv.call("GET", f"vibe_notifications({theirs})?$select=vibe_isread", as_user=adele))
+    denied("Adele can't mark Alex's Notification read", dv.call("PATCH", f"vibe_notifications({theirs})", {"vibe_isread": True}, as_user=adele))
+    listed = dv.get(f"vibe_notifications?$select=vibe_notificationid&$filter=contains(vibe_name,'security-check')", as_user=adele)["value"]
+    report.check("Adele's list holds only her Notification", [r["vibe_notificationid"] for r in listed] == [mine], f"{len(listed)} rows")
+    result = dv.call("POST", "vibe_notifications", {"vibe_name": f"{TAG} forged", "vibe_kind": kind,
+                                                    f"{recipient}@odata.bind": f"/systemusers({adele})"}, as_user=adele)
+    if result[3]:
+        track("vibe_notifications", result[3])
+    denied("Adele can't create a Notification (the system does)", result)
+    denied("Adele can't delete her Notification (the bulk delete job does)", dv.call("DELETE", f"vibe_notifications({mine})", as_user=adele))
+
+    own = dv.call("POST", "vibe_usersettingses", {"vibe_name": f"{TAG} Adele", "vibe_teamscopies": True}, as_user=adele)
+    report.expect_status("Adele creates her own User settings", own, 204)
+    alex_settings = track("vibe_usersettingses", dv.create("vibe_usersettingses", {
+        "vibe_name": f"{TAG} Alex", "ownerid@odata.bind": f"/systemusers({alex})"}))
+    if own[3]:
+        mine_s = track("vibe_usersettingses", own[3])
+        report.expect_status("Adele reads her own User settings", dv.call("GET", f"vibe_usersettingses({mine_s})?$select=vibe_teamscopies", as_user=adele), 200)
+        report.expect_status("Adele switches Teams copies off", dv.call("PATCH", f"vibe_usersettingses({mine_s})", {"vibe_teamscopies": False}, as_user=adele), 204)
+        report.expect_status("Adele sets Away until", dv.call("PATCH", f"vibe_usersettingses({mine_s})", {"vibe_away": True, "vibe_awayuntil": "2027-01-15"}, as_user=adele), 204)
+    denied("Adele can't read Alex's User settings", dv.call("GET", f"vibe_usersettingses({alex_settings})?$select=vibe_teamscopies", as_user=adele))
+    # Adele may create settings, so a PATCH she can't see becomes an upsert that collides with the row (412).
+    result = dv.call("PATCH", f"vibe_usersettingses({alex_settings})", {"vibe_teamscopies": False}, as_user=adele)
+    report.check("Adele can't change Alex's User settings", result[0] in (403, 404, 412), f"{result[0]} {result[2] or ''}")
+    report.check("... and his Teams copies stay on", dv.get(f"vibe_usersettingses({alex_settings})?$select=vibe_teamscopies")["vibe_teamscopies"] is True)
+    report.expect_status("Alex reads his own User settings", dv.call("GET", f"vibe_usersettingses({alex_settings})?$select=vibe_teamscopies", as_user=alex), 200)
+    default = dv.get(f"vibe_usersettingses({alex_settings})?$select=vibe_teamscopies")["vibe_teamscopies"]
+    report.check("Teams copies default to on", default is True)
+
+    lead = dv.get("EntityDefinitions(LogicalName='vibe_lead')?$select=IsActivityParty")
+    report.check("Lead is email enabled (Sending email)", lead["IsActivityParty"] is True)
+    # Lines this run made are new; the backfill covers the ones that existed before it started.
+    lines = dv.get("vibe_quotelines?$select=vibe_listpriceatadd,createdon&$expand=vibe_QuoteId($select=statuscode)")["value"]
+    old = [l for l in lines if l["createdon"] < RUN_STARTED and (l.get("vibe_QuoteId") or {}).get("statuscode") == 1]
+    report.check("Every existing Draft Quote line carries a List price at add", all(l["vibe_listpriceatadd"] is not None for l in old), f"{len(old)} lines")
 
 
 def administrator(dv, report, users, track, admin_id, lead):

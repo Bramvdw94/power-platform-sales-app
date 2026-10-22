@@ -121,6 +121,14 @@ ENGINE_KILL_SWITCH = {"prvReadEnvironmentVariableDefinition": GLOBAL}
 # Leads and Opportunities. So a Process builder has Write on all of them (Bram, 2026-10-13).
 SWITCH_ANY_RECORD = {"prvWritevibe_Lead": GLOBAL, "prvWritevibe_Opportunity": GLOBAL}
 
+# v3 foundation (#169). User settings are the user's own row: create, read and write at User level.
+# Notifications are created by the system (plug-ins and the gateway's server-side paths) and
+# owned by the recipient, so the Salesperson only reads them and writes the read flag.
+V3_OWN_ROWS = {
+    "prvCreatevibe_UserSettings": BASIC, "prvReadvibe_UserSettings": BASIC, "prvWritevibe_UserSettings": BASIC,
+    "prvReadvibe_Notification": BASIC, "prvWritevibe_Notification": BASIC,
+}
+
 # Privileges beyond the spec, each proven necessary by security_check.py or a
 # real call. name -> (depth, why).
 EXTRAS = {
@@ -151,7 +159,7 @@ PLATFORM = {
 
 ROLES = {
     "SalesApp Salesperson": {
-        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **QUOTES, **QUOTE_PDF_READ, **ENGINE_READ, **ENGINE_APPEND_TO, **ENGINE_KILL_SWITCH, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
+        "privileges": {**SPEC, **PRODUCT_READ, **PRODUCT_LINE, **QUOTES, **QUOTE_PDF_READ, **ENGINE_READ, **ENGINE_APPEND_TO, **ENGINE_KILL_SWITCH, **V3_OWN_ROWS, **PLATFORM, **{k: v[0] for k, v in EXTRAS.items()}, QUOTA: BASIC},
         "users": ["Megan Bowen", "Adele Vance", "Alex Wilber", "Diego Siciliani"],
     },
     # Fallback from #21: Manager hierarchy gives a manager Write on a direct

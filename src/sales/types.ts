@@ -88,6 +88,16 @@ export type ClosedStage = Exclude<Stage, OpenStage>
 export const FORECAST_CATEGORIES = ["pipeline", "bestCase", "commit", "omitted"] as const
 export type ForecastCategory = (typeof FORECAST_CATEGORIES)[number]
 
+export const LEAD_RATINGS = ["hot", "warm", "cold"] as const
+export type LeadRating = (typeof LEAD_RATINGS)[number]
+
+/** Whether a Lead's Rating came from a rule or was set by hand. */
+export const RATING_SOURCES = ["rule", "hand"] as const
+export type RatingSource = (typeof RATING_SOURCES)[number]
+
+export const APPROVAL_STATUSES = ["none", "pending", "approved", "rejected"] as const
+export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number]
+
 export const LOST_REASONS = ["price", "choseCompetitor", "noBudget", "noDecision", "other"] as const
 export type LostReason = (typeof LOST_REASONS)[number]
 
@@ -101,6 +111,8 @@ type Owned = {
   /** Display name of the Owner, as Dataverse returns it in formatted values. */
   ownerName: string
   createdOn: Timestamp
+  /** When the latest Activity on the record happened; kept by a plug-in, blank until there is one. */
+  lastActivityOn?: Timestamp
 }
 
 export type Account = Owned & {
@@ -150,6 +162,14 @@ export type Lead = Owned & {
   disqualifyComment?: string
   disqualifiedOn?: Timestamp
   disqualifiedById?: Id
+  rating?: LeadRating
+  ratingSource?: RatingSource
+  /** Points a scoring rule gave the Lead. */
+  score?: number
+  /** Another Lead or Contact looks like the same person. */
+  possibleDuplicate?: boolean
+  /** When the Owner first got in touch. */
+  firstTouchOn?: Timestamp
 } & ProcessState
 
 export type Opportunity = Owned & {
@@ -331,6 +351,8 @@ export type Quote = {
   templateName?: string
   /** The exact PDF the customer received is stored on the Quote. */
   hasStoredPdf: boolean
+  /** Where the Quote stands in discount approval. */
+  approvalStatus?: ApprovalStatus
   ownerId: Id
   ownerName: string
   createdOn: Timestamp
@@ -349,6 +371,8 @@ export type QuoteLine = {
   unitPrice: number
   /** Percentage 0-100. */
   discountPercent: number
+  /** The Product's list price when the line was added. */
+  listPriceAtAdd?: number
   /** The Product's VAT rate when the line was added. */
   vatRate: VatRate
   /** Quantity x unit price x (1 - discount %), rounded to cents. */
