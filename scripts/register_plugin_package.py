@@ -14,6 +14,8 @@ steps, all synchronous:
   * QuotePlugin (#101): pre-operation, Create, Update and Delete of vibe_quote
   * QuoteLinePlugin (#101): pre-operation, Create, Update and Delete of vibe_quoteline
   * QuoteTotalPlugin (#101): post-operation, Create, Update and Delete of vibe_quoteline
+  * ReassignNotificationPlugin (#171): post-operation, Update of the Owner column of vibe_lead,
+    vibe_opportunity, account and contact; posts the "assigned to you" Notification as the system
 
 Run:  python scripts/register_plugin_package.py
       (PLUGIN_PROJECT=<dir> builds another copy of the project, e.g. to push two unmerged branches together)
@@ -84,6 +86,8 @@ for _table in ("vibe_lead", "vibe_opportunity", "account", "contact"):
 for _table in ("vibe_lead", "vibe_opportunity"):
     for _message in ("Create", "Update"):
         STEPS.append(("ProcessEnginePlugin", _message, _table, None, 40))
+for _table in ("vibe_lead", "vibe_opportunity", "account", "contact"):
+    STEPS.append(("ReassignNotificationPlugin", "Update", _table, "ownerid", 40))
 S = {**H, "MSCRM.SolutionUniqueName": SOLUTION}
 for typename, message, table, attrs, stage in STEPS:
     t = requests.get(BASE + f"plugintypes?$select=plugintypeid&$filter=endswith(typename,'.{typename}')", headers=H).json()["value"]

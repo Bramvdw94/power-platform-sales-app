@@ -98,9 +98,14 @@ TABLES = [
     # Last, so a reset deletes Quotas first. Owned by the salesperson; written with the
     # plug-in bypass because the loader is neither the salesperson nor their manager.
     Table("quotas", "quota-", "vibe_quota", "vibe_quotas", "vibe_quotaid", (0, 1)),
+    # A few per demo user, owned by the recipient. Written with the plug-in bypass: in the app the
+    # system creates them, and a salesperson cannot.
+    Table("notifications", "notif-", "vibe_notification", "vibe_notifications", "vibe_notificationid", (0, 1)),
 ]
 TABLE_BY_SECTION = {t.section: t for t in TABLES}
 # Things a record can be "regarding" (Notes, Tasks, Phone Calls).
+# In the order of the choice vibe_notificationkind.
+NOTIFICATION_KINDS = ["reassign", "notifyAction", "approvalRequested", "approvalDecided", "engineError", "needsReview", "newWebLead"]
 REGARDING_PREFIXES = {"acc-": "accounts", "con-": "contacts", "lead-": "leads", "opp-": "opportunities"}
 
 
@@ -430,6 +435,25 @@ def validate(data):
             err(f"{call['key']}: an open Phone Call needs dueInDays")
     for note in data.get("notes", []):
         required(note, "text")
+
+    for note in data.get("notifications", []):
+        required(note, "recipient", "kind", "text", "regarding")
+        if note.get("recipient") not in USER_KEYS:
+            err(f"{note['key']}: recipient must be a demo user")
+        if note.get("kind") not in NOTIFICATION_KINDS:
+            err(f"{note['key']}: unknown kind {note.get('kind')!r}")
+        if len(note.get("text", "")) > 500:
+            err(f"{note['key']}: text is longer than 500 characters")
+        if not isinstance(note.get("read"), bool):
+            err(f"{note['key']}: read must be true or false")
+        reg = note.get("regarding", "")
+        prefix = next((p for p in REGARDING_PREFIXES if reg.startswith(p)), None)
+        if prefix is None:
+            err(f"{note['key']}: regarding {reg!r} must be an Account, Contact, Lead or Opportunity")
+        else:
+            target = ref(note, "regarding", prefix, required=True)
+            if target is not None and target.get("owner") != note.get("recipient"):
+                err(f"{note['key']}: the recipient must own the record it is about")
 
     seen_quotas = set()
     for quota in data.get("quotas", []):
@@ -819,6 +843,17 @@ def build_records(data, users, nav, clock):
             **user_bind(nav["quota.salesperson"], users[person]),
         })
 
+    for note in data.get("notifications", []):
+        table = regarding_table(note["regarding"])
+        add("notifications", note, {
+            "vibe_name": note["text"],
+            "vibe_kind": choice(NOTIFICATION_KINDS, note["kind"]),
+            "vibe_regardingtable": table.logical,
+            "vibe_regardingid": record_id(note["regarding"]),
+            "vibe_isread": note["read"],
+            **user_bind("vibe_RecipientId", users[note["recipient"]]),
+        })
+
     return out
 
 
@@ -844,6 +879,8 @@ def owner_of(data, rec):
     """Activities without an owner belong to the owner of what they are regarding; a Quota to its salesperson."""
     if "salesperson" in rec:
         return rec["salesperson"]
+    if "recipient" in rec:
+        return rec["recipient"]
     if "opportunity" in rec:
         return next(o for o in data["opportunities"] if o["key"] == rec["opportunity"])["owner"]
     if "quote" in rec:
@@ -903,6 +940,7 @@ def summary(data):
         f"{len(data['products'])} Products ({sum(bool(p.get('retired')) for p in data['products'])} retired)",
         f"{len(data['notes'])} Notes, {len(data['tasks'])} Tasks, {len(data['phoneCalls'])} Phone Calls",
         f"{len(data.get('quotas', []))} Quotas",
+        f"{len(data.get('notifications', []))} Notifications ({sum(not n['read'] for n in data.get('notifications', []))} unread)",
         f"{len(data.get('processes', []))} starter Processes; {sum('process' in r for r in leads)} Leads and {sum('process' in r for r in opps)} Opportunities follow one",
     ]
 
