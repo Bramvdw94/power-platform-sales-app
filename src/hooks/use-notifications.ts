@@ -1,7 +1,8 @@
 import { useEffect } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useLocation } from "react-router-dom"
-import type { Id } from "@/sales"
+import { useLocation, useNavigate } from "react-router-dom"
+import { recordHref } from "@/lib/format"
+import type { Id, Notification } from "@/sales"
 import { useGateway } from "./use-gateway"
 
 /** The bell is polled once a minute, and again whenever the user moves to another page. */
@@ -54,4 +55,15 @@ export function useMarkAllNotificationsRead() {
     mutationFn: () => gateway.markAllNotificationsRead(),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   })
+}
+
+/** Opening a Notification marks it read and goes to its record. */
+export function useOpenNotification(after?: () => void) {
+  const navigate = useNavigate()
+  const markRead = useMarkNotificationRead()
+  return (notification: Notification) => {
+    if (!notification.read) markRead.mutate(notification.id)
+    after?.()
+    if (notification.regarding) navigate(recordHref(notification.regarding))
+  }
 }
