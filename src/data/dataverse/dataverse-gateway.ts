@@ -59,7 +59,10 @@ import {
 } from "@/sales"
 import {
   DISQUALIFY_REASONS,
+  APPROVAL_STATUSES,
   FORECAST_CATEGORIES,
+  LEAD_RATINGS,
+  RATING_SOURCES,
   ACCOUNT_TYPES,
   INDUSTRIES,
   LEAD_SOURCES,
@@ -391,6 +394,7 @@ export function toAccount(row: AccountRow): Account {
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
+    lastActivityOn: optional(row.vibe_lastactivityon),
   }
 }
 
@@ -411,6 +415,7 @@ export function toContact(row: ContactRow): Contact {
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
+    lastActivityOn: optional(row.vibe_lastactivityon),
   }
 }
 
@@ -508,6 +513,7 @@ export function toOpportunity(row: OpportunityRow): Opportunity {
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
+    lastActivityOn: optional(row.vibe_lastactivityon),
   }
 }
 
@@ -528,10 +534,16 @@ export function toLead(row: LeadRow): Lead {
     disqualifyComment: optional(row.vibe_disqualifycomment),
     disqualifiedOn: optional(row.vibe_disqualifiedon),
     disqualifiedById: optional(row._vibe_disqualifiedby_value),
+    rating: fromChoice(LEAD_RATINGS, row.vibe_rating),
+    ratingSource: fromChoice(RATING_SOURCES, row.vibe_ratingsource),
+    score: optional(row.vibe_score),
+    possibleDuplicate: row.vibe_possibleduplicate === true,
+    firstTouchOn: optional(row.vibe_firsttouchon),
     ...processStateOf(row),
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
+    lastActivityOn: optional(row.vibe_lastactivityon),
   }
 }
 
@@ -713,6 +725,7 @@ export function toQuote(row: QuoteRow): Quote {
     templateId: optional(row._vibe_quotetemplateid_value),
     templateName: lookupName(row, "vibe_quotetemplateid"),
     hasStoredPdf: !!row.vibe_storedpdf_name,
+    approvalStatus: fromChoice(APPROVAL_STATUSES, row.vibe_approvalstatus) ?? "none",
     ownerId: row._ownerid_value ?? "",
     ownerName: lookupName(row, "ownerid") ?? "",
     createdOn: row.createdon ?? "",
@@ -728,6 +741,7 @@ export function toQuoteLine(row: QuoteLineRow): QuoteLine {
     description: optional(row.vibe_description),
     quantity: row.vibe_quantity ?? 0,
     unitPrice: row.vibe_unitprice ?? 0,
+    listPriceAtAdd: row.vibe_listpriceatadd ?? row.vibe_unitprice ?? 0,
     discountPercent: row.vibe_discountpercent ?? 0,
     vatRate: (row.vibe_vatrate === null || row.vibe_vatrate === undefined ? undefined : VAT_RATES[row.vibe_vatrate - CHOICE_BASE]) ?? 21,
     lineAmount: row.vibe_lineamount ?? 0,
@@ -1650,7 +1664,7 @@ export class DataverseSalesGateway implements SalesGateway {
     }
     invalid("The Quote line cannot be saved.", productLineErrors(values))
     const description = input.description === undefined ? defaults.description : input.description.trim() || undefined
-    const created = await this.copyLine(quoteId, { productId: product.id, productName: product.name, description, ...values, vatRate: product.vatRate })
+    const created = await this.copyLine(quoteId, { productId: product.id, productName: product.name, description, ...values, listPriceAtAdd: product.listPrice, vatRate: product.vatRate })
     return this.readQuoteLine(created)
   }
 
@@ -1886,7 +1900,7 @@ export class DataverseSalesGateway implements SalesGateway {
 
   private async copyLine(
     quoteId: Id,
-    line: Pick<QuoteLine, "productId" | "productName" | "description" | "quantity" | "unitPrice" | "discountPercent" | "vatRate">,
+    line: Pick<QuoteLine, "productId" | "productName" | "description" | "quantity" | "unitPrice" | "listPriceAtAdd" | "discountPercent" | "vatRate">,
   ): Promise<Id> {
     const created = await this.call(() =>
       this.client.quoteLines.create(
@@ -1895,6 +1909,7 @@ export class DataverseSalesGateway implements SalesGateway {
           vibe_description: line.description ?? null,
           vibe_quantity: line.quantity,
           vibe_unitprice: line.unitPrice,
+          vibe_listpriceatadd: line.listPriceAtAdd,
           vibe_discountpercent: line.discountPercent,
           vibe_vatrate: CHOICE_BASE + VAT_RATES.indexOf(line.vatRate),
           ...bind(QUOTE_LINE_NAVIGATION.quote, "vibe_quotes", quoteId),

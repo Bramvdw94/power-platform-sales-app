@@ -41,6 +41,7 @@
     <RolePrivilege name="prvCreatevibe_ProductLine" level="Basic" />
     <RolePrivilege name="prvCreatevibe_Quote" level="Basic" />
     <RolePrivilege name="prvCreatevibe_QuoteLine" level="Basic" />
+    <RolePrivilege name="prvCreatevibe_UserSettings" level="Basic" />
     <RolePrivilege name="prvDeletevibe_ProductLine" level="Basic" />
     <RolePrivilege name="prvDeletevibe_Quote" level="Basic" />
     <RolePrivilege name="prvDeletevibe_QuoteLine" level="Basic" />
@@ -56,6 +57,7 @@
     <RolePrivilege name="prvReadUser" level="Global" />
     <RolePrivilege name="prvReadvibe_BusinessRule" level="Global" />
     <RolePrivilege name="prvReadvibe_Lead" level="Global" />
+    <RolePrivilege name="prvReadvibe_Notification" level="Basic" />
     <RolePrivilege name="prvReadvibe_Opportunity" level="Global" />
     <RolePrivilege name="prvReadvibe_Process" level="Global" />
     <RolePrivilege name="prvReadvibe_ProcessVersion" level="Global" />
@@ -66,15 +68,18 @@
     <RolePrivilege name="prvReadvibe_QuoteLine" level="Global" />
     <RolePrivilege name="prvReadvibe_QuoteSettings" level="Global" />
     <RolePrivilege name="prvReadvibe_QuoteTemplate" level="Global" />
+    <RolePrivilege name="prvReadvibe_UserSettings" level="Basic" />
     <RolePrivilege name="prvWriteAccount" level="Basic" />
     <RolePrivilege name="prvWriteActivity" level="Basic" />
     <RolePrivilege name="prvWriteContact" level="Basic" />
     <RolePrivilege name="prvWriteNote" level="Basic" />
     <RolePrivilege name="prvWriteSharePointData" level="Global" />
     <RolePrivilege name="prvWritevibe_Lead" level="Basic" />
+    <RolePrivilege name="prvWritevibe_Notification" level="Basic" />
     <RolePrivilege name="prvWritevibe_Opportunity" level="Basic" />
     <RolePrivilege name="prvWritevibe_ProductLine" level="Basic" />
     <RolePrivilege name="prvWritevibe_Quote" level="Basic" />
     <RolePrivilege name="prvWritevibe_QuoteLine" level="Basic" />
+    <RolePrivilege name="prvWritevibe_UserSettings" level="Basic" />
   </RolePrivileges>
 </Role>

@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="vibe_leadrating" localizedName="Rating" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Rating" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="841200000" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Hot" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200001" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Warm" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="841200002" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Cold" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

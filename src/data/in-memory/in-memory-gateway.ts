@@ -825,6 +825,7 @@ export class InMemorySalesGateway implements SalesGateway {
       productName: product.name,
       description: input.description?.trim() || (input.description === undefined ? defaults.description : undefined),
       ...values,
+      listPriceAtAdd: product.listPrice,
       vatRate: product.vatRate,
     })
     this.syncQuoteTotals(quoteId)
@@ -1564,7 +1565,7 @@ export class InMemorySalesGateway implements SalesGateway {
     }
   }
 
-  private addCopiedLine(quoteId: Id, line: Pick<QuoteLine, "productId" | "productName" | "description" | "quantity" | "unitPrice" | "discountPercent" | "vatRate">): QuoteLine {
+  private addCopiedLine(quoteId: Id, line: Pick<QuoteLine, "productId" | "productName" | "description" | "quantity" | "unitPrice" | "listPriceAtAdd" | "discountPercent" | "vatRate">): QuoteLine {
     const row: QuoteLine = withoutBlanks({
       id: this.store.newId("qline"),
       quoteId,
@@ -1573,6 +1574,7 @@ export class InMemorySalesGateway implements SalesGateway {
       description: line.description,
       quantity: line.quantity,
       unitPrice: line.unitPrice,
+      listPriceAtAdd: line.listPriceAtAdd,
       discountPercent: line.discountPercent,
       vatRate: line.vatRate,
       lineAmount: lineAmount(line.quantity, line.unitPrice, line.discountPercent),

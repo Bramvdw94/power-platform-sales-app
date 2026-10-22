@@ -45,6 +45,7 @@ export type AccountRow = Row & {
   industrycode?: number | null
   _ownerid_value?: Id | null
   createdon?: string | null
+  vibe_lastactivityon?: string | null
 }
 
 export const ACCOUNT_COLUMNS = [
@@ -61,6 +62,7 @@ export const ACCOUNT_COLUMNS = [
   "industrycode",
   "_ownerid_value",
   "createdon",
+  "vibe_lastactivityon",
 ] as const
 
 /** The contact columns the app reads. */
@@ -76,6 +78,7 @@ export type ContactRow = Row & {
   mobilephone?: string | null
   _ownerid_value?: Id | null
   createdon?: string | null
+  vibe_lastactivityon?: string | null
 }
 
 export const CONTACT_COLUMNS = [
@@ -89,6 +92,7 @@ export const CONTACT_COLUMNS = [
   "mobilephone",
   "_ownerid_value",
   "createdon",
+  "vibe_lastactivityon",
 ] as const
 
 /** The vibe_lead columns the app reads. */
@@ -111,6 +115,12 @@ export type LeadRow = Row & {
   _vibe_processversionid_value?: Id | null
   vibe_currentstep?: string | null
   vibe_stepenteredon?: string | null
+  vibe_rating?: number | null
+  vibe_ratingsource?: number | null
+  vibe_score?: number | null
+  vibe_possibleduplicate?: boolean | null
+  vibe_firsttouchon?: string | null
+  vibe_lastactivityon?: string | null
   _ownerid_value?: Id | null
   createdon?: string | null
 }
@@ -134,6 +144,12 @@ export const LEAD_COLUMNS = [
   "_vibe_processversionid_value",
   "vibe_currentstep",
   "vibe_stepenteredon",
+  "vibe_rating",
+  "vibe_ratingsource",
+  "vibe_score",
+  "vibe_possibleduplicate",
+  "vibe_firsttouchon",
+  "vibe_lastactivityon",
   "_ownerid_value",
   "createdon",
 ] as const
@@ -161,6 +177,7 @@ export type OpportunityRow = Row & {
   _vibe_processversionid_value?: Id | null
   vibe_currentstep?: string | null
   vibe_stepenteredon?: string | null
+  vibe_lastactivityon?: string | null
   _ownerid_value?: Id | null
   createdon?: string | null
 }
@@ -187,6 +204,7 @@ export const OPPORTUNITY_COLUMNS = [
   "_vibe_processversionid_value",
   "vibe_currentstep",
   "vibe_stepenteredon",
+  "vibe_lastactivityon",
   "_ownerid_value",
   "createdon",
 ] as const
@@ -271,6 +289,8 @@ export type QuoteRow = Row & {
   _vibe_quotetemplateid_value?: Id | null
   /** The stored PDF's file name; set once the Quote was sent with its PDF. */
   vibe_storedpdf_name?: string | null
+  /** The Approval status choice; blank reads as None. */
+  vibe_approvalstatus?: number | null
   _ownerid_value?: Id | null
   createdon?: string | null
 }
@@ -294,6 +314,7 @@ export const QUOTE_COLUMNS = [
   "vibe_sentto",
   "_vibe_quotetemplateid_value",
   "vibe_storedpdf_name",
+  "vibe_approvalstatus",
   "_ownerid_value",
   "createdon",
 ] as const
@@ -376,6 +397,7 @@ export type QuoteLineRow = Row & {
   vibe_description?: string | null
   vibe_quantity?: number | null
   vibe_unitprice?: number | null
+  vibe_listpriceatadd?: number | null
   vibe_discountpercent?: number | null
   vibe_vatrate?: number | null
   vibe_lineamount?: number | null
@@ -390,6 +412,7 @@ export const QUOTE_LINE_COLUMNS = [
   "vibe_description",
   "vibe_quantity",
   "vibe_unitprice",
+  "vibe_listpriceatadd",
   "vibe_discountpercent",
   "vibe_vatrate",
   "vibe_lineamount",
