@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { Menu, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react"
 import powerAppsLogo from "/power-apps.svg"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -83,6 +84,7 @@ function DesktopShell() {
         <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
           <GlobalSearch />
           <NewMenu />
+          <NotificationBell />
           <CurrentUserChip />
         </header>
         <main className="min-h-0 flex-1 overflow-auto">
@@ -179,7 +181,10 @@ function PhoneShell() {
       <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b bg-background px-4">
         <img src={powerAppsLogo} alt="" className="size-5" />
         <span className="font-semibold">Sales</span>
-        <span className="ml-auto">{data ? <UserAvatar user={data.user} /> : <Skeleton className="size-8 rounded-full" />}</span>
+        <span className="ml-auto flex items-center gap-1">
+          <NotificationBell />
+          {data ? <UserAvatar user={data.user} /> : <Skeleton className="size-8 rounded-full" />}
+        </span>
       </header>
       <main className="flex-1 pb-16">
         <ShellContent />

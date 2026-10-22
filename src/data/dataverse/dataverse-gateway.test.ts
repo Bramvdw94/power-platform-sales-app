@@ -9,6 +9,7 @@ import type {
   Fields,
   LeadRow,
   ListOptions,
+  NotificationRow,
   NoteRow,
   OpportunityRow,
   PhoneCallRow,
@@ -374,7 +375,7 @@ describe("DataverseSalesGateway, Process administration", () => {
   })
 })
 
-function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = [], processRows: ProcessRow[] = [], processVersionRows: ProcessVersionRow[] = [], envDefinitionRows: EnvironmentVariableDefinitionRow[] = [], envValueRows: EnvironmentVariableValueRow[] = [], businessRuleRows: BusinessRuleRow[] = []) {
+function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRows: ProductLineRow[] = [], quoteRows: QuoteRow[] = [], quoteLineRows: QuoteLineRow[] = [], processRows: ProcessRow[] = [], processVersionRows: ProcessVersionRow[] = [], envDefinitionRows: EnvironmentVariableDefinitionRow[] = [], envValueRows: EnvironmentVariableValueRow[] = [], businessRuleRows: BusinessRuleRow[] = [], notificationRows: NotificationRow[] = []) {
   return {
     accounts: fakeTable("accountid", accountRows),
     contacts: fakeTable("contactid", contactRows),
@@ -383,6 +384,7 @@ function fakeClient(signedIn: string, quotaRows: QuotaRow[] = [], productLineRow
     products: fakeTable("vibe_productid", productRows),
     productLines: fakeTable("vibe_productlineid", productLineRows),
     quotas: fakeTable("vibe_quotaid", quotaRows),
+    notifications: fakeTable("vibe_notificationid", notificationRows),
     quotes: fakeTable("vibe_quoteid", quoteRows),
     quoteLines: fakeTable("vibe_quotelineid", quoteLineRows),
     quoteTemplates: fakeTable("vibe_quotetemplateid", [] as QuoteTemplateRow[]),
@@ -1438,6 +1440,41 @@ describe("DataverseSalesGateway, Quotas", () => {
     await expect(gateway.setQuota(DIEGO, "2026-10-01", 1)).rejects.toMatchObject({ code: "forbidden" })
     await expect(new DataverseSalesGateway(fakeClient(ADELE)).setQuota(ADELE, "2026-10-01", 1)).rejects.toMatchObject({ code: "forbidden" })
     expect(client.quotas.create).not.toHaveBeenCalled()
+  })
+})
+
+describe("DataverseSalesGateway, Notifications", () => {
+  const N1 = "eeeeeeee-0000-0000-0000-000000000001"
+  const N2 = "eeeeeeee-0000-0000-0000-000000000002"
+  const rows = (): NotificationRow[] => [
+    { vibe_notificationid: N1, _vibe_recipientid_value: ADELE, vibe_kind: 841200000, vibe_name: "Alex Wilber assigned you the Lead Sanne Bakker.", vibe_regardingtable: "vibe_lead", vibe_regardingid: LOTTE, vibe_isread: false, createdon: "2026-10-20T09:00:00Z" },
+    { vibe_notificationid: N2, _vibe_recipientid_value: ADELE, vibe_kind: 841200004, vibe_name: "A rule could not run.", vibe_regardingtable: "vibe_lead_gone", vibe_regardingid: null, vibe_isread: true, createdon: "2026-10-19T09:00:00Z" },
+  ]
+
+  it("lists my Notifications, newest first, with the record each is about", async () => {
+    const client = fakeClient(ADELE, [], [], [], [], [], [], [], [], [], rows())
+    const list = await new DataverseSalesGateway(client).listNotifications()
+    expect(client.notifications.list.mock.calls[0][0]).toMatchObject({ filter: `_vibe_recipientid_value eq ${ADELE}`, orderBy: ["createdon desc"] })
+    expect(list).toEqual([
+      { id: N1, recipientId: ADELE, kind: "reassign", text: "Alex Wilber assigned you the Lead Sanne Bakker.", regarding: { type: "lead", id: LOTTE }, read: false, createdOn: "2026-10-20T09:00:00Z" },
+      { id: N2, recipientId: ADELE, kind: "engineError", text: "A rule could not run.", regarding: undefined, read: true, createdOn: "2026-10-19T09:00:00Z" },
+    ])
+  })
+
+  it("counts only my unread Notifications", async () => {
+    const client = fakeClient(ADELE, [], [], [], [], [], [], [], [], [], rows())
+    await new DataverseSalesGateway(client).countUnreadNotifications()
+    expect(client.notifications.list.mock.calls[0][0].filter).toBe(`_vibe_recipientid_value eq ${ADELE} and vibe_isread eq false`)
+  })
+
+  it("marks one read, and all of mine read", async () => {
+    const client = fakeClient(ADELE, [], [], [], [], [], [], [], [], [], rows())
+    const gateway = new DataverseSalesGateway(client)
+    await gateway.markNotificationRead(N1)
+    expect(client.notifications.update).toHaveBeenCalledWith(N1, { vibe_isread: true })
+    await gateway.markAllNotificationsRead()
+    expect(client.notifications.list.mock.calls[0][0].filter).toBe(`_vibe_recipientid_value eq ${ADELE} and vibe_isread eq false`)
+    expect(client.notifications.update).toHaveBeenCalledTimes(1 + 2)
   })
 })
 

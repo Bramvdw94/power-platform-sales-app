@@ -317,6 +317,7 @@ def run(dv, report, created):
     quotes(dv, report, users, track, account)
     run_quota(dv, report, track, users, admin_id)
     v3_foundation(dv, report, users, track)
+    reassign_notifications(dv, report, users, track)
     import engine_check  # imported here: it imports this module
     engine_check.run(dv, report, users, track)
 
@@ -344,7 +345,7 @@ def v3_foundation(dv, report, users, track):
     report.expect_status("Adele marks it read", dv.call("PATCH", f"vibe_notifications({mine})", {"vibe_isread": True}, as_user=adele), 204)
     denied("Adele can't read Alex's Notification", dv.call("GET", f"vibe_notifications({theirs})?$select=vibe_isread", as_user=adele))
     denied("Adele can't mark Alex's Notification read", dv.call("PATCH", f"vibe_notifications({theirs})", {"vibe_isread": True}, as_user=adele))
-    listed = dv.get(f"vibe_notifications?$select=vibe_notificationid&$filter=contains(vibe_name,'security-check')", as_user=adele)["value"]
+    listed = dv.get(f"vibe_notifications?$select=vibe_notificationid&$filter=contains(vibe_name,'security-check] for')", as_user=adele)["value"]
     report.check("Adele's list holds only her Notification", [r["vibe_notificationid"] for r in listed] == [mine], f"{len(listed)} rows")
     result = dv.call("POST", "vibe_notifications", {"vibe_name": f"{TAG} forged", "vibe_kind": kind,
                                                     f"{recipient}@odata.bind": f"/systemusers({adele})"}, as_user=adele)
@@ -377,6 +378,42 @@ def v3_foundation(dv, report, users, track):
     lines = dv.get("vibe_quotelines?$select=vibe_listpriceatadd,createdon&$expand=vibe_QuoteId($select=statuscode)")["value"]
     old = [l for l in lines if l["createdon"] < RUN_STARTED and (l.get("vibe_QuoteId") or {}).get("statuscode") == 1]
     report.check("Every existing Draft Quote line carries a List price at add", all(l["vibe_listpriceatadd"] is not None for l in old), f"{len(old)} lines")
+
+
+def reassign_notifications(dv, report, users, track):
+    """Reassign (#171): the plug-in posts "assigned to you" to the new Owner as the system, never to yourself."""
+    print("Reassign posts a Notification to the new Owner", flush=True)
+    adele, alex = users["adele"], users["alex"]
+    lead = track("vibe_leads", dv.create("vibe_leads", {"vibe_lastname": f"{TAG} Reassign", "vibe_company": f"{TAG} Company", "vibe_name": f"{TAG} Reassign"}, as_user=adele))
+
+    def reassign(caller, owner):
+        return dv.call("PATCH", f"vibe_leads({lead})", {"ownerid@odata.bind": f"/systemusers({owner})"}, as_user=caller)
+
+    def notifications(recipient):
+        rows = dv.get(f"vibe_notifications?$select=vibe_notificationid,vibe_name,vibe_kind,vibe_isread,_vibe_recipientid_value"
+                      f"&$filter=_vibe_recipientid_value eq {recipient} and vibe_regardingid eq '{lead}'")["value"]
+        for row in rows:
+            track("vibe_notifications", row["vibe_notificationid"])
+        return rows
+
+    report.expect_status("Adele reassigns her Lead to Alex", reassign(adele, alex), 204)
+    alex_rows = notifications(alex)
+    report.check("Alex gets exactly one Notification", len(alex_rows) == 1, f"{len(alex_rows)} rows")
+    if alex_rows:
+        row = alex_rows[0]
+        report.check("... of kind Reassign, unread", row["vibe_kind"] == 841200000 and row["vibe_isread"] is False, f"kind {row['vibe_kind']}")
+        report.check("... saying who assigned what", row["vibe_name"].startswith("Adele Vance assigned you the Lead "), row["vibe_name"])
+        report.expect_status("Alex reads it", dv.call("GET", f"vibe_notifications({row['vibe_notificationid']})?$select=vibe_isread", as_user=alex), 200)
+        status = dv.call("GET", f"vibe_notifications({row['vibe_notificationid']})?$select=vibe_isread", as_user=adele)[0]
+        report.check("Adele can't read Alex's Notification", status in (403, 404), f"{status}")
+    report.check("Adele, who handed it over, gets none", len(notifications(adele)) == 0)
+
+    report.expect_status("Alex reassigns the Lead to himself", reassign(alex, alex), 204)
+    report.check("... which posts nothing", len(notifications(alex)) == 1 and len(notifications(adele)) == 0)
+    report.expect_status("Alex reassigns the Lead to Adele", reassign(alex, adele), 204)
+    report.check("Adele gets one", len(notifications(adele)) == 1)
+    report.expect_status("Adele reassigns the Lead to herself", reassign(adele, adele), 204)
+    report.check("... which posts nothing", len(notifications(adele)) == 1 and len(notifications(alex)) == 1)
 
 
 def administrator(dv, report, users, track, admin_id, lead):
@@ -831,6 +868,9 @@ def quotes(dv, report, users, track, account):
 
 
 def cleanup(dv, created):
+    # Reassigns made by the checks make the plug-in post Notifications about the "[security-check]" records.
+    leftovers = dv.get(f"vibe_notifications?$select=vibe_notificationid&$filter=contains(vibe_name,'security-check')")["value"]
+    created.extend(("vibe_notifications", row["vibe_notificationid"]) for row in leftovers)
     for entity_set, record_id in reversed(created):
         # Lines on a closed Opportunity can only be removed with the plug-ins bypassed.
         bypass = {"MSCRM.BypassCustomPluginExecution": "true"} if entity_set in ("vibe_productlines", "vibe_quotes", "vibe_quotelines") else None

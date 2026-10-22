@@ -19,6 +19,7 @@ reaches a real company. Decided in #20, built in #35.
 | Leads | 30: 8 Not Contacted, 12 Working, 6 Qualified, 4 Disqualified (with reason) |
 | Opportunities | 30: 20 open (5 Qualification, 5 Needs Analysis, 6 Proposal, 4 Negotiation), 6 Closed Won, 4 Closed Lost (with Lost reason) |
 | Quotas | 18: Adele, Alex and Megan, this month and the next 5 |
+| Notifications (#171) | 12: three per demo user, "assigned you" messages about a Lead, an Opportunity and an Account they own (the recipient owns the Notification and the record it opens); the last is read, the other two not. Created by the loader with the plug-ins bypassed |
 | Notes, Tasks, Phone Calls | 40, 30 (8 overdue, 6 due today, 5 completed), 20 (16 logged, 4 planned) |
 
 Products are organisation-owned, so they have no Owner and every user reads

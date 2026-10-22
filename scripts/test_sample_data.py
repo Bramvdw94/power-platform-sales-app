@@ -164,6 +164,15 @@ class ForecastAndQuotaValidation(unittest.TestCase):
         self.assertTrue(any("amount must be 0 or more" in e for e in errors))
 
 
+    def test_notifications_go_to_the_owner_of_the_record_they_are_about(self):
+        def wrong(data):
+            data["notifications"][0]["regarding"] = next(o["key"] for o in data["opportunities"] if o["owner"] != data["notifications"][0]["recipient"])
+            data["notifications"][1]["kind"] = "ping"
+        errors = broken(wrong)
+        self.assertTrue(any("the recipient must own the record it is about" in e for e in errors))
+        self.assertTrue(any("unknown kind 'ping'" in e for e in errors))
+
+
 class Payloads(unittest.TestCase):
     def test_forecast_categories(self):
         recs = records()
@@ -185,6 +194,16 @@ class Payloads(unittest.TestCase):
         self.assertEqual(adele_now.body["ownerid@odata.bind"], f"/systemusers({USERS['adele']})")
         self.assertEqual(records()["quota-megan-5"].body["vibe_month"], "2027-03-01")
         self.assertEqual(adele_now.body["vibe_name"], "Adele Vance 2026-10")
+
+    def test_every_demo_user_has_notifications_owned_by_and_addressed_to_them(self):
+        notes = [r for r in records().values() if r.table.section == "notifications"]
+        for user in ("megan", "adele", "alex", "diego"):
+            mine = [n for n in notes if n.body["vibe_RecipientId@odata.bind"] == f"/systemusers({USERS[user]})"]
+            self.assertGreaterEqual(len(mine), 3, user)
+            self.assertTrue(all(n.body["ownerid@odata.bind"] == f"/systemusers({USERS[user]})" for n in mine))
+            self.assertTrue(any(not n.body["vibe_isread"] for n in mine), user)
+        first = records()["notif-adele-1"]
+        self.assertEqual((first.body["vibe_kind"], first.body["vibe_regardingtable"]), (841200000, "vibe_lead"))
 
     def test_first_of_month_wraps_the_year(self):
         from datetime import date

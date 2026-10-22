@@ -209,6 +209,28 @@ idempotent), then `python scripts/setup_security_role.py --apply`.
 | Lead is email enabled | `IsActivityParty` is true |
 | Draft Quote lines that existed before the foundation carry a List price at add | none blank |
 
+## Reassign Notifications and the 30 day clean-up (#171)
+
+The `ReassignNotificationPlugin` step (post-operation, Update of the Owner column on Lead, Opportunity,
+Account and Contact) creates the "assigned you" Notification as the system. The check hands a Lead
+Adele to Alex to Adele through the Web API as the demo users:
+
+| Check | Expected |
+|---|---|
+| Adele reassigns her Lead to Alex | Alex has exactly one unread Reassign Notification about it, "Adele Vance assigned you the Lead ..." |
+| Adele reads Alex's Notification | 403 |
+| Adele, who handed it over, has none | 0 |
+| Alex reassigns the Lead to himself | nothing new |
+| Alex reassigns it to Adele; Adele reassigns it to herself | Adele has one, not two |
+
+The Notifications the plug-in makes about the check's own records are deleted at the end.
+
+The clean-up is a recurring Dataverse bulk delete job, "SalesApp: delete Notifications older
+than 30 days" (daily, 02:00 UTC). Bulk delete jobs are not solution components, so it is
+environment setup: `python scripts/setup_notification_cleanup.py` creates it once per environment
+(idempotent), `--check` exits 1 when it is missing. It was proven on a 40, a 29 and a 0 day old row:
+only the first went.
+
 Manager hierarchy applies as everywhere: Megan, as Adele's Manager, can read Adele's
 Notifications and User settings. Nobody outside the reporting line can.
 

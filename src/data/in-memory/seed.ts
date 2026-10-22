@@ -81,6 +81,9 @@ export function createSeedData(today: DateOnly): InMemoryData {
   const { accounts: A, contacts: C, leads: L, opportunities: O, tasks: T, notes: N, phoneCalls: P, products: PR, productLines: PL, quotes: Q, quoteLines: QL } = SEED_IDS
   const daysAgo = (n: number) => at(addDays(today, -n))
   const inDays = (n: number) => addDays(today, n)
+  // Notifications are as new as the minute, so they are dated from the clock rather than from today.
+  const minutesAgo = (n: number) => new Date(Date.now() - n * 60_000).toISOString()
+  const hoursAgo = (n: number) => minutesAgo(n * 60)
 
   const [thisMonth, nextMonth] = quotaMonths(today, 2)
 
@@ -114,6 +117,16 @@ export function createSeedData(today: DateOnly): InMemoryData {
       quote(Q.rejected, "Q-00005", 0, "rejected", O.lost, A.tailwind, undefined, adele.id, inDays(-27), 90, { sentOn: daysAgo(88), sentById: adele.id }),
     ],
     users: Object.values(SEED_USERS),
+    notifications: [
+      { id: "note-adele-1", recipientId: adele.id, kind: "reassign", text: "Megan Bowen assigned you the Lead Sanne Bakker.", regarding: { type: "lead", id: L.notContacted }, read: false, createdOn: minutesAgo(25) },
+      { id: "note-adele-2", recipientId: adele.id, kind: "reassign", text: "Alex Wilber assigned you the Account Tailwind Traders.", regarding: { type: "account", id: A.tailwind }, read: false, createdOn: hoursAgo(5) },
+      { id: "note-adele-3", recipientId: adele.id, kind: "reassign", text: "Megan Bowen assigned you the Opportunity Tailwind workplace.", regarding: { type: "opportunity", id: O.qualification }, read: true, createdOn: daysAgo(3) },
+      { id: "note-alex-1", recipientId: alex.id, kind: "reassign", text: "Adele Vance assigned you the Lead Thomas Peeters.", regarding: { type: "lead", id: L.working }, read: false, createdOn: hoursAgo(2) },
+      { id: "note-alex-2", recipientId: alex.id, kind: "reassign", text: "Megan Bowen assigned you the Contact Pieter Claes.", regarding: { type: "contact", id: C.pieter }, read: true, createdOn: daysAgo(6) },
+      { id: "note-megan-1", recipientId: megan.id, kind: "engineError", text: "A rule could not run on the Opportunity Fabrikam security audit. Open the Automation page to see why.", regarding: { type: "opportunity", id: O.proposal }, read: false, createdOn: hoursAgo(1) },
+      { id: "note-megan-2", recipientId: megan.id, kind: "reassign", text: "Diego Siciliani assigned you the Lead Lucas Maes.", regarding: { type: "lead", id: L.diegos }, read: true, createdOn: daysAgo(2) },
+      { id: "note-diego-1", recipientId: diego.id, kind: "reassign", text: "Megan Bowen assigned you the Account Northwind BV.", regarding: { type: "account", id: A.northwind }, read: false, createdOn: hoursAgo(26) },
+    ],
     quoteTemplates: SEED_TEMPLATES,
     quoteSettings: SEED_SETTINGS,
     quotas: [

@@ -24,6 +24,7 @@ import type {
   LeadSource,
   ListView,
   Note,
+  Notification,
   OpenStage,
   Opportunity,
   OpportunityInput,
@@ -408,6 +409,14 @@ export interface SalesGateway {
   // Ownership
   /** Makes another salesperson the Owner; open Tasks and Phone Calls on the record move along. */
   reassign(record: RecordRef, newOwnerId: Id): Promise<void>
+
+  // Notifications: mine only. The system creates them (plug-ins and the server-side paths); the user reads and marks them read.
+  /** My latest Notifications, newest first. */
+  listNotifications(): Promise<Notification[]>
+  /** How many of my Notifications are unread: the number on the bell. */
+  countUnreadNotifications(): Promise<number>
+  markNotificationRead(id: Id): Promise<void>
+  markAllNotificationsRead(): Promise<void>
 
   // Quotas
   /** Quota rows from a month on, for me or my team. A salesperson only ever sees their own and their direct reports'. */
