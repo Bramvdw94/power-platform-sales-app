@@ -13,7 +13,9 @@ export function createGateway(env: ImportMetaEnv = import.meta.env): SalesGatewa
   if (env.VITE_SALES_GATEWAY === "memory") {
     const name = (env.VITE_SALES_USER ?? "adele") as SeedUser
     const user = SEED_USERS[name] ?? SEED_USERS.adele
-    return createInMemoryGateway(user.id, { store: addStarterRules(addStarterProcesses(createSeededStore())) })
+    const store = addStarterRules(addStarterProcesses(createSeededStore()))
+    ;(window as unknown as { __store: unknown }).__store = store // PROTOTYPE: the switcher's "New Notification" button
+    return createInMemoryGateway(user.id, { store })
   }
   return new DataverseSalesGateway(createGeneratedClient())
 }
