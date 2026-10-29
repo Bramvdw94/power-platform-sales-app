@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SdkMessageProcessingStep Name="ReassignNotificationPlugin: Update of account (post)" SdkMessageProcessingStepId="{af724a36-0cce-f111-b618-7c1e5253a39d}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SdkMessageId>20bebb1b-ea3e-db11-86a7-000a3a5473e8</SdkMessageId>
+  <PluginTypeExportKey>E183BC54610DB29AB4E10D15E3588ED5878150F76CC9F0B5DFD9EA78E8CD1A44</PluginTypeExportKey>
+  <PrimaryEntity>account</PrimaryEntity>
+  <AsyncAutoDelete>0</AsyncAutoDelete>
+  <FilteringAttributes>ownerid</FilteringAttributes>
+  <InvocationSource>1</InvocationSource>
+  <Mode>0</Mode>
+  <Rank>1</Rank>
+  <EventHandlerTypeCode>4602</EventHandlerTypeCode>
+  <Stage>40</Stage>
+  <IsCustomizable>1</IsCustomizable>
+  <IsHidden>0</IsHidden>
+  <SupportedDeployment>0</SupportedDeployment>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <SdkMessageProcessingStepImages />
+</SdkMessageProcessingStep>

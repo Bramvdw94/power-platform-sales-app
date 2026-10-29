@@ -436,6 +436,29 @@ export const QUOTA_COLUMNS = ["vibe_quotaid", "_vibe_salespersonid_value", "vibe
 /** A Quota's Salesperson lookup (to systemuser), as a navigation property. */
 export const QUOTA_SALESPERSON_NAVIGATION = "vibe_SalespersonId"
 
+/** The vibe_notification columns the app reads. Only the recipient can read a row, and only the system creates one. */
+export type NotificationRow = Row & {
+  vibe_notificationid: Id
+  _vibe_recipientid_value?: Id | null
+  vibe_kind?: number | null
+  vibe_name?: string | null
+  vibe_regardingtable?: string | null
+  vibe_regardingid?: string | null
+  vibe_isread?: boolean | null
+  createdon?: string | null
+}
+
+export const NOTIFICATION_COLUMNS = [
+  "vibe_notificationid",
+  "_vibe_recipientid_value",
+  "vibe_kind",
+  "vibe_name",
+  "vibe_regardingtable",
+  "vibe_regardingid",
+  "vibe_isread",
+  "createdon",
+] as const
+
 /** The annotation (Note) columns the app reads. */
 export type NoteRow = Row & {
   annotationid: Id
@@ -629,6 +652,7 @@ export interface DataverseClient {
   products: TableClient<ProductRow>
   productLines: TableClient<ProductLineRow>
   quotas: TableClient<QuotaRow>
+  notifications: TableClient<NotificationRow>
   quotes: TableClient<QuoteRow>
   quoteLines: TableClient<QuoteLineRow>
   quoteTemplates: TableClient<QuoteTemplateRow>

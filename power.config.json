@@ -132,6 +132,11 @@
           "entitySetName": "vibe_businessrules",
           "logicalName": "vibe_businessrule",
           "isHidden": false
+        },
+        "notifications": {
+          "entitySetName": "vibe_notifications",
+          "logicalName": "vibe_notification",
+          "isHidden": false
         }
       },
       "environmentVariableName": ""

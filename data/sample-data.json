@@ -3225,5 +3225,115 @@
       "unitPrice": 1300,
       "createdDaysAgo": 12
     }
+  ],
+  "notifications": [
+    {
+      "key": "notif-megan-1",
+      "recipient": "megan",
+      "kind": "reassign",
+      "text": "Adele Vance assigned you the Lead Jelle Bouma.",
+      "regarding": "lead-waddenzee",
+      "read": false,
+      "createdDaysAgo": 0
+    },
+    {
+      "key": "notif-megan-2",
+      "recipient": "megan",
+      "kind": "reassign",
+      "text": "Alex Wilber assigned you the Opportunity Rijnmond Havendiensten BV - 24/7 monitoring of dispatch systems.",
+      "regarding": "opp-rijnmond",
+      "read": false,
+      "createdDaysAgo": 1
+    },
+    {
+      "key": "notif-megan-3",
+      "recipient": "megan",
+      "kind": "reassign",
+      "text": "Diego Siciliani assigned you the Account Meulenhof Zorggroep.",
+      "regarding": "acc-meulenhof",
+      "read": true,
+      "createdDaysAgo": 3
+    },
+    {
+      "key": "notif-adele-1",
+      "recipient": "adele",
+      "kind": "reassign",
+      "text": "Megan Bowen assigned you the Lead Bas Oosterhout.",
+      "regarding": "lead-zeeuwse",
+      "read": false,
+      "createdDaysAgo": 0
+    },
+    {
+      "key": "notif-adele-2",
+      "recipient": "adele",
+      "kind": "reassign",
+      "text": "Alex Wilber assigned you the Opportunity De Vries Bouwgroep BV - Managed workplace for site teams.",
+      "regarding": "opp-devries",
+      "read": false,
+      "createdDaysAgo": 1
+    },
+    {
+      "key": "notif-adele-3",
+      "recipient": "adele",
+      "kind": "reassign",
+      "text": "Diego Siciliani assigned you the Account Van Dijk Logistiek BV.",
+      "regarding": "acc-vandijk",
+      "read": true,
+      "createdDaysAgo": 3
+    },
+    {
+      "key": "notif-alex-1",
+      "recipient": "alex",
+      "kind": "reassign",
+      "text": "Megan Bowen assigned you the Lead Rik Nijhuis.",
+      "regarding": "lead-twentse",
+      "read": false,
+      "createdDaysAgo": 0
+    },
+    {
+      "key": "notif-alex-2",
+      "recipient": "alex",
+      "kind": "reassign",
+      "text": "Adele Vance assigned you the Opportunity Hoekstra Agri BV - Microsoft 365 migration.",
+      "regarding": "opp-hoekstra",
+      "read": false,
+      "createdDaysAgo": 1
+    },
+    {
+      "key": "notif-alex-3",
+      "recipient": "alex",
+      "kind": "reassign",
+      "text": "Diego Siciliani assigned you the Account Brouwer & Zonen Installatietechniek BV.",
+      "regarding": "acc-brouwer",
+      "read": true,
+      "createdDaysAgo": 3
+    },
+    {
+      "key": "notif-diego-1",
+      "recipient": "diego",
+      "kind": "reassign",
+      "text": "Megan Bowen assigned you the Lead Thijs Moonen.",
+      "regarding": "lead-limburg",
+      "read": false,
+      "createdDaysAgo": 0
+    },
+    {
+      "key": "notif-diego-2",
+      "recipient": "diego",
+      "kind": "reassign",
+      "text": "Alex Wilber assigned you the Opportunity Maasvallei Transport NV - File server replacement.",
+      "regarding": "opp-maasvallei",
+      "read": false,
+      "createdDaysAgo": 1
+    },
+    {
+      "key": "notif-diego-3",
+      "recipient": "diego",
+      "kind": "reassign",
+      "text": "Adele Vance assigned you the Account Kempenland Metaal NV.",
+      "regarding": "acc-kempenland",
+      "read": true,
+      "createdDaysAgo": 3
+    }
   ]
 }

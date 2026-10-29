@@ -136,6 +136,13 @@ def check(dv, data, users):
         if got != expected:
             print(f"  FAIL {data['users'][key]} reads {got} Quotas, expected {expected}")
             ok = False
+    # Notifications are personal: each demo user reads exactly their own.
+    for key, user in users.items():
+        expected = sum(n["recipient"] == key for n in data.get("notifications", []))
+        got = len(dv.get("vibe_notifications?$select=vibe_notificationid", as_user=user)["value"])
+        if got < expected:  # more is fine: the app may have posted some since
+            print(f"  FAIL {data['users'][key]} reads {got} Notifications, expected at least {expected}")
+            ok = False
     # Everyone reads every Quote and its lines (Read is Organization-wide).
     # Quote templates and settings are read by everyone too: the PDF is drawn in the salesperson's browser.
     for label, entity_set, expected in (("Quotes", "vibe_quotes", len(data.get("quotes", []))), ("Quote lines", "vibe_quotelines", len(data.get("quoteLines", []))),

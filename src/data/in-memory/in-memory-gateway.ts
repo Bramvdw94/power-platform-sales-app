@@ -1,5 +1,7 @@
 import {
+  NOTIFICATION_LIMIT,
   SalesRuleError,
+  reassignText,
   accountErrors,
   lineAmount,
   newProductLineDefaults,
@@ -80,6 +82,7 @@ import {
   type Lead,
   type LeadInput,
   type Note,
+  type Notification,
   type OpenStage,
   type Opportunity,
   type OpportunityInput,
@@ -1241,8 +1244,20 @@ export class InMemorySalesGateway implements SalesGateway {
         ownerId: "Pick a salesperson.",
       })
     }
+    // Nothing changes hands, nothing to announce.
+    if (row.ownerId === newOwnerId) return
     // Read-only records (Qualified Leads, closed Opportunities) can still be reassigned.
     row.ownerId = newOwnerId
+    // The plug-in on the Owner column posts this as the system, and never when you hand a record to yourself.
+    if (newOwnerId !== this.userId) {
+      this.store.addNotification({
+        recipientId: newOwnerId,
+        kind: "reassign",
+        text: reassignText(this.user(this.userId).fullName, record, this.recordName(record)),
+        regarding: record,
+        createdOn: this.now().toISOString(),
+      })
+    }
     // A Quote follows its Opportunity's Owner, also once sent.
     if (record.type === "opportunity") {
       for (const quote of this.store.quotes.values()) {
@@ -1256,6 +1271,32 @@ export class InMemorySalesGateway implements SalesGateway {
         activity.ownerId = newOwnerId
       }
     }
+  }
+
+  // ---- Notifications --------------------------------------------------------------
+
+  private myNotifications(): Notification[] {
+    return [...this.store.notifications.values()]
+      .filter((n) => n.recipientId === this.userId)
+      .sort((a, b) => b.createdOn.localeCompare(a.createdOn))
+  }
+
+  async listNotifications(): Promise<Notification[]> {
+    return clone(this.myNotifications().slice(0, NOTIFICATION_LIMIT))
+  }
+
+  async countUnreadNotifications(): Promise<number> {
+    return this.myNotifications().filter((n) => !n.read).length
+  }
+
+  async markNotificationRead(id: Id): Promise<void> {
+    const notification = this.store.notifications.get(id)
+    if (!notification || notification.recipientId !== this.userId) throw new GatewayError("notFound", "That Notification no longer exists.")
+    notification.read = true
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    for (const notification of this.myNotifications()) notification.read = true
   }
 
   // ---- Activities ----------------------------------------------------------------
